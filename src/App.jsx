@@ -106,10 +106,14 @@ function App() {
   const [paymentMethod, setPaymentMethod] = useState("月付");
   const [needDeposit, setNeedDeposit] = useState(true);
 
+  const [showPriceSheet, setShowPriceSheet] = useState(false);
+  const [customTotalRent, setCustomTotalRent] = useState("");
+
   const currentArea = currentPlan?.areas.find((area) => area.id === currentAreaId);
 
   const dailyRent = Number(currentPlan?.totalPrice || 0);
   const totalRent = (dailyRent * leaseMonths * 30).toFixed(1);
+  const finalRent = customTotalRent ? Number(customTotalRent).toFixed(1) : totalRent;
 
   const closeOrderSheet = () => {
     setSelectedOrder(null);
@@ -129,6 +133,7 @@ function App() {
       totalPrice: 0,
     });
 
+    setCustomTotalRent("");
     setCurrentPage("plan");
     closeOrderSheet();
   };
@@ -486,8 +491,13 @@ function App() {
           </div>
 
           <div>
-            <span>预计总租金</span>
+            <span>系统预计总租金</span>
             <strong>¥ {totalRent}</strong>
+          </div>
+
+          <div>
+            <span>最终报价</span>
+            <strong>¥ {finalRent}</strong>
           </div>
 
           <div>
@@ -503,7 +513,7 @@ function App() {
 
         <nav className="bottom-actions">
           <button>更多</button>
-          <button>改价</button>
+          <button onClick={() => setShowPriceSheet(true)}>改价</button>
           <button onClick={() => setShowPaymentSheet(true)}>租期与支付</button>
           <button className="submit-plan-button">提交方案</button>
         </nav>
@@ -617,6 +627,58 @@ function App() {
                 onClick={() => setShowPaymentSheet(false)}
               >
                 保存租期与支付
+              </button>
+            </section>
+          </div>
+        )}
+
+        {showPriceSheet && (
+          <div className="sheet-mask" onClick={() => setShowPriceSheet(false)}>
+            <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
+              <div className="sheet-handle" />
+
+              <div className="sheet-header">
+                <div>
+                  <p className="eyebrow">Adjust Price</p>
+                  <h2>修改最终报价</h2>
+                </div>
+                <button className="close-button" onClick={() => setShowPriceSheet(false)}>
+                  ×
+                </button>
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">系统预计总租金</p>
+                <div className="price-preview-line">
+                  <span>按当前商品和租期自动计算</span>
+                  <strong>¥ {totalRent}</strong>
+                </div>
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">最终报价</p>
+                <input
+                  className="price-input"
+                  type="number"
+                  value={customTotalRent}
+                  onChange={(event) => setCustomTotalRent(event.target.value)}
+                  placeholder="例如：1980"
+                />
+              </div>
+
+              <div className="quick-price-list">
+                {[totalRent, 1980, 2880, 3880].map((price) => (
+                  <button key={price} onClick={() => setCustomTotalRent(String(price))}>
+                    ¥ {price}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                className="submit-sheet-button"
+                onClick={() => setShowPriceSheet(false)}
+              >
+                保存最终报价
               </button>
             </section>
           </div>
