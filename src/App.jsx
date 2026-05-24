@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
+
+const STORAGE_KEY = "green-rental-mobile-v1";
 
 const initialOrders = [
   {
@@ -87,16 +89,54 @@ const products = [
   },
 ];
 
+const loadSavedData = () => {
+  try {
+    const rawData = localStorage.getItem(STORAGE_KEY);
+
+    if (!rawData) {
+      return null;
+    }
+
+    const parsedData = JSON.parse(rawData);
+
+    if (!parsedData || typeof parsedData !== "object") {
+      return null;
+    }
+
+    return parsedData;
+  } catch (error) {
+    console.error("读取本地数据失败：", error);
+    return null;
+  }
+};
+
+const saveDataToLocalStorage = (data) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.error("保存本地数据失败：", error);
+  }
+};
+
 function App() {
   const [activeRole, setActiveRole] = useState("staff");
-  const [orders, setOrders] = useState(initialOrders);
+
+  const [orders, setOrders] = useState(() => {
+    const savedData = loadSavedData();
+    return Array.isArray(savedData?.orders) ? savedData.orders : initialOrders;
+  });
+
+  const [submittedPlans, setSubmittedPlans] = useState(() => {
+    const savedData = loadSavedData();
+    return Array.isArray(savedData?.submittedPlans) ? savedData.submittedPlans : [];
+  });
+
   const [activeStatus, setActiveStatus] = useState("待接单");
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [planType, setPlanType] = useState("租赁方案");
   const [currentPage, setCurrentPage] = useState("orders");
   const [currentPlan, setCurrentPlan] = useState(null);
-  const [submittedPlans, setSubmittedPlans] = useState([]);
 
   const [showAreaSheet, setShowAreaSheet] = useState(false);
   const [areaName, setAreaName] = useState("");
@@ -125,10 +165,23 @@ function App() {
 
   const totalProductCount = planAreas.reduce((sum, area) => {
     const safeItems = Array.isArray(area.items) ? area.items : [];
-    return sum + safeItems.reduce((itemSum, item) => itemSum + Number(item.quantity || 0), 0);
+
+    return (
+      sum +
+      safeItems.reduce((itemSum, item) => {
+        return itemSum + Number(item.quantity || 0);
+      }, 0)
+    );
   }, 0);
 
   const filteredOrders = orders.filter((order) => order.status === activeStatus);
+
+  useEffect(() => {
+    saveDataToLocalStorage({
+      orders,
+      submittedPlans,
+    });
+  }, [orders, submittedPlans]);
 
   const closeOrderSheet = () => {
     setSelectedOrder(null);
@@ -183,12 +236,17 @@ function App() {
   };
 
   const recalculateTotal = (areas) => {
-    const total = areas.reduce((areaTotal, area) => {
+    const safeAreas = Array.isArray(areas) ? areas : [];
+
+    const total = safeAreas.reduce((areaTotal, area) => {
       const safeItems = Array.isArray(area.items) ? area.items : [];
-      const itemTotal = safeItems.reduce(
-        (sum, item) => sum + item.pricePerDay * item.quantity,
-        0
-      );
+
+      const itemTotal = safeItems.reduce((sum, item) => {
+        const pricePerDay = Number(item.pricePerDay || 0);
+        const quantity = Number(item.quantity || 0);
+
+        return sum + pricePerDay * quantity;
+      }, 0);
 
       return areaTotal + itemTotal;
     }, 0);
@@ -221,6 +279,9 @@ function App() {
 
   const openProductPage = (area) => {
     setCurrentAreaId(area.id);
+    setSearchText("");
+    setActiveCategory("室内绿植");
+    setActiveSubCategory("大型植物");
     setCurrentPage("products");
   };
 
@@ -243,7 +304,10 @@ function App() {
         if (existingItem) {
           newItems = safeItems.map((item) =>
             item.productId === product.id
-              ? { ...item, quantity: item.quantity + 1 }
+              ? {
+                  ...item,
+                  quantity: Number(item.quantity || 0) + 1,
+                }
               : item
           );
         } else {
@@ -252,7 +316,7 @@ function App() {
             {
               productId: product.id,
               name: product.name,
-              pricePerDay: product.pricePerDay,
+              pricePerDay: Number(product.pricePerDay || 0),
               quantity: 1,
             },
           ];
@@ -270,8 +334,6 @@ function App() {
         totalPrice: recalculateTotal(updatedAreas),
       };
     });
-
-    setCurrentPage("plan");
   };
 
   const changeItemQuantity = (areaId, productId, change) => {
@@ -288,10 +350,13 @@ function App() {
         const updatedItems = safeItems
           .map((item) =>
             item.productId === productId
-              ? { ...item, quantity: item.quantity + change }
+              ? {
+                  ...item,
+                  quantity: Number(item.quantity || 0) + change,
+                }
               : item
           )
-          .filter((item) => item.quantity > 0);
+          .filter((item) => Number(item.quantity || 0) > 0);
 
         return {
           ...area,
@@ -412,10 +477,12 @@ function App() {
   const filteredProducts = products.filter((product) => {
     const matchCategory = product.category === activeCategory;
     const matchSubCategory = product.subCategory === activeSubCategory;
+    const keyword = searchText.trim();
+
     const matchSearch =
-      searchText.trim() === "" ||
-      product.name.includes(searchText) ||
-      product.description.includes(searchText);
+      keyword === "" ||
+      product.name.includes(keyword) ||
+      product.description.includes(keyword);
 
     return matchCategory && matchSubCategory && matchSearch;
   });
@@ -476,21 +543,38 @@ function App() {
                 <span>可以换个分类，或清空搜索关键词</span>
               </div>
             ) : (
-              filteredProducts.map((product) => (
-                <article className="product-card" key={product.id}>
-                  <div className="product-image">{product.image}</div>
+              filteredProducts.map((product) => {
+                const safeItems = Array.isArray(currentArea?.items)
+                  ? currentArea.items
+                  : [];
+                const selectedItem = safeItems.find(
+                  (item) => item.productId === product.id
+                );
+                const selectedQuantity = selectedItem
+                  ? Number(selectedItem.quantity || 0)
+                  : 0;
 
-                  <div className="product-info">
-                    <h3>{product.name}</h3>
-                    <p>{product.description}</p>
+                return (
+                  <article className="product-card" key={product.id}>
+                    <div className="product-image">{product.image}</div>
 
-                    <div className="product-bottom">
-                      <strong>¥ {product.pricePerDay}/天</strong>
-                      <button onClick={() => addProductToArea(product)}>加入</button>
+                    <div className="product-info">
+                      <h3>{product.name}</h3>
+                      <p>{product.description}</p>
+
+                      <div className="product-bottom">
+                        <strong>¥ {product.pricePerDay}/天</strong>
+
+                        <button onClick={() => addProductToArea(product)}>
+                          {selectedQuantity > 0
+                            ? `已选 ${selectedQuantity} 件`
+                            : "加入方案"}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))
+                  </article>
+                );
+              })
             )}
           </section>
         </main>
@@ -555,7 +639,7 @@ function App() {
               {planAreas.map((area) => {
                 const safeItems = Array.isArray(area.items) ? area.items : [];
                 const areaProductCount = safeItems.reduce(
-                  (sum, item) => sum + item.quantity,
+                  (sum, item) => sum + Number(item.quantity || 0),
                   0
                 );
 
@@ -594,7 +678,9 @@ function App() {
 
                               <button
                                 className="remove-item-button"
-                                onClick={() => removeItemFromArea(area.id, item.productId)}
+                                onClick={() =>
+                                  removeItemFromArea(area.id, item.productId)
+                                }
                               >
                                 删除
                               </button>
@@ -978,7 +1064,10 @@ function App() {
                   </div>
 
                   <div className="actions">
-                    <button className="primary-button" onClick={() => openSubmittedPlanFromMerchant(plan)}>
+                    <button
+                      className="primary-button"
+                      onClick={() => openSubmittedPlanFromMerchant(plan)}
+                    >
                       查看方案
                     </button>
                   </div>
