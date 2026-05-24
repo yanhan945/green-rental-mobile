@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
-const STORAGE_KEY = "green-rental-mobile-v2";
+const STORAGE_KEY = "green-rental-mobile-v3";
 
 const initialOrders = [
   {
@@ -122,6 +122,45 @@ const getNowText = () => {
   return `${year}-${month}-${date} ${hour}:${minute}`;
 };
 
+const calculateDailyRent = (areas) => {
+  const safeAreas = Array.isArray(areas) ? areas : [];
+
+  return safeAreas.reduce((areaTotal, area) => {
+    const safeItems = Array.isArray(area.items) ? area.items : [];
+
+    const itemTotal = safeItems.reduce((sum, item) => {
+      const pricePerDay = Number(item.pricePerDay || 0);
+      const quantity = Number(item.quantity || 0);
+      return sum + pricePerDay * quantity;
+    }, 0);
+
+    return areaTotal + itemTotal;
+  }, 0);
+};
+
+const calculateProductCount = (areas) => {
+  const safeAreas = Array.isArray(areas) ? areas : [];
+
+  return safeAreas.reduce((total, area) => {
+    const safeItems = Array.isArray(area.items) ? area.items : [];
+
+    return (
+      total +
+      safeItems.reduce((sum, item) => {
+        return sum + Number(item.quantity || 0);
+      }, 0)
+    );
+  }, 0);
+};
+
+const getAreaProductCount = (area) => {
+  const safeItems = Array.isArray(area?.items) ? area.items : [];
+
+  return safeItems.reduce((sum, item) => {
+    return sum + Number(item.quantity || 0);
+  }, 0);
+};
+
 function App() {
   const [activeRole, setActiveRole] = useState("staff");
 
@@ -142,6 +181,7 @@ function App() {
   const [planType, setPlanType] = useState("租赁方案");
   const [currentPage, setCurrentPage] = useState("orders");
   const [currentPlan, setCurrentPlan] = useState(null);
+  const [merchantViewingPlan, setMerchantViewingPlan] = useState(null);
 
   const [showAreaSheet, setShowAreaSheet] = useState(false);
   const [areaName, setAreaName] = useState("");
@@ -175,26 +215,12 @@ function App() {
   const planAreas = Array.isArray(currentPlan?.areas) ? currentPlan.areas : [];
   const currentArea = planAreas.find((area) => area.id === currentAreaId);
 
-  const dailyRent = Number(currentPlan?.totalPrice || 0);
+  const dailyRent = useMemo(() => calculateDailyRent(planAreas), [planAreas]);
+  const totalProductCount = useMemo(() => calculateProductCount(planAreas), [planAreas]);
   const totalRent = (dailyRent * leaseMonths * 30).toFixed(1);
   const finalRent = customTotalRent ? Number(customTotalRent).toFixed(1) : totalRent;
 
-  const totalProductCount = planAreas.reduce((sum, area) => {
-    const safeItems = Array.isArray(area.items) ? area.items : [];
-    return (
-      sum +
-      safeItems.reduce((itemSum, item) => {
-        return itemSum + Number(item.quantity || 0);
-      }, 0)
-    );
-  }, 0);
-
-  const currentAreaProductCount = currentArea
-    ? (Array.isArray(currentArea.items) ? currentArea.items : []).reduce(
-        (sum, item) => sum + Number(item.quantity || 0),
-        0
-      )
-    : 0;
+  const currentAreaProductCount = getAreaProductCount(currentArea);
 
   const filteredOrders = orders.filter((order) => order.status === activeStatus);
 
@@ -236,6 +262,7 @@ function App() {
   const switchRole = (role) => {
     setActiveRole(role);
     setCurrentPage("orders");
+    setMerchantViewingPlan(null);
     setSelectedOrder(null);
     setShowAreaSheet(false);
     setShowProductSheet(false);
@@ -257,7 +284,6 @@ function App() {
       areaSize: selectedOrder.areaSize,
       expectedDate: selectedOrder.expectedDate,
       areas: [],
-      totalPrice: 0,
       submitted: false,
     };
 
@@ -280,25 +306,6 @@ function App() {
   const closeAreaSheet = () => {
     setShowAreaSheet(false);
     setAreaName("");
-  };
-
-  const recalculateTotal = (areas) => {
-    const safeAreas = Array.isArray(areas) ? areas : [];
-
-    const total = safeAreas.reduce((areaTotal, area) => {
-      const safeItems = Array.isArray(area.items) ? area.items : [];
-
-      const itemTotal = safeItems.reduce((sum, item) => {
-        const pricePerDay = Number(item.pricePerDay || 0);
-        const quantity = Number(item.quantity || 0);
-
-        return sum + pricePerDay * quantity;
-      }, 0);
-
-      return areaTotal + itemTotal;
-    }, 0);
-
-    return total.toFixed(1);
   };
 
   const addArea = () => {
@@ -378,7 +385,6 @@ function App() {
       return {
         ...plan,
         areas: updatedAreas,
-        totalPrice: recalculateTotal(updatedAreas),
       };
     });
   };
@@ -414,7 +420,6 @@ function App() {
       return {
         ...plan,
         areas: updatedAreas,
-        totalPrice: recalculateTotal(updatedAreas),
       };
     });
   };
@@ -439,7 +444,6 @@ function App() {
       return {
         ...plan,
         areas: updatedAreas,
-        totalPrice: recalculateTotal(updatedAreas),
       };
     });
   };
@@ -469,11 +473,14 @@ function App() {
         areaSize: order.areaSize,
         expectedDate: order.expectedDate,
         areas: [],
-        totalPrice: 0,
         submitted: order.status === "进行中",
       };
     });
 
+    setCustomTotalRent("");
+    setLeaseMonths(12);
+    setPaymentMethod("月付");
+    setNeedDeposit(true);
     setCurrentPage("plan");
   };
 
@@ -488,6 +495,8 @@ function App() {
       paymentMethod,
       needDeposit,
       customTotalRent,
+      dailyRent: dailyRent.toFixed(1),
+      totalRent,
       finalRent,
       totalProductCount,
       areaCount: planAreas.length,
@@ -502,7 +511,9 @@ function App() {
 
     setOrders((prevOrders) =>
       prevOrders.map((order) =>
-        order.id === currentPlan.orderId ? { ...order, status: "进行中" } : order
+        order.id === currentPlan.orderId
+          ? { ...order, status: "进行中", planStatus: "方案已提交" }
+          : order
       )
     );
 
@@ -512,13 +523,8 @@ function App() {
   };
 
   const openSubmittedPlanFromMerchant = (plan) => {
-    setCurrentPlan(plan);
-    setLeaseMonths(plan.leaseMonths || 12);
-    setPaymentMethod(plan.paymentMethod || "月付");
-    setNeedDeposit(plan.needDeposit ?? true);
-    setCustomTotalRent(plan.customTotalRent || "");
-    setActiveRole("staff");
-    setCurrentPage("plan");
+    setMerchantViewingPlan(plan);
+    setMerchantTab("已提交方案");
   };
 
   const resetNewOrderForm = () => {
@@ -605,7 +611,7 @@ function App() {
         <section className="area-section">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Area</p>
+              <p className="eyebrow">区域</p>
               <h2>区域配置</h2>
             </div>
             <button className="add-area-button" onClick={() => setShowAreaSheet(true)}>
@@ -622,10 +628,7 @@ function App() {
             <div className="area-list">
               {planAreas.map((area) => {
                 const safeItems = Array.isArray(area.items) ? area.items : [];
-                const areaProductCount = safeItems.reduce(
-                  (sum, item) => sum + Number(item.quantity || 0),
-                  0
-                );
+                const areaProductCount = getAreaProductCount(area);
 
                 return (
                   <article className="area-card" key={area.id}>
@@ -685,7 +688,7 @@ function App() {
         <section className="price-card price-detail-card">
           <div>
             <span>目前方案日租金</span>
-            <strong>¥ {currentPlan.totalPrice}</strong>
+            <strong>¥ {dailyRent.toFixed(1)}</strong>
           </div>
 
           <div>
@@ -858,7 +861,10 @@ function App() {
                 </section>
               </main>
 
-              <button className="submit-sheet-button" onClick={() => setShowProductSheet(false)}>
+              <button
+                className="submit-sheet-button"
+                onClick={() => setShowProductSheet(false)}
+              >
                 已选 {currentAreaProductCount} 件｜完成选品
               </button>
             </section>
@@ -1025,6 +1031,11 @@ function App() {
                 </div>
 
                 <div className="confirm-row">
+                  <span>日租金</span>
+                  <strong>¥ {dailyRent.toFixed(1)}</strong>
+                </div>
+
+                <div className="confirm-row">
                   <span>最终报价</span>
                   <strong>¥ {finalRent}</strong>
                 </div>
@@ -1062,6 +1073,136 @@ function App() {
     const acceptedCount = orders.filter((order) => order.status === "已接单").length;
     const runningCount = orders.filter((order) => order.status === "进行中").length;
     const completedCount = orders.filter((order) => order.status === "已完成").length;
+
+    if (merchantViewingPlan) {
+      const viewAreas = Array.isArray(merchantViewingPlan.areas)
+        ? merchantViewingPlan.areas
+        : [];
+
+      return (
+        <div className="app">
+          <header className="plan-header">
+            <button className="back-button" onClick={() => setMerchantViewingPlan(null)}>
+              ←
+            </button>
+            <div>
+              <p className="eyebrow">Plan Detail</p>
+              <h1>{merchantViewingPlan.customerName}</h1>
+            </div>
+          </header>
+
+          <section className="plan-summary-card">
+            <div className="plan-summary-top">
+              <div>
+                <p>方案状态</p>
+                <strong>方案已提交</strong>
+              </div>
+              <div>
+                <p>最终报价</p>
+                <strong>¥ {merchantViewingPlan.finalRent}</strong>
+              </div>
+            </div>
+
+            <div className="plan-info-line">
+              <span>项目面积</span>
+              <strong>{merchantViewingPlan.areaSize}</strong>
+            </div>
+
+            <div className="plan-info-line">
+              <span>进场时间</span>
+              <strong>{merchantViewingPlan.expectedDate}</strong>
+            </div>
+
+            <div className="plan-info-line">
+              <span>客户地址</span>
+              <strong>{merchantViewingPlan.address}</strong>
+            </div>
+
+            <div className="plan-info-line">
+              <span>提交时间</span>
+              <strong>{merchantViewingPlan.submittedAt}</strong>
+            </div>
+          </section>
+
+          <section className="price-card price-detail-card">
+            <div>
+              <span>日租金</span>
+              <strong>¥ {merchantViewingPlan.dailyRent}</strong>
+            </div>
+
+            <div>
+              <span>租期</span>
+              <strong>{merchantViewingPlan.leaseMonths} 月</strong>
+            </div>
+
+            <div>
+              <span>系统总租金</span>
+              <strong>¥ {merchantViewingPlan.totalRent}</strong>
+            </div>
+
+            <div>
+              <span>最终报价</span>
+              <strong>¥ {merchantViewingPlan.finalRent}</strong>
+            </div>
+
+            <div>
+              <span>支付方式</span>
+              <strong>{merchantViewingPlan.paymentMethod}</strong>
+            </div>
+
+            <div>
+              <span>押金</span>
+              <strong>{merchantViewingPlan.needDeposit ? "需要" : "不需要"}</strong>
+            </div>
+          </section>
+
+          <section className="area-section">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Areas</p>
+                <h2>方案明细</h2>
+              </div>
+            </div>
+
+            {viewAreas.length === 0 ? (
+              <div className="empty-card">
+                <p>这个方案还没有区域明细</p>
+              </div>
+            ) : (
+              <div className="area-list">
+                {viewAreas.map((area) => {
+                  const safeItems = Array.isArray(area.items) ? area.items : [];
+
+                  return (
+                    <article className="area-card" key={area.id}>
+                      <div>
+                        <h3>{area.name}</h3>
+                        <p>已选商品：{getAreaProductCount(area)} 件</p>
+
+                        {safeItems.length > 0 && (
+                          <div className="selected-product-list">
+                            {safeItems.map((item) => (
+                              <div className="selected-product-row" key={item.productId}>
+                                <div>
+                                  <strong>{item.name}</strong>
+                                  <span>
+                                    ¥ {item.pricePerDay}/天 × {item.quantity}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+      );
+    }
 
     return (
       <div className="app">
@@ -1149,7 +1290,7 @@ function App() {
                     <div className="order-card-header">
                       <div>
                         <h2>{order.customerName}</h2>
-                        <p>{order.status}</p>
+                        <p>{order.planStatus || order.status}</p>
                       </div>
                       <span className="area-size">{order.areaSize}</span>
                     </div>
@@ -1396,7 +1537,7 @@ function App() {
               <div className="order-card-header">
                 <div>
                   <h2>{order.customerName}</h2>
-                  <p>{order.status}</p>
+                  <p>{order.planStatus || order.status}</p>
                 </div>
                 <span className="area-size">{order.areaSize}</span>
               </div>
