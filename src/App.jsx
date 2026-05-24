@@ -29,7 +29,6 @@ const initialOrders = [
 ];
 
 const productCategories = ["室内绿植", "室外植物", "月租套餐", "仿真植物"];
-
 const subCategories = ["大型植物", "中型植物", "小型植物", "水培植物", "盆景植物"];
 
 const products = [
@@ -92,16 +91,10 @@ const products = [
 const loadSavedData = () => {
   try {
     const rawData = localStorage.getItem(STORAGE_KEY);
-
-    if (!rawData) {
-      return null;
-    }
+    if (!rawData) return null;
 
     const parsedData = JSON.parse(rawData);
-
-    if (!parsedData || typeof parsedData !== "object") {
-      return null;
-    }
+    if (!parsedData || typeof parsedData !== "object") return null;
 
     return parsedData;
   } catch (error) {
@@ -153,6 +146,7 @@ function App() {
   const [showAreaSheet, setShowAreaSheet] = useState(false);
   const [areaName, setAreaName] = useState("");
 
+  const [showProductSheet, setShowProductSheet] = useState(false);
   const [currentAreaId, setCurrentAreaId] = useState(null);
   const [activeCategory, setActiveCategory] = useState("室内绿植");
   const [activeSubCategory, setActiveSubCategory] = useState("大型植物");
@@ -187,7 +181,6 @@ function App() {
 
   const totalProductCount = planAreas.reduce((sum, area) => {
     const safeItems = Array.isArray(area.items) ? area.items : [];
-
     return (
       sum +
       safeItems.reduce((itemSum, item) => {
@@ -196,7 +189,27 @@ function App() {
     );
   }, 0);
 
+  const currentAreaProductCount = currentArea
+    ? (Array.isArray(currentArea.items) ? currentArea.items : []).reduce(
+        (sum, item) => sum + Number(item.quantity || 0),
+        0
+      )
+    : 0;
+
   const filteredOrders = orders.filter((order) => order.status === activeStatus);
+
+  const filteredProducts = products.filter((product) => {
+    const matchCategory = product.category === activeCategory;
+    const matchSubCategory = product.subCategory === activeSubCategory;
+    const keyword = searchText.trim();
+
+    const matchSearch =
+      keyword === "" ||
+      product.name.includes(keyword) ||
+      product.description.includes(keyword);
+
+    return matchCategory && matchSubCategory && matchSearch;
+  });
 
   useEffect(() => {
     saveDataToLocalStorage({
@@ -204,6 +217,16 @@ function App() {
       submittedPlans,
     });
   }, [orders, submittedPlans]);
+
+  useEffect(() => {
+    if (currentPage === "plan" && !currentPlan) {
+      setCurrentPage("orders");
+    }
+
+    if (showProductSheet && !currentArea) {
+      setShowProductSheet(false);
+    }
+  }, [currentPage, currentPlan, showProductSheet, currentArea]);
 
   const closeOrderSheet = () => {
     setSelectedOrder(null);
@@ -215,6 +238,7 @@ function App() {
     setCurrentPage("orders");
     setSelectedOrder(null);
     setShowAreaSheet(false);
+    setShowProductSheet(false);
     setShowPaymentSheet(false);
     setShowPriceSheet(false);
     setShowSubmitSheet(false);
@@ -300,12 +324,12 @@ function App() {
     closeAreaSheet();
   };
 
-  const openProductPage = (area) => {
+  const openProductSheet = (area) => {
     setCurrentAreaId(area.id);
     setSearchText("");
     setActiveCategory("室内绿植");
     setActiveSubCategory("大型植物");
-    setCurrentPage("products");
+    setShowProductSheet(true);
   };
 
   const addProductToArea = (product) => {
@@ -542,114 +566,6 @@ function App() {
     setMerchantTab("订单总览");
   };
 
-  const filteredProducts = products.filter((product) => {
-    const matchCategory = product.category === activeCategory;
-    const matchSubCategory = product.subCategory === activeSubCategory;
-    const keyword = searchText.trim();
-
-    const matchSearch =
-      keyword === "" ||
-      product.name.includes(keyword) ||
-      product.description.includes(keyword);
-
-    return matchCategory && matchSubCategory && matchSearch;
-  });
-
-  if (currentPage === "products" && currentArea) {
-    return (
-      <div className="app product-page">
-        <header className="plan-header">
-          <button className="back-button" onClick={() => setCurrentPage("plan")}>
-            ←
-          </button>
-          <div>
-            <p className="eyebrow">Product Library</p>
-            <h1>{currentArea.name}选品</h1>
-          </div>
-        </header>
-
-        <section className="search-card">
-          <input
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-            placeholder="搜索植物名称 / 寓意 / 场景"
-          />
-        </section>
-
-        <section className="category-tabs">
-          {productCategories.map((category) => (
-            <button
-              key={category}
-              className={activeCategory === category ? "active" : ""}
-              onClick={() => {
-                setActiveCategory(category);
-                setActiveSubCategory("大型植物");
-              }}
-            >
-              {category}
-            </button>
-          ))}
-        </section>
-
-        <main className="product-layout">
-          <aside className="sub-category-list">
-            {subCategories.map((subCategory) => (
-              <button
-                key={subCategory}
-                className={activeSubCategory === subCategory ? "active" : ""}
-                onClick={() => setActiveSubCategory(subCategory)}
-              >
-                {subCategory}
-              </button>
-            ))}
-          </aside>
-
-          <section className="product-list">
-            {filteredProducts.length === 0 ? (
-              <div className="empty-product-card">
-                <p>暂无商品</p>
-                <span>可以换个分类，或清空搜索关键词</span>
-              </div>
-            ) : (
-              filteredProducts.map((product) => {
-                const safeItems = Array.isArray(currentArea?.items)
-                  ? currentArea.items
-                  : [];
-                const selectedItem = safeItems.find(
-                  (item) => item.productId === product.id
-                );
-                const selectedQuantity = selectedItem
-                  ? Number(selectedItem.quantity || 0)
-                  : 0;
-
-                return (
-                  <article className="product-card" key={product.id}>
-                    <div className="product-image">{product.image}</div>
-
-                    <div className="product-info">
-                      <h3>{product.name}</h3>
-                      <p>{product.description}</p>
-
-                      <div className="product-bottom">
-                        <strong>¥ {product.pricePerDay}/天</strong>
-
-                        <button onClick={() => addProductToArea(product)}>
-                          {selectedQuantity > 0
-                            ? `已选 ${selectedQuantity} 件`
-                            : "加入方案"}
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })
-            )}
-          </section>
-        </main>
-      </div>
-    );
-  }
-
   if (currentPage === "plan" && currentPlan) {
     return (
       <div className="app">
@@ -758,7 +674,7 @@ function App() {
                       )}
                     </div>
 
-                    <button onClick={() => openProductPage(area)}>选择商品</button>
+                    <button onClick={() => openProductSheet(area)}>选择商品</button>
                   </article>
                 );
               })}
@@ -842,6 +758,108 @@ function App() {
 
               <button className="submit-sheet-button" onClick={addArea}>
                 保存区域
+              </button>
+            </section>
+          </div>
+        )}
+
+        {showProductSheet && (
+          <div className="sheet-mask" onClick={() => setShowProductSheet(false)}>
+            <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
+              <div className="sheet-handle" />
+
+              <div className="sheet-header">
+                <div>
+                  <p className="eyebrow">Product Library</p>
+                  <h2>{currentArea?.name || "当前区域"}选品</h2>
+                </div>
+                <button className="close-button" onClick={() => setShowProductSheet(false)}>
+                  ×
+                </button>
+              </div>
+
+              <div className="sheet-block">
+                <input
+                  className="area-input"
+                  value={searchText}
+                  onChange={(event) => setSearchText(event.target.value)}
+                  placeholder="搜索植物名称 / 寓意 / 场景"
+                />
+              </div>
+
+              <div className="category-tabs">
+                {productCategories.map((category) => (
+                  <button
+                    key={category}
+                    className={activeCategory === category ? "active" : ""}
+                    onClick={() => {
+                      setActiveCategory(category);
+                      setActiveSubCategory("大型植物");
+                    }}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+
+              <main className="product-layout">
+                <aside className="sub-category-list">
+                  {subCategories.map((subCategory) => (
+                    <button
+                      key={subCategory}
+                      className={activeSubCategory === subCategory ? "active" : ""}
+                      onClick={() => setActiveSubCategory(subCategory)}
+                    >
+                      {subCategory}
+                    </button>
+                  ))}
+                </aside>
+
+                <section className="product-list">
+                  {filteredProducts.length === 0 ? (
+                    <div className="empty-product-card">
+                      <p>暂无商品</p>
+                      <span>可以换个分类，或清空搜索关键词</span>
+                    </div>
+                  ) : (
+                    filteredProducts.map((product) => {
+                      const safeItems = Array.isArray(currentArea?.items)
+                        ? currentArea.items
+                        : [];
+                      const selectedItem = safeItems.find(
+                        (item) => item.productId === product.id
+                      );
+                      const selectedQuantity = selectedItem
+                        ? Number(selectedItem.quantity || 0)
+                        : 0;
+
+                      return (
+                        <article className="product-card" key={product.id}>
+                          <div className="product-image">{product.image}</div>
+
+                          <div className="product-info">
+                            <h3>{product.name}</h3>
+                            <p>{product.description}</p>
+
+                            <div className="product-bottom">
+                              <strong>¥ {product.pricePerDay}/天</strong>
+
+                              <button onClick={() => addProductToArea(product)}>
+                                {selectedQuantity > 0
+                                  ? `已选 ${selectedQuantity} 件`
+                                  : "加入方案"}
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })
+                  )}
+                </section>
+              </main>
+
+              <button className="submit-sheet-button" onClick={() => setShowProductSheet(false)}>
+                已选 {currentAreaProductCount} 件｜完成选品
               </button>
             </section>
           </div>
