@@ -109,7 +109,8 @@ function App() {
   const [showPriceSheet, setShowPriceSheet] = useState(false);
   const [customTotalRent, setCustomTotalRent] = useState("");
 
-  const currentArea = currentPlan?.areas.find((area) => area.id === currentAreaId);
+ const planAreas = Array.isArray(currentPlan?.areas) ? currentPlan.areas : [];
+const currentArea = planAreas.find((area) => area.id === currentAreaId);
 
   const dailyRent = Number(currentPlan?.totalPrice || 0);
   const totalRent = (dailyRent * leaseMonths * 30).toFixed(1);
@@ -417,25 +418,28 @@ function App() {
             </button>
           </div>
 
-          {currentPlan.areas.length === 0 ? (
+          {planAreas.length === 0 ? (
             <div className="empty-card">
               <p>还没有添加区域</p>
               <span>如：前台、办公室、会议室、走廊、门口</span>
             </div>
           ) : (
             <div className="area-list">
-              {currentPlan.areas.map((area) => (
+              {planAreas.map((area) => (
                 <article className="area-card" key={area.id}>
                   <div>
                     <h3>{area.name}</h3>
                     <p>
-                      已选商品：
-                      {area.items.reduce((sum, item) => sum + item.quantity, 0)} 件
+                     已选商品：
+{(Array.isArray(area.items) ? area.items : []).reduce(
+  (sum, item) => sum + item.quantity,
+  0
+)} 件
                     </p>
 
-                    {area.items.length > 0 && (
+                    {Array.isArray(area.items) && area.items.length > 0 && (
                       <div className="selected-product-list">
-                        {area.items.map((item) => (
+                        {(Array.isArray(area.items) ? area.items : []).map((item) => (
                           <div className="selected-product-row" key={item.productId}>
                             <div>
                               <strong>{item.name}</strong>
