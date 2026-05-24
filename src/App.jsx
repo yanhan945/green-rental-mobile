@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-const STORAGE_KEY = "green-rental-mobile-v1";
+const STORAGE_KEY = "green-rental-mobile-v2";
 
 const initialOrders = [
   {
@@ -118,6 +118,17 @@ const saveDataToLocalStorage = (data) => {
   }
 };
 
+const getNowText = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const date = String(now.getDate()).padStart(2, "0");
+  const hour = String(now.getHours()).padStart(2, "0");
+  const minute = String(now.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${date} ${hour}:${minute}`;
+};
+
 function App() {
   const [activeRole, setActiveRole] = useState("staff");
 
@@ -132,6 +143,7 @@ function App() {
   });
 
   const [activeStatus, setActiveStatus] = useState("待接单");
+  const [merchantTab, setMerchantTab] = useState("订单总览");
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [planType, setPlanType] = useState("租赁方案");
@@ -155,6 +167,16 @@ function App() {
   const [customTotalRent, setCustomTotalRent] = useState("");
 
   const [showSubmitSheet, setShowSubmitSheet] = useState(false);
+
+  const [showCreateOrderSheet, setShowCreateOrderSheet] = useState(false);
+  const [newOrderForm, setNewOrderForm] = useState({
+    customerName: "",
+    areaSize: "",
+    expectedDate: "",
+    address: "",
+    description: "",
+    tagsText: "办公室,长期租赁",
+  });
 
   const planAreas = Array.isArray(currentPlan?.areas) ? currentPlan.areas : [];
   const currentArea = planAreas.find((area) => area.id === currentAreaId);
@@ -196,6 +218,7 @@ function App() {
     setShowPaymentSheet(false);
     setShowPriceSheet(false);
     setShowSubmitSheet(false);
+    setShowCreateOrderSheet(false);
   };
 
   const createPlan = () => {
@@ -472,6 +495,51 @@ function App() {
     setCustomTotalRent(plan.customTotalRent || "");
     setActiveRole("staff");
     setCurrentPage("plan");
+  };
+
+  const resetNewOrderForm = () => {
+    setNewOrderForm({
+      customerName: "",
+      areaSize: "",
+      expectedDate: "",
+      address: "",
+      description: "",
+      tagsText: "办公室,长期租赁",
+    });
+  };
+
+  const createMerchantOrder = () => {
+    if (!newOrderForm.customerName.trim()) {
+      alert("请填写客户名称");
+      return;
+    }
+
+    if (!newOrderForm.address.trim()) {
+      alert("请填写客户地址");
+      return;
+    }
+
+    const tags = newOrderForm.tagsText
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+    const newOrder = {
+      id: Date.now(),
+      customerName: newOrderForm.customerName.trim(),
+      status: "待接单",
+      tags: tags.length > 0 ? tags : ["新订单"],
+      areaSize: newOrderForm.areaSize.trim() || "待确认",
+      expectedDate: newOrderForm.expectedDate.trim() || "待确认",
+      address: newOrderForm.address.trim(),
+      description: newOrderForm.description.trim() || "暂无详细需求，待员工现场确认。",
+      dispatchTime: getNowText(),
+    };
+
+    setOrders((prevOrders) => [newOrder, ...prevOrders]);
+    setShowCreateOrderSheet(false);
+    resetNewOrderForm();
+    setMerchantTab("订单总览");
   };
 
   const filteredProducts = products.filter((product) => {
@@ -975,6 +1043,7 @@ function App() {
     const pendingCount = orders.filter((order) => order.status === "待接单").length;
     const acceptedCount = orders.filter((order) => order.status === "已接单").length;
     const runningCount = orders.filter((order) => order.status === "进行中").length;
+    const completedCount = orders.filter((order) => order.status === "已完成").length;
 
     return (
       <div className="app">
@@ -990,8 +1059,15 @@ function App() {
         </header>
 
         <section className="tabs">
-          <button className="tab active">订单总览</button>
-          <button className="tab">已提交方案</button>
+          {["订单总览", "已提交方案"].map((tab) => (
+            <button
+              key={tab}
+              className={merchantTab === tab ? "tab active" : "tab"}
+              onClick={() => setMerchantTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
         </section>
 
         <section className="plan-summary-card">
@@ -1012,105 +1088,255 @@ function App() {
               <strong>{runningCount} 单</strong>
             </div>
             <div>
-              <p>已提交方案</p>
-              <strong>{submittedPlans.length} 份</strong>
+              <p>已完成</p>
+              <strong>{completedCount} 单</strong>
             </div>
+          </div>
+
+          <div className="plan-info-line">
+            <span>已提交方案</span>
+            <strong>{submittedPlans.length} 份</strong>
           </div>
         </section>
 
-        <section className="area-section">
-          <div className="section-title-row">
-            <div>
-              <p className="eyebrow">Submitted Plans</p>
-              <h2>员工提交的方案</h2>
-            </div>
-          </div>
+        {merchantTab === "订单总览" && (
+          <>
+            <section className="area-section">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Create Order</p>
+                  <h2>派发新订单</h2>
+                </div>
 
-          {submittedPlans.length === 0 ? (
-            <div className="empty-card">
-              <p>暂时还没有员工提交方案</p>
-              <span>先切到员工端，完成一次提交方案流程</span>
-            </div>
-          ) : (
-            <div className="order-list">
-              {submittedPlans.map((plan) => (
-                <article className="order-card" key={plan.id}>
-                  <div className="order-card-header">
-                    <div>
-                      <h2>{plan.customerName}</h2>
-                      <p>方案已提交</p>
+                <button
+                  className="add-area-button"
+                  onClick={() => setShowCreateOrderSheet(true)}
+                >
+                  创建订单
+                </button>
+              </div>
+            </section>
+
+            <section className="area-section">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Orders</p>
+                  <h2>全部订单</h2>
+                </div>
+              </div>
+
+              <main className="order-list">
+                {orders.map((order) => (
+                  <article className="order-card" key={order.id}>
+                    <div className="order-card-header">
+                      <div>
+                        <h2>{order.customerName}</h2>
+                        <p>{order.status}</p>
+                      </div>
+                      <span className="area-size">{order.areaSize}</span>
                     </div>
-                    <span className="area-size">¥ {plan.finalRent}</span>
-                  </div>
 
-                  <div className="info-row">
-                    <span>区域数量</span>
-                    <strong>{plan.areaCount} 个</strong>
-                  </div>
+                    <div className="tag-list">
+                      {(Array.isArray(order.tags) ? order.tags : []).map((tag) => (
+                        <span key={tag}>{tag}</span>
+                      ))}
+                    </div>
 
-                  <div className="info-row">
-                    <span>商品数量</span>
-                    <strong>{plan.totalProductCount} 件</strong>
-                  </div>
+                    <div className="info-row">
+                      <span>期望进场</span>
+                      <strong>{order.expectedDate}</strong>
+                    </div>
 
-                  <div className="info-row">
-                    <span>支付方式</span>
-                    <strong>{plan.paymentMethod}</strong>
-                  </div>
+                    <div className="info-row">
+                      <span>客户地址</span>
+                      <strong>{order.address}</strong>
+                    </div>
 
-                  <div className="info-row">
-                    <span>提交时间</span>
-                    <strong>{plan.submittedAt}</strong>
-                  </div>
+                    <p className="description">{order.description}</p>
 
-                  <div className="actions">
-                    <button
-                      className="primary-button"
-                      onClick={() => openSubmittedPlanFromMerchant(plan)}
-                    >
-                      查看方案
-                    </button>
-                  </div>
-                </article>
-              ))}
+                    <p className="dispatch-time">派单时间：{order.dispatchTime}</p>
+                  </article>
+                ))}
+              </main>
+            </section>
+          </>
+        )}
+
+        {merchantTab === "已提交方案" && (
+          <section className="area-section">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Submitted Plans</p>
+                <h2>员工提交的方案</h2>
+              </div>
             </div>
-          )}
-        </section>
 
-        <section className="area-section">
-          <div className="section-title-row">
-            <div>
-              <p className="eyebrow">Orders</p>
-              <h2>全部订单</h2>
-            </div>
+            {submittedPlans.length === 0 ? (
+              <div className="empty-card">
+                <p>暂时还没有员工提交方案</p>
+                <span>先切到员工端，完成一次提交方案流程</span>
+              </div>
+            ) : (
+              <div className="order-list">
+                {submittedPlans.map((plan) => (
+                  <article className="order-card" key={plan.id}>
+                    <div className="order-card-header">
+                      <div>
+                        <h2>{plan.customerName}</h2>
+                        <p>方案已提交</p>
+                      </div>
+                      <span className="area-size">¥ {plan.finalRent}</span>
+                    </div>
+
+                    <div className="info-row">
+                      <span>区域数量</span>
+                      <strong>{plan.areaCount} 个</strong>
+                    </div>
+
+                    <div className="info-row">
+                      <span>商品数量</span>
+                      <strong>{plan.totalProductCount} 件</strong>
+                    </div>
+
+                    <div className="info-row">
+                      <span>支付方式</span>
+                      <strong>{plan.paymentMethod}</strong>
+                    </div>
+
+                    <div className="info-row">
+                      <span>提交时间</span>
+                      <strong>{plan.submittedAt}</strong>
+                    </div>
+
+                    <div className="actions">
+                      <button
+                        className="primary-button"
+                        onClick={() => openSubmittedPlanFromMerchant(plan)}
+                      >
+                        查看方案
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {showCreateOrderSheet && (
+          <div className="sheet-mask" onClick={() => setShowCreateOrderSheet(false)}>
+            <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
+              <div className="sheet-handle" />
+
+              <div className="sheet-header">
+                <div>
+                  <p className="eyebrow">New Order</p>
+                  <h2>创建新订单</h2>
+                </div>
+                <button
+                  className="close-button"
+                  onClick={() => setShowCreateOrderSheet(false)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">客户名称</p>
+                <input
+                  className="area-input"
+                  value={newOrderForm.customerName}
+                  onChange={(event) =>
+                    setNewOrderForm((form) => ({
+                      ...form,
+                      customerName: event.target.value,
+                    }))
+                  }
+                  placeholder="例如：西湖写字楼客户"
+                />
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">项目面积</p>
+                <input
+                  className="area-input"
+                  value={newOrderForm.areaSize}
+                  onChange={(event) =>
+                    setNewOrderForm((form) => ({
+                      ...form,
+                      areaSize: event.target.value,
+                    }))
+                  }
+                  placeholder="例如：260㎡"
+                />
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">期望进场时间</p>
+                <input
+                  className="area-input"
+                  value={newOrderForm.expectedDate}
+                  onChange={(event) =>
+                    setNewOrderForm((form) => ({
+                      ...form,
+                      expectedDate: event.target.value,
+                    }))
+                  }
+                  placeholder="例如：2026-06-08"
+                />
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">客户地址</p>
+                <input
+                  className="area-input"
+                  value={newOrderForm.address}
+                  onChange={(event) =>
+                    setNewOrderForm((form) => ({
+                      ...form,
+                      address: event.target.value,
+                    }))
+                  }
+                  placeholder="例如：杭州市西湖区文三路"
+                />
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">需求描述</p>
+                <input
+                  className="area-input"
+                  value={newOrderForm.description}
+                  onChange={(event) =>
+                    setNewOrderForm((form) => ({
+                      ...form,
+                      description: event.target.value,
+                    }))
+                  }
+                  placeholder="例如：前台和会议室需要绿植配置"
+                />
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">标签，用英文逗号分隔</p>
+                <input
+                  className="area-input"
+                  value={newOrderForm.tagsText}
+                  onChange={(event) =>
+                    setNewOrderForm((form) => ({
+                      ...form,
+                      tagsText: event.target.value,
+                    }))
+                  }
+                  placeholder="例如：办公室,长期租赁"
+                />
+              </div>
+
+              <button className="submit-sheet-button" onClick={createMerchantOrder}>
+                创建并派发订单
+              </button>
+            </section>
           </div>
-
-          <main className="order-list">
-            {orders.map((order) => (
-              <article className="order-card" key={order.id}>
-                <div className="order-card-header">
-                  <div>
-                    <h2>{order.customerName}</h2>
-                    <p>{order.status}</p>
-                  </div>
-                  <span className="area-size">{order.areaSize}</span>
-                </div>
-
-                <div className="info-row">
-                  <span>期望进场</span>
-                  <strong>{order.expectedDate}</strong>
-                </div>
-
-                <div className="info-row">
-                  <span>客户地址</span>
-                  <strong>{order.address}</strong>
-                </div>
-
-                <p className="description">{order.description}</p>
-              </article>
-            ))}
-          </main>
-        </section>
+        )}
       </div>
     );
   }
@@ -1158,7 +1384,7 @@ function App() {
               </div>
 
               <div className="tag-list">
-                {order.tags.map((tag) => (
+                {(Array.isArray(order.tags) ? order.tags : []).map((tag) => (
                   <span key={tag}>{tag}</span>
                 ))}
               </div>
