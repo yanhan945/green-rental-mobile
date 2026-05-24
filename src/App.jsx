@@ -26,6 +26,67 @@ const orders = [
   },
 ];
 
+const productCategories = ["室内绿植", "室外植物", "月租套餐", "仿真植物"];
+
+const subCategories = ["大型植物", "中型植物", "小型植物", "水培植物", "盆景植物"];
+
+const products = [
+  {
+    id: 1,
+    name: "原生发财树",
+    category: "室内绿植",
+    subCategory: "大型植物",
+    description: "寓意财源滚滚，适合前台、办公室、会议室。",
+    pricePerDay: 2.5,
+    image: "🌳",
+  },
+  {
+    id: 2,
+    name: "天堂鸟",
+    category: "室内绿植",
+    subCategory: "大型植物",
+    description: "株型舒展，适合大堂、休息区、开放办公区。",
+    pricePerDay: 3.2,
+    image: "🪴",
+  },
+  {
+    id: 3,
+    name: "绿萝柱",
+    category: "室内绿植",
+    subCategory: "中型植物",
+    description: "耐阴好养，适合办公室角落和走廊区域。",
+    pricePerDay: 1.6,
+    image: "🌿",
+  },
+  {
+    id: 4,
+    name: "红掌",
+    category: "室内绿植",
+    subCategory: "小型植物",
+    description: "颜色鲜明，适合前台、桌面、接待区点缀。",
+    pricePerDay: 0.8,
+    image: "🌺",
+  },
+  {
+    id: 5,
+    name: "水培白掌",
+    category: "室内绿植",
+    subCategory: "水培植物",
+    description: "干净清爽，适合会议桌、茶水间、前台。",
+    pricePerDay: 0.7,
+    image: "💧",
+  },
+  {
+    id: 6,
+    name: "罗汉松盆景",
+    category: "室内绿植",
+    subCategory: "盆景植物",
+    description: "稳重大气，适合老板办公室、会客区。",
+    pricePerDay: 4.5,
+    image: "🎍",
+  },
+];
+
 function App() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [planType, setPlanType] = useState("租赁方案");
@@ -33,6 +94,12 @@ function App() {
   const [currentPlan, setCurrentPlan] = useState(null);
   const [showAreaSheet, setShowAreaSheet] = useState(false);
   const [areaName, setAreaName] = useState("");
+  const [currentAreaId, setCurrentAreaId] = useState(null);
+  const [activeCategory, setActiveCategory] = useState("室内绿植");
+  const [activeSubCategory, setActiveSubCategory] = useState("大型植物");
+  const [searchText, setSearchText] = useState("");
+
+  const currentArea = currentPlan?.areas.find((area) => area.id === currentAreaId);
 
   const closeOrderSheet = () => {
     setSelectedOrder(null);
@@ -77,6 +144,167 @@ function App() {
 
     closeAreaSheet();
   };
+
+  const openProductPage = (area) => {
+    setCurrentAreaId(area.id);
+    setCurrentPage("products");
+  };
+
+ const addProductToArea = (product) => {
+  if (!currentAreaId) {
+    alert("没有找到当前区域");
+    return;
+  }
+
+  setCurrentPlan((plan) => {
+    if (!plan) return plan;
+
+    const updatedAreas = plan.areas.map((area) => {
+      if (area.id !== currentAreaId) return area;
+
+      const oldItems = Array.isArray(area.items) ? area.items : [];
+
+      const existingItem = oldItems.find(
+        (item) => item.productId === product.id
+      );
+
+      let newItems;
+
+      if (existingItem) {
+        newItems = oldItems.map((item) =>
+          item.productId === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        newItems = [
+          ...oldItems,
+          {
+            productId: product.id,
+            name: product.name,
+            pricePerDay: product.pricePerDay,
+            quantity: 1,
+          },
+        ];
+      }
+
+      return {
+        ...area,
+        items: newItems,
+      };
+    });
+
+    const totalPrice = updatedAreas.reduce((areaTotal, area) => {
+      const safeItems = Array.isArray(area.items) ? area.items : [];
+
+      const itemTotal = safeItems.reduce(
+        (sum, item) => sum + item.pricePerDay * item.quantity,
+        0
+      );
+
+      return areaTotal + itemTotal;
+    }, 0);
+
+    return {
+      ...plan,
+      areas: updatedAreas,
+      totalPrice: totalPrice.toFixed(1),
+    };
+  });
+
+  setCurrentPage("plan");
+};
+
+  const filteredProducts = products.filter((product) => {
+    const matchCategory = product.category === activeCategory;
+    const matchSubCategory = product.subCategory === activeSubCategory;
+    const matchSearch =
+      searchText.trim() === "" ||
+      product.name.includes(searchText) ||
+      product.description.includes(searchText);
+
+    return matchCategory && matchSubCategory && matchSearch;
+  });
+
+  if (currentPage === "products" && currentArea) {
+    return (
+      <div className="app product-page">
+        <header className="plan-header">
+          <button className="back-button" onClick={() => setCurrentPage("plan")}>
+            ←
+          </button>
+          <div>
+            <p className="eyebrow">Product Library</p>
+            <h1>{currentArea.name}选品</h1>
+          </div>
+        </header>
+
+        <section className="search-card">
+          <input
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            placeholder="搜索植物名称 / 寓意 / 场景"
+          />
+        </section>
+
+        <section className="category-tabs">
+          {productCategories.map((category) => (
+            <button
+              key={category}
+              className={activeCategory === category ? "active" : ""}
+              onClick={() => {
+                setActiveCategory(category);
+                setActiveSubCategory("大型植物");
+              }}
+            >
+              {category}
+            </button>
+          ))}
+        </section>
+
+        <main className="product-layout">
+          <aside className="sub-category-list">
+            {subCategories.map((subCategory) => (
+              <button
+                key={subCategory}
+                className={activeSubCategory === subCategory ? "active" : ""}
+                onClick={() => setActiveSubCategory(subCategory)}
+              >
+                {subCategory}
+              </button>
+            ))}
+          </aside>
+
+          <section className="product-list">
+            {filteredProducts.length === 0 ? (
+              <div className="empty-product-card">
+                <p>暂无商品</p>
+                <span>可以换个分类，或清空搜索关键词</span>
+              </div>
+            ) : (
+              filteredProducts.map((product) => (
+                <article className="product-card" key={product.id}>
+                  <div className="product-image">{product.image}</div>
+
+                  <div className="product-info">
+                    <h3>{product.name}</h3>
+                    <p>{product.description}</p>
+
+                    <div className="product-bottom">
+                      <strong>¥ {product.pricePerDay}/天</strong>
+                      <button onClick={() => addProductToArea(product)}>
+                        加入
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))
+            )}
+          </section>
+        </main>
+      </div>
+    );
+  }
 
   if (currentPage === "plan" && currentPlan) {
     return (
@@ -142,9 +370,23 @@ function App() {
                 <article className="area-card" key={area.id}>
                   <div>
                     <h3>{area.name}</h3>
-                    <p>已选商品：{area.items.length} 个</p>
+                    <p>
+                      已选商品：
+                      {area.items.reduce((sum, item) => sum + item.quantity, 0)} 件
+                    </p>
+
+                    {area.items.length > 0 && (
+                      <div className="selected-item-list">
+                        {area.items.map((item) => (
+                          <span key={item.productId}>
+                            {item.name} × {item.quantity}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <button>选择商品</button>
+
+                  <button onClick={() => openProductPage(area)}>选择商品</button>
                 </article>
               ))}
             </div>
@@ -152,7 +394,7 @@ function App() {
         </section>
 
         <section className="price-card">
-          <span>目前方案总数</span>
+          <span>目前方案日租金</span>
           <strong>¥ {currentPlan.totalPrice}</strong>
         </section>
 
