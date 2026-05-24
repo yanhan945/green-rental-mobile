@@ -480,36 +480,36 @@ function App() {
         </section>
 
         <section className="price-card price-detail-card">
-          <div>
-            <span>目前方案日租金</span>
-            <strong>¥ {currentPlan.totalPrice}</strong>
-          </div>
+  <div>
+    <span>目前方案日租金</span>
+    <strong>¥ {currentPlan.totalPrice}</strong>
+  </div>
 
-          <div>
-            <span>租期</span>
-            <strong>{leaseMonths} 月</strong>
-          </div>
+  <div>
+    <span>租期</span>
+    <strong>{leaseMonths} 月</strong>
+  </div>
 
-          <div>
-            <span>系统预计总租金</span>
-            <strong>¥ {totalRent}</strong>
-          </div>
+  <div>
+    <span>系统预计总租金</span>
+    <strong>¥ {totalRent}</strong>
+  </div>
 
-          <div>
-            <span>最终报价</span>
-            <strong>¥ {finalRent}</strong>
-          </div>
+  <div>
+    <span>最终报价</span>
+    <strong>¥ {finalRent}</strong>
+  </div>
 
-          <div>
-            <span>支付方式</span>
-            <strong>{paymentMethod}</strong>
-          </div>
+  <div>
+    <span>支付方式</span>
+    <strong>{paymentMethod}</strong>
+  </div>
 
-          <div>
-            <span>押金</span>
-            <strong>{needDeposit ? "需要" : "不需要"}</strong>
-          </div>
-        </section>
+  <div>
+    <span>押金</span>
+    <strong>{needDeposit ? "需要" : "不需要"}</strong>
+  </div>
+</section>
 
         <nav className="bottom-actions">
           <button>更多</button>
