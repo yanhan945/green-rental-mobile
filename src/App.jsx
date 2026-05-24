@@ -215,6 +215,82 @@ function App() {
   setCurrentPage("plan");
 };
 
+const changeItemQuantity = (areaId, productId, change) => {
+  setCurrentPlan((plan) => {
+    if (!plan) return plan;
+
+    const updatedAreas = plan.areas.map((area) => {
+      if (area.id !== areaId) return area;
+
+      const safeItems = Array.isArray(area.items) ? area.items : [];
+
+      const updatedItems = safeItems
+        .map((item) =>
+          item.productId === productId
+            ? { ...item, quantity: item.quantity + change }
+            : item
+        )
+        .filter((item) => item.quantity > 0);
+
+      return {
+        ...area,
+        items: updatedItems,
+      };
+    });
+
+    const totalPrice = updatedAreas.reduce((areaTotal, area) => {
+      const safeItems = Array.isArray(area.items) ? area.items : [];
+
+      const itemTotal = safeItems.reduce(
+        (sum, item) => sum + item.pricePerDay * item.quantity,
+        0
+      );
+
+      return areaTotal + itemTotal;
+    }, 0);
+
+    return {
+      ...plan,
+      areas: updatedAreas,
+      totalPrice: totalPrice.toFixed(1),
+    };
+  });
+};
+
+const removeItemFromArea = (areaId, productId) => {
+  setCurrentPlan((plan) => {
+    if (!plan) return plan;
+
+    const updatedAreas = plan.areas.map((area) => {
+      if (area.id !== areaId) return area;
+
+      const safeItems = Array.isArray(area.items) ? area.items : [];
+
+      return {
+        ...area,
+        items: safeItems.filter((item) => item.productId !== productId),
+      };
+    });
+
+    const totalPrice = updatedAreas.reduce((areaTotal, area) => {
+      const safeItems = Array.isArray(area.items) ? area.items : [];
+
+      const itemTotal = safeItems.reduce(
+        (sum, item) => sum + item.pricePerDay * item.quantity,
+        0
+      );
+
+      return areaTotal + itemTotal;
+    }, 0);
+
+    return {
+      ...plan,
+      areas: updatedAreas,
+      totalPrice: totalPrice.toFixed(1),
+    };
+  });
+};
+
   const filteredProducts = products.filter((product) => {
     const matchCategory = product.category === activeCategory;
     const matchSubCategory = product.subCategory === activeSubCategory;
@@ -376,14 +452,34 @@ function App() {
                     </p>
 
                     {area.items.length > 0 && (
-                      <div className="selected-item-list">
-                        {area.items.map((item) => (
-                          <span key={item.productId}>
-                            {item.name} × {item.quantity}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+  <div className="selected-product-list">
+    {area.items.map((item) => (
+      <div className="selected-product-row" key={item.productId}>
+        <div>
+          <strong>{item.name}</strong>
+          <span>¥ {item.pricePerDay}/天</span>
+        </div>
+
+        <div className="quantity-controls">
+          <button onClick={() => changeItemQuantity(area.id, item.productId, -1)}>
+            -
+          </button>
+          <b>{item.quantity}</b>
+          <button onClick={() => changeItemQuantity(area.id, item.productId, 1)}>
+            +
+          </button>
+        </div>
+
+        <button
+          className="remove-item-button"
+          onClick={() => removeItemFromArea(area.id, item.productId)}
+        >
+          删除
+        </button>
+      </div>
+    ))}
+  </div>
+)}
                   </div>
 
                   <button onClick={() => openProductPage(area)}>选择商品</button>
