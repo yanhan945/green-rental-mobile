@@ -92,14 +92,24 @@ function App() {
   const [planType, setPlanType] = useState("租赁方案");
   const [currentPage, setCurrentPage] = useState("orders");
   const [currentPlan, setCurrentPlan] = useState(null);
+
   const [showAreaSheet, setShowAreaSheet] = useState(false);
   const [areaName, setAreaName] = useState("");
+
   const [currentAreaId, setCurrentAreaId] = useState(null);
   const [activeCategory, setActiveCategory] = useState("室内绿植");
   const [activeSubCategory, setActiveSubCategory] = useState("大型植物");
   const [searchText, setSearchText] = useState("");
 
+  const [showPaymentSheet, setShowPaymentSheet] = useState(false);
+  const [leaseMonths, setLeaseMonths] = useState(12);
+  const [paymentMethod, setPaymentMethod] = useState("月付");
+  const [needDeposit, setNeedDeposit] = useState(true);
+
   const currentArea = currentPlan?.areas.find((area) => area.id === currentAreaId);
+
+  const dailyRent = Number(currentPlan?.totalPrice || 0);
+  const totalRent = (dailyRent * leaseMonths * 30).toFixed(1);
 
   const closeOrderSheet = () => {
     setSelectedOrder(null);
@@ -128,6 +138,20 @@ function App() {
     setAreaName("");
   };
 
+  const recalculateTotal = (areas) => {
+    const total = areas.reduce((areaTotal, area) => {
+      const safeItems = Array.isArray(area.items) ? area.items : [];
+      const itemTotal = safeItems.reduce(
+        (sum, item) => sum + item.pricePerDay * item.quantity,
+        0
+      );
+
+      return areaTotal + itemTotal;
+    }, 0);
+
+    return total.toFixed(1);
+  };
+
   const addArea = () => {
     if (!areaName.trim()) return;
 
@@ -150,146 +174,107 @@ function App() {
     setCurrentPage("products");
   };
 
- const addProductToArea = (product) => {
-  if (!currentAreaId) {
-    alert("没有找到当前区域");
-    return;
-  }
+  const addProductToArea = (product) => {
+    if (!currentAreaId) return;
 
-  setCurrentPlan((plan) => {
-    if (!plan) return plan;
+    setCurrentPlan((plan) => {
+      if (!plan) return plan;
 
-    const updatedAreas = plan.areas.map((area) => {
-      if (area.id !== currentAreaId) return area;
+      const updatedAreas = plan.areas.map((area) => {
+        if (area.id !== currentAreaId) return area;
 
-      const oldItems = Array.isArray(area.items) ? area.items : [];
+        const safeItems = Array.isArray(area.items) ? area.items : [];
+        const existingItem = safeItems.find((item) => item.productId === product.id);
 
-      const existingItem = oldItems.find(
-        (item) => item.productId === product.id
-      );
+        let newItems;
 
-      let newItems;
+        if (existingItem) {
+          newItems = safeItems.map((item) =>
+            item.productId === product.id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          );
+        } else {
+          newItems = [
+            ...safeItems,
+            {
+              productId: product.id,
+              name: product.name,
+              pricePerDay: product.pricePerDay,
+              quantity: 1,
+            },
+          ];
+        }
 
-      if (existingItem) {
-        newItems = oldItems.map((item) =>
-          item.productId === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      } else {
-        newItems = [
-          ...oldItems,
-          {
-            productId: product.id,
-            name: product.name,
-            pricePerDay: product.pricePerDay,
-            quantity: 1,
-          },
-        ];
-      }
+        return {
+          ...area,
+          items: newItems,
+        };
+      });
 
       return {
-        ...area,
-        items: newItems,
+        ...plan,
+        areas: updatedAreas,
+        totalPrice: recalculateTotal(updatedAreas),
       };
     });
 
-    const totalPrice = updatedAreas.reduce((areaTotal, area) => {
-      const safeItems = Array.isArray(area.items) ? area.items : [];
+    setCurrentPage("plan");
+  };
 
-      const itemTotal = safeItems.reduce(
-        (sum, item) => sum + item.pricePerDay * item.quantity,
-        0
-      );
+  const changeItemQuantity = (areaId, productId, change) => {
+    setCurrentPlan((plan) => {
+      if (!plan) return plan;
 
-      return areaTotal + itemTotal;
-    }, 0);
+      const updatedAreas = plan.areas.map((area) => {
+        if (area.id !== areaId) return area;
 
-    return {
-      ...plan,
-      areas: updatedAreas,
-      totalPrice: totalPrice.toFixed(1),
-    };
-  });
+        const safeItems = Array.isArray(area.items) ? area.items : [];
 
-  setCurrentPage("plan");
-};
+        const updatedItems = safeItems
+          .map((item) =>
+            item.productId === productId
+              ? { ...item, quantity: item.quantity + change }
+              : item
+          )
+          .filter((item) => item.quantity > 0);
 
-const changeItemQuantity = (areaId, productId, change) => {
-  setCurrentPlan((plan) => {
-    if (!plan) return plan;
-
-    const updatedAreas = plan.areas.map((area) => {
-      if (area.id !== areaId) return area;
-
-      const safeItems = Array.isArray(area.items) ? area.items : [];
-
-      const updatedItems = safeItems
-        .map((item) =>
-          item.productId === productId
-            ? { ...item, quantity: item.quantity + change }
-            : item
-        )
-        .filter((item) => item.quantity > 0);
+        return {
+          ...area,
+          items: updatedItems,
+        };
+      });
 
       return {
-        ...area,
-        items: updatedItems,
+        ...plan,
+        areas: updatedAreas,
+        totalPrice: recalculateTotal(updatedAreas),
       };
     });
+  };
 
-    const totalPrice = updatedAreas.reduce((areaTotal, area) => {
-      const safeItems = Array.isArray(area.items) ? area.items : [];
+  const removeItemFromArea = (areaId, productId) => {
+    setCurrentPlan((plan) => {
+      if (!plan) return plan;
 
-      const itemTotal = safeItems.reduce(
-        (sum, item) => sum + item.pricePerDay * item.quantity,
-        0
-      );
+      const updatedAreas = plan.areas.map((area) => {
+        if (area.id !== areaId) return area;
 
-      return areaTotal + itemTotal;
-    }, 0);
+        const safeItems = Array.isArray(area.items) ? area.items : [];
 
-    return {
-      ...plan,
-      areas: updatedAreas,
-      totalPrice: totalPrice.toFixed(1),
-    };
-  });
-};
-
-const removeItemFromArea = (areaId, productId) => {
-  setCurrentPlan((plan) => {
-    if (!plan) return plan;
-
-    const updatedAreas = plan.areas.map((area) => {
-      if (area.id !== areaId) return area;
-
-      const safeItems = Array.isArray(area.items) ? area.items : [];
+        return {
+          ...area,
+          items: safeItems.filter((item) => item.productId !== productId),
+        };
+      });
 
       return {
-        ...area,
-        items: safeItems.filter((item) => item.productId !== productId),
+        ...plan,
+        areas: updatedAreas,
+        totalPrice: recalculateTotal(updatedAreas),
       };
     });
-
-    const totalPrice = updatedAreas.reduce((areaTotal, area) => {
-      const safeItems = Array.isArray(area.items) ? area.items : [];
-
-      const itemTotal = safeItems.reduce(
-        (sum, item) => sum + item.pricePerDay * item.quantity,
-        0
-      );
-
-      return areaTotal + itemTotal;
-    }, 0);
-
-    return {
-      ...plan,
-      areas: updatedAreas,
-      totalPrice: totalPrice.toFixed(1),
-    };
-  });
-};
+  };
 
   const filteredProducts = products.filter((product) => {
     const matchCategory = product.category === activeCategory;
@@ -368,9 +353,7 @@ const removeItemFromArea = (areaId, productId) => {
 
                     <div className="product-bottom">
                       <strong>¥ {product.pricePerDay}/天</strong>
-                      <button onClick={() => addProductToArea(product)}>
-                        加入
-                      </button>
+                      <button onClick={() => addProductToArea(product)}>加入</button>
                     </div>
                   </div>
                 </article>
@@ -386,10 +369,7 @@ const removeItemFromArea = (areaId, productId) => {
     return (
       <div className="app">
         <header className="plan-header">
-          <button
-            className="back-button"
-            onClick={() => setCurrentPage("orders")}
-          >
+          <button className="back-button" onClick={() => setCurrentPage("orders")}>
             ←
           </button>
           <div>
@@ -427,10 +407,7 @@ const removeItemFromArea = (areaId, productId) => {
               <p className="eyebrow">Area</p>
               <h2>区域配置</h2>
             </div>
-            <button
-              className="add-area-button"
-              onClick={() => setShowAreaSheet(true)}
-            >
+            <button className="add-area-button" onClick={() => setShowAreaSheet(true)}>
               新增区域
             </button>
           </div>
@@ -452,34 +429,42 @@ const removeItemFromArea = (areaId, productId) => {
                     </p>
 
                     {area.items.length > 0 && (
-  <div className="selected-product-list">
-    {area.items.map((item) => (
-      <div className="selected-product-row" key={item.productId}>
-        <div>
-          <strong>{item.name}</strong>
-          <span>¥ {item.pricePerDay}/天</span>
-        </div>
+                      <div className="selected-product-list">
+                        {area.items.map((item) => (
+                          <div className="selected-product-row" key={item.productId}>
+                            <div>
+                              <strong>{item.name}</strong>
+                              <span>¥ {item.pricePerDay}/天</span>
+                            </div>
 
-        <div className="quantity-controls">
-          <button onClick={() => changeItemQuantity(area.id, item.productId, -1)}>
-            -
-          </button>
-          <b>{item.quantity}</b>
-          <button onClick={() => changeItemQuantity(area.id, item.productId, 1)}>
-            +
-          </button>
-        </div>
+                            <div className="quantity-controls">
+                              <button
+                                onClick={() =>
+                                  changeItemQuantity(area.id, item.productId, -1)
+                                }
+                              >
+                                -
+                              </button>
+                              <b>{item.quantity}</b>
+                              <button
+                                onClick={() =>
+                                  changeItemQuantity(area.id, item.productId, 1)
+                                }
+                              >
+                                +
+                              </button>
+                            </div>
 
-        <button
-          className="remove-item-button"
-          onClick={() => removeItemFromArea(area.id, item.productId)}
-        >
-          删除
-        </button>
-      </div>
-    ))}
-  </div>
-)}
+                            <button
+                              className="remove-item-button"
+                              onClick={() => removeItemFromArea(area.id, item.productId)}
+                            >
+                              删除
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <button onClick={() => openProductPage(area)}>选择商品</button>
@@ -489,24 +474,43 @@ const removeItemFromArea = (areaId, productId) => {
           )}
         </section>
 
-        <section className="price-card">
-          <span>目前方案日租金</span>
-          <strong>¥ {currentPlan.totalPrice}</strong>
+        <section className="price-card price-detail-card">
+          <div>
+            <span>目前方案日租金</span>
+            <strong>¥ {currentPlan.totalPrice}</strong>
+          </div>
+
+          <div>
+            <span>租期</span>
+            <strong>{leaseMonths} 月</strong>
+          </div>
+
+          <div>
+            <span>预计总租金</span>
+            <strong>¥ {totalRent}</strong>
+          </div>
+
+          <div>
+            <span>支付方式</span>
+            <strong>{paymentMethod}</strong>
+          </div>
+
+          <div>
+            <span>押金</span>
+            <strong>{needDeposit ? "需要" : "不需要"}</strong>
+          </div>
         </section>
 
         <nav className="bottom-actions">
           <button>更多</button>
           <button>改价</button>
-          <button>租期与支付</button>
+          <button onClick={() => setShowPaymentSheet(true)}>租期与支付</button>
           <button className="submit-plan-button">提交方案</button>
         </nav>
 
         {showAreaSheet && (
           <div className="sheet-mask" onClick={closeAreaSheet}>
-            <section
-              className="bottom-sheet"
-              onClick={(event) => event.stopPropagation()}
-            >
+            <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
               <div className="sheet-handle" />
 
               <div className="sheet-header">
@@ -539,6 +543,80 @@ const removeItemFromArea = (areaId, productId) => {
 
               <button className="submit-sheet-button" onClick={addArea}>
                 保存区域
+              </button>
+            </section>
+          </div>
+        )}
+
+        {showPaymentSheet && (
+          <div className="sheet-mask" onClick={() => setShowPaymentSheet(false)}>
+            <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
+              <div className="sheet-handle" />
+
+              <div className="sheet-header">
+                <div>
+                  <p className="eyebrow">Payment</p>
+                  <h2>租期与支付</h2>
+                </div>
+                <button className="close-button" onClick={() => setShowPaymentSheet(false)}>
+                  ×
+                </button>
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">选择租期</p>
+                <div className="option-grid">
+                  {[6, 12, 24, 36].map((month) => (
+                    <button
+                      key={month}
+                      className={leaseMonths === month ? "selected" : ""}
+                      onClick={() => setLeaseMonths(month)}
+                    >
+                      {month} 月
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">支付方式</p>
+                <div className="option-grid payment-grid">
+                  {["月付", "季付", "半年付", "年付"].map((method) => (
+                    <button
+                      key={method}
+                      className={paymentMethod === method ? "selected" : ""}
+                      onClick={() => setPaymentMethod(method)}
+                    >
+                      {method}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="deposit-row">
+                <div>
+                  <strong>是否需要押金</strong>
+                  <span>真实业务里可根据客户情况调整</span>
+                </div>
+
+                <button
+                  className={needDeposit ? "switch-button active" : "switch-button"}
+                  onClick={() => setNeedDeposit(!needDeposit)}
+                >
+                  {needDeposit ? "需要" : "不需要"}
+                </button>
+              </div>
+
+              <div className="rent-preview">
+                <span>预计总租金</span>
+                <strong>¥ {totalRent}</strong>
+              </div>
+
+              <button
+                className="submit-sheet-button"
+                onClick={() => setShowPaymentSheet(false)}
+              >
+                保存租期与支付
               </button>
             </section>
           </div>
@@ -598,10 +676,7 @@ const removeItemFromArea = (areaId, productId) => {
             <div className="actions">
               <button className="ghost-button">导航</button>
               <button className="ghost-button danger">拒绝接单</button>
-              <button
-                className="primary-button"
-                onClick={() => setSelectedOrder(order)}
-              >
+              <button className="primary-button" onClick={() => setSelectedOrder(order)}>
                 确认接单
               </button>
             </div>
@@ -611,10 +686,7 @@ const removeItemFromArea = (areaId, productId) => {
 
       {selectedOrder && (
         <div className="sheet-mask" onClick={closeOrderSheet}>
-          <section
-            className="bottom-sheet"
-            onClick={(event) => event.stopPropagation()}
-          >
+          <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
             <div className="sheet-handle" />
 
             <div className="sheet-header">
