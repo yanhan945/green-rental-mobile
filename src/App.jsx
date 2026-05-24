@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
-const STORAGE_KEY = "green-rental-mobile-v3";
+const STORAGE_KEY = "green-rental-mobile-v4";
 
 const initialOrders = [
   {
@@ -122,11 +122,19 @@ const getNowText = () => {
   return `${year}-${month}-${date} ${hour}:${minute}`;
 };
 
+const getSafeAreas = (plan) => {
+  return Array.isArray(plan?.areas) ? plan.areas : [];
+};
+
+const getSafeItems = (area) => {
+  return Array.isArray(area?.items) ? area.items : [];
+};
+
 const calculateDailyRent = (areas) => {
   const safeAreas = Array.isArray(areas) ? areas : [];
 
   return safeAreas.reduce((areaTotal, area) => {
-    const safeItems = Array.isArray(area.items) ? area.items : [];
+    const safeItems = getSafeItems(area);
 
     const itemTotal = safeItems.reduce((sum, item) => {
       const pricePerDay = Number(item.pricePerDay || 0);
@@ -142,7 +150,7 @@ const calculateProductCount = (areas) => {
   const safeAreas = Array.isArray(areas) ? areas : [];
 
   return safeAreas.reduce((total, area) => {
-    const safeItems = Array.isArray(area.items) ? area.items : [];
+    const safeItems = getSafeItems(area);
 
     return (
       total +
@@ -154,10 +162,18 @@ const calculateProductCount = (areas) => {
 };
 
 const getAreaProductCount = (area) => {
-  const safeItems = Array.isArray(area?.items) ? area.items : [];
+  const safeItems = getSafeItems(area);
 
   return safeItems.reduce((sum, item) => {
     return sum + Number(item.quantity || 0);
+  }, 0);
+};
+
+const getAreaDailyRent = (area) => {
+  const safeItems = getSafeItems(area);
+
+  return safeItems.reduce((sum, item) => {
+    return sum + Number(item.pricePerDay || 0) * Number(item.quantity || 0);
   }, 0);
 };
 
@@ -201,6 +217,7 @@ function App() {
   const [customTotalRent, setCustomTotalRent] = useState("");
 
   const [showSubmitSheet, setShowSubmitSheet] = useState(false);
+  const [showMoreSheet, setShowMoreSheet] = useState(false);
 
   const [showCreateOrderSheet, setShowCreateOrderSheet] = useState(false);
   const [newOrderForm, setNewOrderForm] = useState({
@@ -212,15 +229,20 @@ function App() {
     tagsText: "办公室,长期租赁",
   });
 
-  const planAreas = Array.isArray(currentPlan?.areas) ? currentPlan.areas : [];
-  const currentArea = planAreas.find((area) => area.id === currentAreaId);
+  const planAreas = useMemo(() => getSafeAreas(currentPlan), [currentPlan]);
+  const currentArea = useMemo(() => {
+    return planAreas.find((area) => area.id === currentAreaId) || null;
+  }, [planAreas, currentAreaId]);
 
   const dailyRent = useMemo(() => calculateDailyRent(planAreas), [planAreas]);
   const totalProductCount = useMemo(() => calculateProductCount(planAreas), [planAreas]);
-  const totalRent = (dailyRent * leaseMonths * 30).toFixed(1);
+
+  const totalRentNumber = dailyRent * Number(leaseMonths || 0) * 30;
+  const totalRent = totalRentNumber.toFixed(1);
   const finalRent = customTotalRent ? Number(customTotalRent).toFixed(1) : totalRent;
 
   const currentAreaProductCount = getAreaProductCount(currentArea);
+  const currentAreaDailyRent = getAreaDailyRent(currentArea);
 
   const filteredOrders = orders.filter((order) => order.status === activeStatus);
 
@@ -269,6 +291,7 @@ function App() {
     setShowPaymentSheet(false);
     setShowPriceSheet(false);
     setShowSubmitSheet(false);
+    setShowMoreSheet(false);
     setShowCreateOrderSheet(false);
   };
 
@@ -320,11 +343,9 @@ function App() {
     setCurrentPlan((plan) => {
       if (!plan) return plan;
 
-      const safeAreas = Array.isArray(plan.areas) ? plan.areas : [];
-
       return {
         ...plan,
-        areas: [...safeAreas, newArea],
+        areas: [...getSafeAreas(plan), newArea],
       };
     });
 
@@ -345,12 +366,10 @@ function App() {
     setCurrentPlan((plan) => {
       if (!plan) return plan;
 
-      const safeAreas = Array.isArray(plan.areas) ? plan.areas : [];
-
-      const updatedAreas = safeAreas.map((area) => {
+      const updatedAreas = getSafeAreas(plan).map((area) => {
         if (area.id !== currentAreaId) return area;
 
-        const safeItems = Array.isArray(area.items) ? area.items : [];
+        const safeItems = getSafeItems(area);
         const existingItem = safeItems.find((item) => item.productId === product.id);
 
         let newItems;
@@ -393,14 +412,10 @@ function App() {
     setCurrentPlan((plan) => {
       if (!plan) return plan;
 
-      const safeAreas = Array.isArray(plan.areas) ? plan.areas : [];
-
-      const updatedAreas = safeAreas.map((area) => {
+      const updatedAreas = getSafeAreas(plan).map((area) => {
         if (area.id !== areaId) return area;
 
-        const safeItems = Array.isArray(area.items) ? area.items : [];
-
-        const updatedItems = safeItems
+        const updatedItems = getSafeItems(area)
           .map((item) =>
             item.productId === productId
               ? {
@@ -428,16 +443,34 @@ function App() {
     setCurrentPlan((plan) => {
       if (!plan) return plan;
 
-      const safeAreas = Array.isArray(plan.areas) ? plan.areas : [];
-
-      const updatedAreas = safeAreas.map((area) => {
+      const updatedAreas = getSafeAreas(plan).map((area) => {
         if (area.id !== areaId) return area;
-
-        const safeItems = Array.isArray(area.items) ? area.items : [];
 
         return {
           ...area,
-          items: safeItems.filter((item) => item.productId !== productId),
+          items: getSafeItems(area).filter((item) => item.productId !== productId),
+        };
+      });
+
+      return {
+        ...plan,
+        areas: updatedAreas,
+      };
+    });
+  };
+
+  const clearCurrentAreaItems = () => {
+    if (!currentAreaId) return;
+
+    setCurrentPlan((plan) => {
+      if (!plan) return plan;
+
+      const updatedAreas = getSafeAreas(plan).map((area) => {
+        if (area.id !== currentAreaId) return area;
+
+        return {
+          ...area,
+          items: [],
         };
       });
 
@@ -572,6 +605,46 @@ function App() {
     setMerchantTab("订单总览");
   };
 
+  const buildPlanSummary = () => {
+    const areaText = planAreas
+      .map((area) => {
+        const itemText = getSafeItems(area)
+          .map((item) => `- ${item.name} × ${item.quantity}（¥${item.pricePerDay}/天）`)
+          .join("\n");
+
+        return `【${area.name}】\n${itemText || "- 暂无商品"}`;
+      })
+      .join("\n\n");
+
+    return `绿植租赁方案
+客户：${currentPlan?.customerName || "-"}
+项目面积：${currentPlan?.areaSize || "-"}
+进场时间：${currentPlan?.expectedDate || "-"}
+客户地址：${currentPlan?.address || "-"}
+
+方案明细：
+${areaText || "暂无区域"}
+
+日租金：¥${dailyRent.toFixed(1)}
+租期：${leaseMonths}月
+系统总租金：¥${totalRent}
+最终报价：¥${finalRent}
+支付方式：${paymentMethod}
+押金：${needDeposit ? "需要" : "不需要"}`;
+  };
+
+  const copyPlanSummary = async () => {
+    const summary = buildPlanSummary();
+
+    try {
+      await navigator.clipboard.writeText(summary);
+      alert("方案摘要已复制");
+    } catch (error) {
+      console.error("复制失败：", error);
+      alert(summary);
+    }
+  };
+
   if (currentPage === "plan" && currentPlan) {
     return (
       <div className="app">
@@ -627,14 +700,17 @@ function App() {
           ) : (
             <div className="area-list">
               {planAreas.map((area) => {
-                const safeItems = Array.isArray(area.items) ? area.items : [];
+                const safeItems = getSafeItems(area);
                 const areaProductCount = getAreaProductCount(area);
+                const areaRent = getAreaDailyRent(area);
 
                 return (
                   <article className="area-card" key={area.id}>
                     <div>
                       <h3>{area.name}</h3>
-                      <p>已选商品：{areaProductCount} 件</p>
+                      <p>
+                        已选商品：{areaProductCount} 件｜区域日租金：¥ {areaRent.toFixed(1)}
+                      </p>
 
                       {safeItems.length > 0 && (
                         <div className="selected-product-list">
@@ -718,7 +794,7 @@ function App() {
         </section>
 
         <nav className="bottom-actions">
-          <button>更多</button>
+          <button onClick={() => setShowMoreSheet(true)}>更多</button>
           <button onClick={() => setShowPriceSheet(true)}>改价</button>
           <button onClick={() => setShowPaymentSheet(true)}>租期与支付</button>
           <button className="submit-plan-button" onClick={() => setShowSubmitSheet(true)}>
@@ -781,6 +857,14 @@ function App() {
                 </button>
               </div>
 
+              <div className="rent-preview">
+                <span>当前区域</span>
+                <strong>
+                  已选 {currentAreaProductCount} 件｜日租金 ¥{" "}
+                  {currentAreaDailyRent.toFixed(1)}
+                </strong>
+              </div>
+
               <div className="sheet-block">
                 <input
                   className="area-input"
@@ -826,9 +910,7 @@ function App() {
                     </div>
                   ) : (
                     filteredProducts.map((product) => {
-                      const safeItems = Array.isArray(currentArea?.items)
-                        ? currentArea.items
-                        : [];
+                      const safeItems = getSafeItems(currentArea);
                       const selectedItem = safeItems.find(
                         (item) => item.productId === product.id
                       );
@@ -865,7 +947,12 @@ function App() {
                 className="submit-sheet-button"
                 onClick={() => setShowProductSheet(false)}
               >
-                已选 {currentAreaProductCount} 件｜完成选品
+                已选 {currentAreaProductCount} 件｜日租金 ¥{" "}
+                {currentAreaDailyRent.toFixed(1)}｜完成选品
+              </button>
+
+              <button className="ghost-button" onClick={clearCurrentAreaItems}>
+                清空当前区域商品
               </button>
             </section>
           </div>
@@ -997,6 +1084,45 @@ function App() {
           </div>
         )}
 
+        {showMoreSheet && (
+          <div className="sheet-mask" onClick={() => setShowMoreSheet(false)}>
+            <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
+              <div className="sheet-handle" />
+
+              <div className="sheet-header">
+                <div>
+                  <p className="eyebrow">More</p>
+                  <h2>更多操作</h2>
+                </div>
+                <button className="close-button" onClick={() => setShowMoreSheet(false)}>
+                  ×
+                </button>
+              </div>
+
+              <button className="submit-sheet-button" onClick={copyPlanSummary}>
+                复制方案摘要
+              </button>
+
+              <button
+                className="ghost-button danger"
+                onClick={() => {
+                  setCurrentPlan((plan) =>
+                    plan
+                      ? {
+                          ...plan,
+                          areas: [],
+                        }
+                      : plan
+                  );
+                  setShowMoreSheet(false);
+                }}
+              >
+                清空全部区域
+              </button>
+            </section>
+          </div>
+        )}
+
         {showSubmitSheet && (
           <div className="sheet-mask" onClick={() => setShowSubmitSheet(false)}>
             <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
@@ -1075,9 +1201,7 @@ function App() {
     const completedCount = orders.filter((order) => order.status === "已完成").length;
 
     if (merchantViewingPlan) {
-      const viewAreas = Array.isArray(merchantViewingPlan.areas)
-        ? merchantViewingPlan.areas
-        : [];
+      const viewAreas = getSafeAreas(merchantViewingPlan);
 
       return (
         <div className="app">
@@ -1171,13 +1295,16 @@ function App() {
             ) : (
               <div className="area-list">
                 {viewAreas.map((area) => {
-                  const safeItems = Array.isArray(area.items) ? area.items : [];
+                  const safeItems = getSafeItems(area);
 
                   return (
                     <article className="area-card" key={area.id}>
                       <div>
                         <h3>{area.name}</h3>
-                        <p>已选商品：{getAreaProductCount(area)} 件</p>
+                        <p>
+                          已选商品：{getAreaProductCount(area)} 件｜区域日租金：¥{" "}
+                          {getAreaDailyRent(area).toFixed(1)}
+                        </p>
 
                         {safeItems.length > 0 && (
                           <div className="selected-product-list">
