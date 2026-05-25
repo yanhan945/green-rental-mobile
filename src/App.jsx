@@ -301,7 +301,7 @@ function App() {
 
   const [activeRole, setActiveRole] = useState("staff");
   const [activeStaffTab, setActiveStaffTab] = useState("待接单");
-  const [merchantTab, setMerchantTab] = useState("订单总览");
+  const [merchantTab, setMerchantTab] = useState("工作台");
   const [merchantStatusFilter, setMerchantStatusFilter] = useState("全部");
   const [merchantSearchText, setMerchantSearchText] = useState("");
   const [syncMessage, setSyncMessage] = useState("当前已连接 Supabase。点击刷新订单即可读取云端数据。");
@@ -520,7 +520,7 @@ function App() {
       return;
     }
 
-    setMerchantTab("订单总览");
+    setMerchantTab("工作台");
     setMerchantStatusFilter("待商户确认");
     setSyncMessage("暂无待确认方案。");
   }
@@ -533,7 +533,7 @@ function App() {
       return;
     }
 
-    setMerchantTab("订单总览");
+    setMerchantTab("工作台");
     setMerchantStatusFilter("待商户归档");
     setSyncMessage("暂无待归档订单。");
   }
@@ -586,7 +586,7 @@ function App() {
   function openMerchantPlanWorkbench(order) {
     setMerchantViewingOrder(order);
     setSelectedOrderDetail(null);
-    setMerchantTab("订单总览");
+    setMerchantTab("工作台");
     setMerchantStatusFilter(order.status || "全部");
     window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   }
@@ -594,7 +594,7 @@ function App() {
   function backToMerchantHome(message) {
     setSelectedOrderDetail(null);
     setMerchantViewingOrder(null);
-    setMerchantTab("订单总览");
+    setMerchantTab("工作台");
     setMerchantStatusFilter("全部");
     window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
     if (message) setSyncMessage(message);
@@ -1150,7 +1150,7 @@ function App() {
 
     setShowCreateOrderSheet(false);
     setIsCreateOrderInputFocused(false);
-    setMerchantTab("订单总览");
+    setMerchantTab("工作台");
     setMerchantStatusFilter("全部");
   }
 
@@ -1716,7 +1716,7 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
-            <p className="eyebrow">Staff Workbench · v2.7</p>
+            <p className="eyebrow">Staff Workbench · v2.8</p>
             <h1>{currentOrder.customerName}</h1>
           </div>
         </header>
@@ -2144,146 +2144,242 @@ ${areaText || "暂无区域"}
       return result;
     }, {});
 
-    if (selectedOrderDetail) {
-      const stats = getPlanStats(selectedOrderDetail.plan);
+    const desktopStyles = {
+      shell: {
+        width: "min(1180px, calc(100vw - 32px))",
+        minHeight: "100vh",
+        margin: "0 auto",
+        padding: "24px 0 40px",
+      },
+      layout: {
+        display: "grid",
+        gridTemplateColumns: "220px minmax(0, 1fr)",
+        gap: 18,
+        alignItems: "start",
+      },
+      sidebar: {
+        position: "sticky",
+        top: 18,
+        background: "rgba(255,255,255,0.92)",
+        border: "1px solid rgba(39, 92, 61, 0.12)",
+        borderRadius: 28,
+        padding: 18,
+        boxShadow: "0 18px 45px rgba(37, 76, 53, 0.08)",
+      },
+      brand: {
+        marginBottom: 18,
+      },
+      navButton: {
+        width: "100%",
+        border: 0,
+        borderRadius: 16,
+        padding: "13px 14px",
+        marginBottom: 8,
+        textAlign: "left",
+        fontWeight: 800,
+        cursor: "pointer",
+      },
+      main: {
+        minWidth: 0,
+      },
+      topbar: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 14,
+        marginBottom: 16,
+        background: "rgba(255,255,255,0.74)",
+        border: "1px solid rgba(39, 92, 61, 0.10)",
+        borderRadius: 28,
+        padding: "18px 20px",
+      },
+      cardGrid: {
+        display: "grid",
+        gridTemplateColumns: "repeat(5, minmax(120px, 1fr))",
+        gap: 12,
+        marginBottom: 16,
+      },
+      metricCard: {
+        background: "rgba(255,255,255,0.92)",
+        border: "1px solid rgba(39, 92, 61, 0.10)",
+        borderRadius: 22,
+        padding: 16,
+        boxShadow: "0 14px 35px rgba(37, 76, 53, 0.06)",
+      },
+      panel: {
+        background: "rgba(255,255,255,0.92)",
+        border: "1px solid rgba(39, 92, 61, 0.10)",
+        borderRadius: 28,
+        padding: 18,
+        boxShadow: "0 18px 45px rgba(37, 76, 53, 0.07)",
+        marginBottom: 16,
+      },
+      taskGrid: {
+        display: "grid",
+        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+        gap: 14,
+      },
+      tableWrap: {
+        overflowX: "auto",
+      },
+      table: {
+        minWidth: 840,
+        display: "grid",
+        gap: 8,
+      },
+      row: {
+        display: "grid",
+        gridTemplateColumns: "1.6fr 0.9fr 0.9fr 0.9fr 0.9fr 1.2fr",
+        gap: 10,
+        alignItems: "center",
+        padding: "13px 14px",
+        borderRadius: 18,
+        background: "rgba(245, 250, 244, 0.78)",
+      },
+      headerRow: {
+        display: "grid",
+        gridTemplateColumns: "1.6fr 0.9fr 0.9fr 0.9fr 0.9fr 1.2fr",
+        gap: 10,
+        padding: "8px 14px",
+        color: "#6f8176",
+        fontSize: 13,
+        fontWeight: 800,
+      },
+      actionButton: {
+        border: 0,
+        borderRadius: 14,
+        padding: "10px 12px",
+        background: "#217642",
+        color: "white",
+        fontWeight: 900,
+        cursor: "pointer",
+      },
+      softButton: {
+        border: 0,
+        borderRadius: 14,
+        padding: "10px 12px",
+        background: "#eff7ef",
+        color: "#17412d",
+        fontWeight: 900,
+        cursor: "pointer",
+      },
+    };
 
+    const navItems = ["工作台", "订单管理", "执行监测", "商品库", "设置"];
+    const todoOrders = [...pendingMerchantConfirmOrders, ...pendingArchiveOrders];
+    const displayOrders = merchantOrders;
+    const activeReviewOrder = merchantViewingOrder || selectedOrderDetail;
+
+    function MetricCard({ label, value, hint }) {
       return (
-        <div className="app">
-          <header className="plan-header">
-            <button className="back-button" onClick={() => setSelectedOrderDetail(null)}>←</button>
-            <div><p className="eyebrow">Order Detail</p><h1>{selectedOrderDetail.customerName}</h1></div>
-          </header>
-
-          <SyncInfoCard compact />
-
-          <section className="plan-summary-card">
-            <div className="plan-summary-top">
-              <div><p>订单状态</p><strong>{selectedOrderDetail.status}</strong></div>
-              <div><p>项目面积</p><strong>{selectedOrderDetail.areaSize}</strong></div>
-            </div>
-
-            <div className="plan-info-line"><span>联系人</span><strong>{selectedOrderDetail.contactName || "-"}</strong></div>
-            <div className="plan-info-line"><span>联系电话</span><strong>{selectedOrderDetail.phone || "-"}</strong></div>
-            <div className="plan-info-line"><span>客户地址</span><strong>{selectedOrderDetail.address}</strong></div>
-            <div className="plan-info-line"><span>订单来源</span><strong>{selectedOrderDetail.source || "商户派单"}</strong></div>
-
-            {selectedOrderDetail.plan && (
-              <div className="plan-info-line"><span>当前报价</span><strong>¥ {money(stats.finalRent)}</strong></div>
-            )}
-
-            <div className="actions">
-              <button className="ghost-button" onClick={() => callPhone(selectedOrderDetail.phone)}>拨打电话</button>
-              <button className="ghost-button" onClick={() => copyText(selectedOrderDetail.address, "地址已复制")}>复制地址</button>
-              <button className="ghost-button" onClick={() => openRouteNavigation(selectedOrderDetail.address)}>路线导航</button>
-              <button className="ghost-button" onClick={() => exportOrderData(selectedOrderDetail)}>导出数据</button>
-
-              {selectedOrderDetail.plan && (
-                <button className="primary-button" onClick={() => { setMerchantViewingOrder(selectedOrderDetail); setSelectedOrderDetail(null); }}>
-                  查看方案
-                </button>
-              )}
-            </div>
-          </section>
-
-          {selectedOrderDetail.status === "待商户确认" && selectedOrderDetail.plan && (
-            <section className="plan-summary-card">
-              <div className="empty-card">
-                <p>有方案等待确认</p>
-                <span>请先进入完整方案页，核对区域、植物、数量和报价后再确认。</span>
-              </div>
-              <button className="submit-sheet-button" onClick={() => openMerchantPlanWorkbench(selectedOrderDetail)}>
-                查看完整方案
-              </button>
-            </section>
-          )}
-
-          {selectedOrderDetail.status === "待商户归档" && selectedOrderDetail.plan && (
-            <section className="plan-summary-card">
-              <div className="empty-card">
-                <p>订单已完成，待商户归档</p>
-                <span>请进入完整订单页核对完成信息后归档。</span>
-              </div>
-              <button className="submit-sheet-button" onClick={() => openMerchantPlanWorkbench(selectedOrderDetail)}>
-                查看并归档
-              </button>
-            </section>
-          )}
-
-          <StatusSummaryCard order={selectedOrderDetail} />
-          <ExtraDetails order={selectedOrderDetail} />
-        </div>
+        <section style={desktopStyles.metricCard}>
+          <p className="eyebrow">{label}</p>
+          <strong style={{ display: "block", fontSize: 28, color: "#173f2d", marginTop: 6 }}>{value}</strong>
+          {hint && <span style={{ color: "#738278", fontSize: 13 }}>{hint}</span>}
+        </section>
       );
     }
 
-    if (merchantViewingOrder) {
-      const stats = getPlanStats(merchantViewingOrder.plan);
-      const isWaitingConfirm = merchantViewingOrder.status === "待商户确认";
-      const isWaitingArchive = merchantViewingOrder.status === "待商户归档";
+    function MerchantOrderTable({ tableOrders, title = "订单列表" }) {
+      return (
+        <section style={desktopStyles.panel} ref={merchantListRef}>
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Orders</p>
+              <h2>{title}</h2>
+            </div>
+            <button style={desktopStyles.softButton} onClick={refreshOrdersFromCloud}>刷新订单</button>
+          </div>
+
+          <div style={desktopStyles.tableWrap}>
+            <div style={desktopStyles.table}>
+              <div style={desktopStyles.headerRow}>
+                <span>项目 / 客户</span>
+                <span>状态</span>
+                <span>联系人</span>
+                <span>报价</span>
+                <span>执行</span>
+                <span>操作</span>
+              </div>
+
+              {tableOrders.length === 0 ? (
+                <div className="empty-card"><p>当前没有匹配订单</p><span>可以切换状态，或在商户端创建一单测试。</span></div>
+              ) : (
+                tableOrders.map((order) => {
+                  const stats = getPlanStats(order.plan);
+                  return (
+                    <div style={desktopStyles.row} key={order.id}>
+                      <div>
+                        <strong>{order.customerName}</strong>
+                        <span style={{ display: "block", color: "#7a8a80", fontSize: 13 }}>{order.address}</span>
+                      </div>
+                      <strong>{order.status}</strong>
+                      <span>{order.contactName || "-"}{order.phone ? `｜${order.phone}` : ""}</span>
+                      <strong>{order.plan ? `¥ ${money(stats.finalRent)}` : "未报价"}</strong>
+                      <span>{order.executionStatus || "待联系"}</span>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button style={desktopStyles.actionButton} onClick={() => openMerchantPlanWorkbench(order)}>
+                          {order.status === "待商户确认" ? "审核方案" : order.status === "待商户归档" ? "确认归档" : "查看"}
+                        </button>
+                        <button style={desktopStyles.softButton} onClick={() => callPhone(order.phone)}>电话</button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    function MerchantReviewPage({ order }) {
+      const stats = getPlanStats(order.plan);
+      const isWaitingConfirm = order.status === "待商户确认";
+      const isWaitingArchive = order.status === "待商户归档";
 
       return (
-        <div className="app">
-          <header className="plan-header">
-            <button className="back-button" onClick={() => backToMerchantHome()}>←</button>
+        <div style={desktopStyles.shell}>
+          <div style={desktopStyles.topbar}>
             <div>
-              <p className="eyebrow">Plan Review</p>
-              <h1>{merchantViewingOrder.customerName}</h1>
+              <p className="eyebrow">Review Desk · v2.8</p>
+              <h1>{order.customerName}</h1>
             </div>
-          </header>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button style={desktopStyles.softButton} onClick={() => backToMerchantHome()}>返回工作台</button>
+              <button style={desktopStyles.softButton} onClick={refreshOrdersFromCloud}>刷新</button>
+            </div>
+          </div>
 
-          <SyncInfoCard compact />
-
-          {(isWaitingConfirm || isWaitingArchive) && (
-            <section className="plan-summary-card">
-              <div className="empty-card">
-                <p>{isWaitingConfirm ? "请先核对完整方案，再确认" : "请核对完成信息，再归档"}</p>
-                <span>本页已经包含客户信息、区域植物、数量、租期和报价，不需要再跳其他页面。</span>
-              </div>
-            </section>
-          )}
-
-          <section className="plan-summary-card">
+          <section style={desktopStyles.panel}>
             <div className="plan-summary-top">
-              <div><p>订单状态</p><strong>{merchantViewingOrder.status}</strong></div>
-              <div><p>项目面积</p><strong>{merchantViewingOrder.areaSize}</strong></div>
+              <div><p>订单状态</p><strong>{order.status}</strong></div>
+              <div><p>项目面积</p><strong>{order.areaSize}</strong></div>
+              <div><p>当前报价</p><strong>¥ {money(stats.finalRent)}</strong></div>
             </div>
-
-            <div className="plan-info-line"><span>联系人</span><strong>{merchantViewingOrder.contactName || "-"} {merchantViewingOrder.phone ? `｜${merchantViewingOrder.phone}` : ""}</strong></div>
-            <div className="plan-info-line"><span>客户地址</span><strong>{merchantViewingOrder.address}</strong></div>
-            <div className="plan-info-line"><span>订单来源</span><strong>{merchantViewingOrder.source || "商户派单"}</strong></div>
-
-            <div className="actions mini-actions">
-              <button className="ghost-button" onClick={() => callPhone(merchantViewingOrder.phone)}>电话</button>
-              <button className="ghost-button" onClick={() => copyText(merchantViewingOrder.address, "地址已复制")}>地址</button>
-              <button className="ghost-button" onClick={() => openRouteNavigation(merchantViewingOrder.address)}>导航</button>
-            </div>
+            <div className="plan-info-line"><span>联系人</span><strong>{order.contactName || "-"} {order.phone ? `｜${order.phone}` : ""}</strong></div>
+            <div className="plan-info-line"><span>客户地址</span><strong>{order.address}</strong></div>
+            <div className="plan-info-line"><span>订单来源</span><strong>{order.source || "商户派单"}</strong></div>
           </section>
 
-          <section className="area-section">
+          <section style={desktopStyles.panel}>
             <div className="section-title-row">
-              <div><p className="eyebrow">Areas</p><h2>方案明细</h2></div>
+              <div><p className="eyebrow">Plan Detail</p><h2>方案明细</h2></div>
             </div>
-
-            {safeAreas(merchantViewingOrder.plan).length === 0 ? (
-              <div className="empty-card"><p>这个方案还没有区域明细</p><span>可以要求员工补充后再确认。</span></div>
+            {safeAreas(order.plan).length === 0 ? (
+              <div className="empty-card"><p>这个方案还没有区域</p><span>可以要求员工补充后再确认。</span></div>
             ) : (
-              <div className="area-list">
-                {safeAreas(merchantViewingOrder.plan).map((area) => (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+                {safeAreas(order.plan).map((area) => (
                   <article className="area-card" key={area.id}>
                     <div>
                       <h3>{area.name}</h3>
                       <p>已选商品：{getAreaProductCount(area)} 件｜区域日租金：¥ {money(getAreaDailyRent(area))}</p>
-
-                      {safeItems(area).length === 0 ? (
-                        <div className="empty-card"><p>这个区域还没有商品</p></div>
-                      ) : (
-                        <div className="selected-product-list">
-                          {safeItems(area).map((item) => (
-                            <div className="selected-product-row" key={item.productId}>
-                              <div><strong>{item.name}</strong><span>¥ {item.pricePerDay}/天 × {item.quantity}</span></div>
-                            </div>
-                          ))}
+                      {safeItems(area).map((item) => (
+                        <div className="selected-product-row" key={item.productId}>
+                          <div><strong>{item.name}</strong><span>¥ {item.pricePerDay}/天 × {item.quantity}</span></div>
                         </div>
-                      )}
+                      ))}
                     </div>
                   </article>
                 ))}
@@ -2293,224 +2389,203 @@ ${areaText || "暂无区域"}
 
           <section className="price-card price-detail-card">
             <div><span>日租金</span><strong>¥ {money(stats.dailyRent)}</strong></div>
-            <div><span>租期</span><strong>{merchantViewingOrder.plan?.leaseMonths || 12}月</strong></div>
+            <div><span>租期</span><strong>{order.plan?.leaseMonths || 12}月</strong></div>
             <div><span>系统总租金</span><strong>¥ {money(stats.systemTotalRent)}</strong></div>
             <div><span>最终报价</span><strong>¥ {money(stats.finalRent)}</strong></div>
-            <div><span>支付方式</span><strong>{merchantViewingOrder.plan?.paymentMethod || "月付"}</strong></div>
-            <div><span>押金</span><strong>{merchantViewingOrder.plan?.needDeposit ? "需要" : "不需要"}</strong></div>
+            <div><span>支付方式</span><strong>{order.plan?.paymentMethod || "月付"}</strong></div>
+            <div><span>押金</span><strong>{order.plan?.needDeposit ? "需要" : "不需要"}</strong></div>
           </section>
 
-          {isWaitingConfirm && (
-            <section className="plan-summary-card">
+          {(isWaitingConfirm || isWaitingArchive) && (
+            <section style={desktopStyles.panel}>
               <div className="empty-card">
-                <p>方案确认</p>
-                <span>确认后员工端刷新订单即可开始执行；发现问题就要求员工修改。</span>
+                <p>{isWaitingConfirm ? "确认前请核对完整方案" : "归档前请核对完成信息"}</p>
+                <span>{isWaitingConfirm ? "确认后员工端会进入执行中；有问题就要求修改。" : "确认归档后，这个订单会进入正式已完成。"}</span>
               </div>
-
-              <div className="actions">
-                <button className="submit-sheet-button" onClick={() => merchantConfirmPlan(merchantViewingOrder.id)}>
-                  确认方案
-                </button>
-                <button className="ghost-button danger" onClick={() => merchantRequestRevision(merchantViewingOrder.id)}>
-                  要求修改
-                </button>
-                <button className="ghost-button" onClick={() => markPlanSentToCustomer(merchantViewingOrder.id)}>
-                  标记已转发客户
-                </button>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                {isWaitingConfirm && <button style={desktopStyles.actionButton} onClick={() => merchantConfirmPlan(order.id)}>确认方案</button>}
+                {isWaitingConfirm && <button className="ghost-button danger" onClick={() => merchantRequestRevision(order.id)}>要求修改</button>}
+                {isWaitingArchive && <button style={desktopStyles.actionButton} onClick={() => merchantArchiveOrder(order.id)}>确认归档</button>}
+                <button style={desktopStyles.softButton} onClick={() => exportOrderData(order)}>导出数据</button>
               </div>
             </section>
           )}
 
-          {isWaitingArchive && (
-            <section className="plan-summary-card">
-              <div className="empty-card">
-                <p>订单已完成，待商户归档</p>
-                <span>员工已完成服务。确认后订单会进入正式已完成。</span>
-              </div>
-              <button className="submit-sheet-button" onClick={() => merchantArchiveOrder(merchantViewingOrder.id)}>
-                确认归档
-              </button>
-            </section>
-          )}
-
-          <ExtraDetails order={merchantViewingOrder} />
+          <ExtraDetails order={order} />
         </div>
       );
     }
 
+    if (activeReviewOrder) {
+      return <MerchantReviewPage order={activeReviewOrder} />;
+    }
+
     return (
-      <div className="app">
-        <header className="app-header">
-          <div><p className="eyebrow">Merchant Console · v2.7</p><h1>商户管理端</h1></div>
-          <button className="role-button" onClick={() => switchRole("staff")}>切到员工端</button>
-        </header>
-
-        <SyncInfoCard />
-
-        {pendingMerchantConfirmOrders.length > 0 && (
-          <section className="plan-summary-card">
-            <div className="empty-card">
-              <p>有 {pendingMerchantConfirmOrders.length} 个方案待确认</p>
-              <span>点这里直接打开第一个完整方案，不需要再去列表里找。</span>
-            </div>
-            <button className="submit-sheet-button" onClick={handleViewPendingMerchantConfirm}>
-              直接处理方案
-            </button>
-          </section>
-        )}
-
-        {pendingArchiveOrders.length > 0 && (
-          <section className="plan-summary-card">
-            <div className="empty-card">
-              <p>有 {pendingArchiveOrders.length} 个订单已完成，待归档</p>
-              <span>点这里直接打开第一个待归档订单。</span>
-            </div>
-            <button className="submit-sheet-button" onClick={handleViewPendingArchive}>
-              直接处理归档
-            </button>
-          </section>
-        )}
-
-        <section className="tabs">
-          {["订单总览", "执行监测", "已提交方案"].map((tab) => (
-            <button key={tab} className={merchantTab === tab ? "tab active" : "tab"} onClick={() => setMerchantTab(tab)}>
-              {tab}
-            </button>
-          ))}
-        </section>
-
-        <section className="plan-summary-card">
-          <div className="plan-summary-top">
-            <div><p>待接单</p><strong>{statusCounts["待接单"] || 0} 单</strong></div>
-            <div><p>配置中</p><strong>{statusCounts["配置中"] || 0} 单</strong></div>
-          </div>
-          <div className="plan-summary-top">
-            <div><p>待确认</p><strong>{statusCounts["待商户确认"] || 0} 单</strong></div>
-            <div><p>已确认</p><strong>{statusCounts["方案已确认"] || 0} 单</strong></div>
-          </div>
-          <div className="plan-summary-top">
-            <div><p>执行中</p><strong>{statusCounts["执行中"] || 0} 单</strong></div>
-            <div><p>待归档</p><strong>{statusCounts["待商户归档"] || 0} 单</strong></div>
-          </div>
-          <div className="plan-summary-top">
-            <div><p>已完成</p><strong>{statusCounts["已完成"] || 0} 单</strong></div>
-            <div><p>云同步</p><strong>{syncState}</strong></div>
-          </div>
-        </section>
-
-        {merchantTab === "订单总览" && (
-          <>
-            <section className="area-section">
-              <div className="section-title-row">
-                <div><p className="eyebrow">Create Order</p><h2>派发新订单</h2></div>
-                <button className="add-area-button" onClick={() => setShowCreateOrderSheet(true)}>创建订单</button>
-              </div>
-            </section>
-
-            <section className="tabs">
-              {MERCHANT_STATUS_TABS.map((status) => (
-                <button key={status} className={merchantStatusFilter === status ? "tab active" : "tab"} onClick={() => setMerchantStatusFilter(status)}>
-                  {status}
-                </button>
-              ))}
-            </section>
-
-            <section className="plan-summary-card">
-              <div className="section-title-row">
-                <div><p className="eyebrow">Order Library</p><h2>订单库搜索</h2></div>
-              </div>
-              <input
-                className="area-input"
-                value={merchantSearchText}
-                onChange={(e) => setMerchantSearchText(e.target.value)}
-                placeholder="搜客户、联系人、电话、地址、标签"
-              />
-              <div className="empty-card">
-                <p>当前筛选：{merchantStatusFilter}｜{merchantOrders.length} 单</p>
-                <span>这里先做商户后台的轻量订单库，后续再扩展导出和正式电脑端布局。</span>
-              </div>
-            </section>
-
-            <section className="area-section" ref={merchantListRef}>
-              <div className="section-title-row">
-                <div><p className="eyebrow">Orders</p><h2>{merchantStatusFilter === "全部" ? "全部订单" : merchantStatusFilter}</h2></div>
-              </div>
-
-              <main className="order-list">
-                {merchantOrders.length === 0 ? (
-                  <div className="empty-card"><p>当前状态下暂无订单</p><span>可以切换其他状态查看，或点击“刷新订单”。</span></div>
-                ) : (
-                  merchantOrders.map((order) => (
-                    <CoreOrderCard key={order.id} order={order} mode="merchant" />
-                  ))
-                )}
-              </main>
-            </section>
-          </>
-        )}
-
-        {merchantTab === "执行监测" && (
-          <section className="area-section">
-            <div className="section-title-row">
-              <div><p className="eyebrow">Execution Monitor</p><h2>员工执行监测</h2></div>
+      <div style={desktopStyles.shell}>
+        <div style={desktopStyles.layout}>
+          <aside style={desktopStyles.sidebar}>
+            <div style={desktopStyles.brand}>
+              <p className="eyebrow">Merchant Admin · v2.8</p>
+              <h2 style={{ margin: 0 }}>绿植租赁后台</h2>
+              <span style={{ color: "#738278", fontSize: 13 }}>公司端 / 商户端</span>
             </div>
 
-            <section className="plan-summary-card">
-              <div className="plan-summary-top">
-                <div><p>可执行</p><strong>{statusCounts["方案已确认"] || 0} 单</strong></div>
-                <div><p>执行中</p><strong>{statusCounts["执行中"] || 0} 单</strong></div>
-              </div>
-              <div className="plan-summary-top">
-                <div><p>待归档</p><strong>{statusCounts["待商户归档"] || 0} 单</strong></div>
-                <div><p>已完成</p><strong>{statusCounts["已完成"] || 0} 单</strong></div>
-              </div>
-            </section>
+            {navItems.map((item) => (
+              <button
+                key={item}
+                style={{
+                  ...desktopStyles.navButton,
+                  background: merchantTab === item ? "#217642" : "#eff7ef",
+                  color: merchantTab === item ? "#fff" : "#17412d",
+                }}
+                onClick={() => setMerchantTab(item)}
+              >
+                {item}
+              </button>
+            ))}
 
-            {monitoredOrders.length === 0 ? (
-              <div className="empty-card"><p>暂无正在执行或待归档订单</p><span>员工开始执行后，这里会变成老板的过程监测区。</span></div>
-            ) : (
-              <div className="order-list">
-                {monitoredOrders.map((order) => (
-                  <article className="order-card" key={order.id}>
-                    <div className="order-card-header">
-                      <div><h2>{order.customerName}</h2><p>{order.status}</p></div>
-                      <StatusPill>{order.areaSize}</StatusPill>
+            <button style={{ ...desktopStyles.navButton, background: "#f7fbf6", color: "#17412d", marginTop: 12 }} onClick={() => switchRole("staff")}>
+              切到员工端
+            </button>
+          </aside>
+
+          <main style={desktopStyles.main}>
+            <header style={desktopStyles.topbar}>
+              <div>
+                <p className="eyebrow">Dashboard</p>
+                <h1>{merchantTab}</h1>
+                <span style={{ color: "#738278" }}>{syncMessage}</span>
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button style={desktopStyles.softButton} onClick={refreshOrdersFromCloud}>刷新订单</button>
+                <button style={desktopStyles.actionButton} onClick={() => setShowCreateOrderSheet(true)}>创建订单</button>
+              </div>
+            </header>
+
+            {merchantTab === "工作台" && (
+              <>
+                <section style={desktopStyles.cardGrid}>
+                  <MetricCard label="总订单" value={`${orders.length} 单`} hint="云端订单池" />
+                  <MetricCard label="待接单" value={`${statusCounts["待接单"] || 0} 单`} hint="等员工接" />
+                  <MetricCard label="待审核" value={`${statusCounts["待商户确认"] || 0} 单`} hint="方案待确认" />
+                  <MetricCard label="执行中" value={`${statusCounts["执行中"] || 0} 单`} hint="现场服务" />
+                  <MetricCard label="待归档" value={`${statusCounts["待商户归档"] || 0} 单`} hint="完成待确认" />
+                </section>
+
+                <section style={desktopStyles.panel}>
+                  <div className="section-title-row">
+                    <div><p className="eyebrow">Todo</p><h2>今日待办</h2></div>
+                  </div>
+
+                  {todoOrders.length === 0 ? (
+                    <div className="empty-card"><p>当前没有紧急待办</p><span>有方案待确认或订单待归档时，会优先出现在这里。</span></div>
+                  ) : (
+                    <div style={desktopStyles.taskGrid}>
+                      {todoOrders.slice(0, 4).map((order) => (
+                        <article className="order-card" key={order.id}>
+                          <div className="order-card-header">
+                            <div><h2>{order.customerName}</h2><p>{order.status}</p></div>
+                            <StatusPill>{order.areaSize}</StatusPill>
+                          </div>
+                          <div className="info-row"><span>联系人</span><strong>{order.contactName || "-"}</strong></div>
+                          <div className="info-row"><span>地址</span><strong>{order.address}</strong></div>
+                          <button style={desktopStyles.actionButton} onClick={() => openMerchantPlanWorkbench(order)}>
+                            {order.status === "待商户确认" ? "立即审核方案" : "立即确认归档"}
+                          </button>
+                        </article>
+                      ))}
                     </div>
-                    <div className="info-row"><span>执行状态</span><strong>{order.executionStatus || "待联系"}</strong></div>
-                    <div className="info-row"><span>配送状态</span><strong>{order.deliveryStatus || "未出发"}</strong></div>
-                    <div className="info-row"><span>员工定位</span><strong>{order.staffLocation?.locatedAt || "未定位"}</strong></div>
-                    <div className="info-row"><span>完成时间</span><strong>{order.completedAt || "未完成"}</strong></div>
-                    <div className="actions">
-                      <button className="ghost-button" onClick={() => callPhone(order.phone)}>电话</button>
-                      <button className="ghost-button" onClick={() => openRouteNavigation(order.address)}>导航</button>
-                      <button className="primary-button" onClick={() => openMerchantPlanWorkbench(order)}>查看进度</button>
-                    </div>
-                  </article>
-                ))}
-              </div>
+                  )}
+                </section>
+
+                <MerchantOrderTable tableOrders={orders.slice(0, 8)} title="最近订单" />
+              </>
             )}
-          </section>
-        )}
 
-        {merchantTab === "已提交方案" && (
-          <section className="area-section">
-            <div className="section-title-row">
-              <div><p className="eyebrow">Submitted Plans</p><h2>员工提交的方案</h2></div>
-            </div>
-
-            {submittedOrders.length === 0 ? (
-              <div className="empty-card"><p>暂时还没有员工提交方案</p></div>
-            ) : (
-              <div className="order-list">
-                {submittedOrders.map((order) => (
-                  <CoreOrderCard key={order.id} order={order} mode="merchant" />
-                ))}
-              </div>
+            {merchantTab === "订单管理" && (
+              <>
+                <section style={desktopStyles.panel}>
+                  <div className="section-title-row">
+                    <div><p className="eyebrow">Filter</p><h2>订单筛选</h2></div>
+                  </div>
+                  <input
+                    className="area-input"
+                    value={merchantSearchText}
+                    onChange={(e) => setMerchantSearchText(e.target.value)}
+                    placeholder="搜客户、联系人、电话、地址、标签"
+                  />
+                  <section className="tabs">
+                    {MERCHANT_STATUS_TABS.map((status) => (
+                      <button key={status} className={merchantStatusFilter === status ? "tab active" : "tab"} onClick={() => setMerchantStatusFilter(status)}>
+                        {status}
+                      </button>
+                    ))}
+                  </section>
+                </section>
+                <MerchantOrderTable tableOrders={displayOrders} title={merchantStatusFilter === "全部" ? "全部订单" : merchantStatusFilter} />
+              </>
             )}
-          </section>
-        )}
 
-        {showCreateOrderSheet && renderCreateOrderSheet()}
+            {merchantTab === "执行监测" && (
+              <>
+                <section style={desktopStyles.cardGrid}>
+                  <MetricCard label="可执行" value={`${statusCounts["方案已确认"] || 0} 单`} hint="等员工开始" />
+                  <MetricCard label="执行中" value={`${statusCounts["执行中"] || 0} 单`} hint="服务中" />
+                  <MetricCard label="待归档" value={`${statusCounts["待商户归档"] || 0} 单`} hint="完成待确认" />
+                  <MetricCard label="已完成" value={`${statusCounts["已完成"] || 0} 单`} hint="正式归档" />
+                  <MetricCard label="已定位" value={`${orders.filter((order) => order.staffLocation).length} 单`} hint="员工打卡" />
+                </section>
+                <MerchantOrderTable tableOrders={monitoredOrders} title="执行过程监测" />
+              </>
+            )}
+
+            {merchantTab === "商品库" && (
+              <section style={desktopStyles.panel}>
+                <div className="section-title-row">
+                  <div><p className="eyebrow">Product Library</p><h2>商品库雏形</h2></div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+                  {products.map((product) => (
+                    <article className="product-card" key={product.id}>
+                      <div className="product-image">{product.image}</div>
+                      <div className="product-info">
+                        <h3>{product.name}</h3>
+                        <p>{product.category}｜{product.subCategory}</p>
+                        <strong>¥ {product.pricePerDay}/天</strong>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+                <div className="empty-card" style={{ marginTop: 14 }}>
+                  <p>这里先展示当前内置商品库</p>
+                  <span>下一步可以把商品库拆到 Supabase，支持新增、编辑、停用和分类管理。</span>
+                </div>
+              </section>
+            )}
+
+            {merchantTab === "设置" && (
+              <section style={desktopStyles.panel}>
+                <div className="section-title-row">
+                  <div><p className="eyebrow">Settings</p><h2>系统设置雏形</h2></div>
+                </div>
+                <div className="plan-summary-top">
+                  <div><p>数据库</p><strong>Supabase orders</strong></div>
+                  <div><p>同步方式</p><strong>手动刷新</strong></div>
+                </div>
+                <div className="plan-summary-top">
+                  <div><p>当前角色</p><strong>商户 / 公司端</strong></div>
+                  <div><p>多公司字段</p><strong>后续预留 tenant_id</strong></div>
+                </div>
+                <div className="actions">
+                  <button className="ghost-button" onClick={refreshOrdersFromCloud}>刷新云端</button>
+                  <button className="ghost-button" onClick={uploadLocalOrdersToCloud}>上传本地到云端</button>
+                </div>
+              </section>
+            )}
+
+            {showCreateOrderSheet && renderCreateOrderSheet()}
+          </main>
+        </div>
       </div>
     );
   }
@@ -2566,7 +2641,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v2.7</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v2.8</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
@@ -2659,7 +2734,7 @@ ${areaText || "暂无区域"}
   return (
     <div className="app">
       <header className="app-header">
-        <div><p className="eyebrow">Staff Mobile · v2.5</p><h1>员工接单端</h1></div>
+        <div><p className="eyebrow">Staff Mobile · v2.8</p><h1>员工接单端</h1></div>
         <button className="role-button" onClick={() => switchRole("merchant")}>商户测试</button>
       </header>
 
