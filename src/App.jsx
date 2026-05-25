@@ -6,6 +6,7 @@ const SUPABASE_KEY = "sb_publishable_FFoHUmn4RwaOkvx2XK7QHg__O7iWYdJ";
 const ORDERS_API = `${SUPABASE_URL}/rest/v1/orders`;
 
 const STORAGE_KEY = "green-rental-mobile-v24";
+const PRODUCT_STORAGE_KEY = "green-rental-products-v29";
 
 const STAFF_TABS = ["待接单", "做方案", "执行中", "已完成"];
 const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "待商户归档", "已完成"];
@@ -20,7 +21,7 @@ const PLAN_LINK_STATUS = ["未生成", "已复制", "已发送"];
 const productCategories = ["室内绿植", "室外植物", "月租套餐", "仿真植物"];
 const subCategories = ["大型植物", "中型植物", "小型植物", "水培植物", "盆景植物"];
 
-const products = [
+const defaultProducts = [
   { id: 1, name: "原生发财树", category: "室内绿植", subCategory: "大型植物", description: "寓意财源滚滚，适合前台、办公室、会议室。", pricePerDay: 2.5, image: "🌳" },
   { id: 2, name: "天堂鸟", category: "室内绿植", subCategory: "大型植物", description: "株型舒展，适合大堂、休息区、开放办公区。", pricePerDay: 3.2, image: "🪴" },
   { id: 3, name: "绿萝柱", category: "室内绿植", subCategory: "中型植物", description: "耐阴好养，适合办公室角落和走廊区域。", pricePerDay: 1.6, image: "🌿" },
@@ -161,6 +162,54 @@ function persistOrdersToLocalStore(orders) {
   } catch (error) {
     console.error("保存本地订单失败：", error);
   }
+}
+
+
+function normalizeProducts(data) {
+  const list = Array.isArray(data) ? data : defaultProducts;
+  return list.map((product) => ({
+    status: "上架",
+    stock: "充足",
+    imageUrl: "",
+    note: "",
+    ...product,
+  }));
+}
+
+function loadProductsFromLocalStore() {
+  try {
+    const raw = localStorage.getItem(PRODUCT_STORAGE_KEY);
+    if (!raw) return normalizeProducts(defaultProducts);
+
+    const parsed = JSON.parse(raw);
+    return normalizeProducts(parsed?.products);
+  } catch (error) {
+    console.error("读取本地商品库失败：", error);
+    return normalizeProducts(defaultProducts);
+  }
+}
+
+function persistProductsToLocalStore(products) {
+  try {
+    localStorage.setItem(
+      PRODUCT_STORAGE_KEY,
+      JSON.stringify({
+        source: "localStorage",
+        savedAt: nowText(),
+        products,
+      })
+    );
+  } catch (error) {
+    console.error("保存本地商品库失败：", error);
+  }
+}
+
+function getProductImage(product) {
+  return product?.imageUrl || product?.image || "🪴";
+}
+
+function isImageUrl(value) {
+  return /^https?:\/\//i.test(String(value || "").trim());
 }
 
 async function fetchOrdersFromCloud() {
@@ -308,6 +357,7 @@ function App() {
   const [syncState, setSyncState] = useState("云端待刷新");
 
   const [orders, setOrders] = useState(() => loadOrdersFromLocalStore());
+  const [merchantProducts, setMerchantProducts] = useState(() => loadProductsFromLocalStore());
 
   const [currentPage, setCurrentPage] = useState("orders");
   const [currentOrderId, setCurrentOrderId] = useState(null);
@@ -331,6 +381,9 @@ function App() {
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [showSubmitSheet, setShowSubmitSheet] = useState(false);
   const [showCreateOrderSheet, setShowCreateOrderSheet] = useState(false);
+  const [showCreateProductSheet, setShowCreateProductSheet] = useState(false);
+  const [productSearchText, setProductSearchText] = useState("");
+  const [productCategoryFilter, setProductCategoryFilter] = useState("全部");
   const [isCreateOrderInputFocused, setIsCreateOrderInputFocused] = useState(false);
 
   const [showDetailBlock, setShowDetailBlock] = useState(false);
@@ -345,6 +398,20 @@ function App() {
     description: "",
     tagsText: "办公室,长期租赁",
     source: "商户派单",
+  });
+
+
+  const [newProductForm, setNewProductForm] = useState({
+    name: "",
+    category: "室内绿植",
+    subCategory: "大型植物",
+    description: "",
+    pricePerDay: "",
+    imageUrl: "",
+    image: "🪴",
+    stock: "充足",
+    note: "",
+    status: "上架",
   });
 
   const currentOrder = orders.find((order) => order.id === currentOrderId) || null;
@@ -405,9 +472,10 @@ function App() {
     );
   }, [orders]);
 
-  const filteredProducts = products.filter((product) => {
+  const filteredProducts = merchantProducts.filter((product) => {
     const keyword = searchText.trim();
     return (
+      product.status !== "停用" &&
       product.category === activeCategory &&
       product.subCategory === activeSubCategory &&
       (keyword === "" ||
@@ -422,6 +490,10 @@ function App() {
   useEffect(() => {
     persistOrdersToLocalStore(orders);
   }, [orders]);
+
+  useEffect(() => {
+    persistProductsToLocalStore(merchantProducts);
+  }, [merchantProducts]);
 
   useEffect(() => {
     if (currentPage === "plan" && !currentOrder) setCurrentPage("orders");
@@ -579,6 +651,7 @@ function App() {
     setShowMoreSheet(false);
     setShowSubmitSheet(false);
     setShowCreateOrderSheet(false);
+    setShowCreateProductSheet(false);
     setIsCreateOrderInputFocused(false);
     setShowDetailBlock(false);
   }
@@ -1149,9 +1222,69 @@ function App() {
     });
 
     setShowCreateOrderSheet(false);
+    setShowCreateProductSheet(false);
     setIsCreateOrderInputFocused(false);
     setMerchantTab("工作台");
     setMerchantStatusFilter("全部");
+  }
+
+  function resetNewProductForm() {
+    setNewProductForm({
+      name: "",
+      category: "室内绿植",
+      subCategory: "大型植物",
+      description: "",
+      pricePerDay: "",
+      imageUrl: "",
+      image: "🪴",
+      stock: "充足",
+      note: "",
+      status: "上架",
+    });
+  }
+
+  function createMerchantProduct() {
+    const name = newProductForm.name.trim();
+    if (!name) {
+      alert("请填写商品名称");
+      return;
+    }
+
+    const price = Number(newProductForm.pricePerDay || 0);
+    if (!price || Number.isNaN(price)) {
+      alert("请填写日租金");
+      return;
+    }
+
+    const newProduct = {
+      id: Date.now(),
+      name,
+      category: newProductForm.category || "室内绿植",
+      subCategory: newProductForm.subCategory || "大型植物",
+      description: newProductForm.description.trim() || "暂无描述，后续可在商品库补充。",
+      pricePerDay: price,
+      imageUrl: newProductForm.imageUrl.trim(),
+      image: newProductForm.image || "🪴",
+      stock: newProductForm.stock || "充足",
+      note: newProductForm.note.trim(),
+      status: newProductForm.status || "上架",
+      createdAt: nowText(),
+    };
+
+    setMerchantProducts((prev) => [newProduct, ...prev]);
+    resetNewProductForm();
+    setShowCreateProductSheet(false);
+    setMerchantTab("商品库");
+  }
+
+  function toggleProductStatus(productId) {
+    setMerchantProducts((prev) =>
+      prev.map((product) =>
+        product.id === productId
+          ? { ...product, status: product.status === "上架" ? "停用" : "上架" }
+          : product
+      )
+    );
   }
 
   function copyCustomerPlanLink(order) {
@@ -1716,7 +1849,7 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
-            <p className="eyebrow">Staff Workbench · v2.8</p>
+            <p className="eyebrow">Staff Workbench · v2.9</p>
             <h1>{currentOrder.customerName}</h1>
           </div>
         </header>
@@ -1936,7 +2069,7 @@ ${areaText || "暂无区域"}
 
                   return (
                     <article className="product-card" key={product.id}>
-                      <div className="product-image">{product.image}</div>
+                      <div className="product-image">{isImageUrl(getProductImage(product)) ? <img src={getProductImage(product)} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 16 }} /> : getProductImage(product)}</div>
                       <div className="product-info">
                         <h3>{product.name}</h3>
                         <p>{product.description}</p>
@@ -2268,6 +2401,12 @@ ${areaText || "暂无区域"}
     const navItems = ["工作台", "订单管理", "执行监测", "商品库", "设置"];
     const todoOrders = [...pendingMerchantConfirmOrders, ...pendingArchiveOrders];
     const displayOrders = merchantOrders;
+    const filteredMerchantProducts = merchantProducts.filter((product) => {
+      const keyword = productSearchText.trim();
+      const matchCategory = productCategoryFilter === "全部" || product.category === productCategoryFilter;
+      const text = [product.name, product.category, product.subCategory, product.description, product.note, product.status].join(" ");
+      return matchCategory && (!keyword || text.includes(keyword));
+    });
     const activeReviewOrder = merchantViewingOrder || selectedOrderDetail;
 
     function MetricCard({ label, value, hint }) {
@@ -2342,7 +2481,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.shell}>
           <div style={desktopStyles.topbar}>
             <div>
-              <p className="eyebrow">Review Desk · v2.8</p>
+              <p className="eyebrow">Review Desk · v2.9</p>
               <h1>{order.customerName}</h1>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -2425,7 +2564,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.layout}>
           <aside style={desktopStyles.sidebar}>
             <div style={desktopStyles.brand}>
-              <p className="eyebrow">Merchant Admin · v2.8</p>
+              <p className="eyebrow">Merchant Admin · v2.9</p>
               <h2 style={{ margin: 0 }}>绿植租赁后台</h2>
               <span style={{ color: "#738278", fontSize: 13 }}>公司端 / 商户端</span>
             </div>
@@ -2540,27 +2679,67 @@ ${areaText || "暂无区域"}
             )}
 
             {merchantTab === "商品库" && (
-              <section style={desktopStyles.panel}>
-                <div className="section-title-row">
-                  <div><p className="eyebrow">Product Library</p><h2>商品库雏形</h2></div>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
-                  {products.map((product) => (
-                    <article className="product-card" key={product.id}>
-                      <div className="product-image">{product.image}</div>
-                      <div className="product-info">
-                        <h3>{product.name}</h3>
-                        <p>{product.category}｜{product.subCategory}</p>
-                        <strong>¥ {product.pricePerDay}/天</strong>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-                <div className="empty-card" style={{ marginTop: 14 }}>
-                  <p>这里先展示当前内置商品库</p>
-                  <span>下一步可以把商品库拆到 Supabase，支持新增、编辑、停用和分类管理。</span>
-                </div>
-              </section>
+              <>
+                <section style={desktopStyles.panel}>
+                  <div className="section-title-row">
+                    <div><p className="eyebrow">Product Library</p><h2>商品库</h2></div>
+                    <button style={desktopStyles.actionButton} onClick={() => setShowCreateProductSheet(true)}>新增商品</button>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 12, marginBottom: 14 }}>
+                    <input
+                      className="area-input"
+                      value={productSearchText}
+                      onChange={(e) => setProductSearchText(e.target.value)}
+                      placeholder="搜索商品名称、分类、描述"
+                    />
+                    <select
+                      className="area-input"
+                      value={productCategoryFilter}
+                      onChange={(e) => setProductCategoryFilter(e.target.value)}
+                    >
+                      {["全部", ...productCategories].map((category) => (
+                        <option key={category} value={category}>{category}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="empty-card" style={{ marginBottom: 14 }}>
+                    <p>商品库已进入后台管理雏形</p>
+                    <span>这一版先支持新增商品、图片链接预览、上架/停用。后续接 Supabase Storage 后，就能真正上传商品照片。</span>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+                    {filteredMerchantProducts.map((product) => (
+                      <article className="product-card" key={product.id}>
+                        <div className="product-image">
+                          {isImageUrl(getProductImage(product)) ? (
+                            <img src={getProductImage(product)} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 16 }} />
+                          ) : (
+                            getProductImage(product)
+                          )}
+                        </div>
+                        <div className="product-info">
+                          <h3>{product.name}</h3>
+                          <p>{product.category}｜{product.subCategory}</p>
+                          <p>{product.description}</p>
+                          <div className="product-bottom">
+                            <strong>¥ {product.pricePerDay}/天</strong>
+                            <button onClick={() => toggleProductStatus(product.id)}>{product.status || "上架"}</button>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+
+                  {filteredMerchantProducts.length === 0 && (
+                    <div className="empty-card" style={{ marginTop: 14 }}>
+                      <p>没有找到商品</p>
+                      <span>可以换个关键词，或点击“新增商品”。</span>
+                    </div>
+                  )}
+                </section>
+              </>
             )}
 
             {merchantTab === "设置" && (
@@ -2584,13 +2763,203 @@ ${areaText || "暂无区域"}
             )}
 
             {showCreateOrderSheet && renderCreateOrderSheet()}
+            {showCreateProductSheet && renderCreateProductSheet()}
           </main>
         </div>
       </div>
     );
   }
 
+  function renderCreateProductSheet() {
+    const overlayStyle = {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(15, 39, 26, 0.36)",
+      zIndex: 80,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    };
+
+    const panelStyle = {
+      width: "min(920px, calc(100vw - 48px))",
+      maxHeight: "88vh",
+      overflowY: "auto",
+      background: "rgba(255,255,255,0.98)",
+      borderRadius: 28,
+      padding: 24,
+      boxShadow: "0 28px 80px rgba(20, 54, 34, 0.22)",
+    };
+
+    const gridStyle = {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 16,
+    };
+
+    const preview = getProductImage(newProductForm);
+
+    return (
+      <div style={overlayStyle} onClick={() => setShowCreateProductSheet(false)}>
+        <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
+          <div className="section-title-row">
+            <div><p className="eyebrow">New Product · v2.9</p><h2>新增商品</h2></div>
+            <button className="close-button" onClick={() => setShowCreateProductSheet(false)}>×</button>
+          </div>
+
+          <div style={gridStyle}>
+            <section className="plan-summary-card" style={{ margin: 0 }}>
+              <div className="sheet-block">
+                <p className="sheet-label">商品名称</p>
+                <input className="area-input" value={newProductForm.name} onChange={(e) => setNewProductForm((form) => ({ ...form, name: e.target.value }))} placeholder="例如：天堂鸟 / 发财树 / 前台组合" />
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">分类</p>
+                <select className="area-input" value={newProductForm.category} onChange={(e) => setNewProductForm((form) => ({ ...form, category: e.target.value }))}>
+                  {productCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+                </select>
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">子分类</p>
+                <select className="area-input" value={newProductForm.subCategory} onChange={(e) => setNewProductForm((form) => ({ ...form, subCategory: e.target.value }))}>
+                  {subCategories.map((subCategory) => <option key={subCategory} value={subCategory}>{subCategory}</option>)}
+                </select>
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">日租金</p>
+                <input className="area-input" type="number" value={newProductForm.pricePerDay} onChange={(e) => setNewProductForm((form) => ({ ...form, pricePerDay: e.target.value }))} placeholder="例如：3.2" />
+              </div>
+            </section>
+
+            <section className="plan-summary-card" style={{ margin: 0 }}>
+              <div className="sheet-block">
+                <p className="sheet-label">商品照片链接</p>
+                <input className="area-input" value={newProductForm.imageUrl} onChange={(e) => setNewProductForm((form) => ({ ...form, imageUrl: e.target.value }))} placeholder="先粘贴图片 URL，后续接真正上传" />
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">没有图片时的占位符</p>
+                <input className="area-input" value={newProductForm.image} onChange={(e) => setNewProductForm((form) => ({ ...form, image: e.target.value }))} placeholder="例如：🪴" />
+              </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">描述</p>
+                <input className="area-input" value={newProductForm.description} onChange={(e) => setNewProductForm((form) => ({ ...form, description: e.target.value }))} placeholder="适合什么场景、寓意、养护难度" />
+              </div>
+
+              <div className="empty-card">
+                <p>照片上传入口已预留</p>
+                <span>这一版先用图片链接预览；后面接 Supabase Storage 后，商户就可以直接上传本地照片。</span>
+              </div>
+            </section>
+          </div>
+
+          <section className="plan-summary-card" style={{ marginTop: 16 }}>
+            <div className="section-title-row">
+              <div><p className="eyebrow">Preview</p><h2>商品预览</h2></div>
+            </div>
+            <article className="product-card" style={{ maxWidth: 360 }}>
+              <div className="product-image">
+                {isImageUrl(preview) ? <img src={preview} alt={newProductForm.name || "商品预览"} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 16 }} /> : preview}
+              </div>
+              <div className="product-info">
+                <h3>{newProductForm.name || "新商品名称"}</h3>
+                <p>{newProductForm.category}｜{newProductForm.subCategory}</p>
+                <p>{newProductForm.description || "商品描述会显示在这里"}</p>
+                <strong>¥ {newProductForm.pricePerDay || "-"}/天</strong>
+              </div>
+            </article>
+          </section>
+
+          <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+            <button className="ghost-button" onClick={() => setShowCreateProductSheet(false)}>取消</button>
+            <button className="submit-plan-button" onClick={createMerchantProduct}>保存商品</button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   function renderCreateOrderSheet() {
+    if (activeRole === "merchant") {
+      const overlayStyle = {
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 39, 26, 0.36)",
+        zIndex: 80,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      };
+
+      const panelStyle = {
+        width: "min(980px, calc(100vw - 48px))",
+        maxHeight: "88vh",
+        overflowY: "auto",
+        background: "rgba(255,255,255,0.98)",
+        borderRadius: 28,
+        padding: 24,
+        boxShadow: "0 28px 80px rgba(20, 54, 34, 0.22)",
+      };
+
+      return (
+        <div
+          style={overlayStyle}
+          onClick={() => {
+            setShowCreateOrderSheet(false);
+            setIsCreateOrderInputFocused(false);
+          }}
+        >
+          <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
+            <div className="section-title-row">
+              <div><p className="eyebrow">New Order · v2.9</p><h2>创建新订单</h2></div>
+              <button
+                className="close-button"
+                onClick={() => {
+                  setShowCreateOrderSheet(false);
+                  setIsCreateOrderInputFocused(false);
+                }}
+              >×</button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+              <section className="plan-summary-card" style={{ margin: 0 }}>
+                <div className="section-title-row"><div><p className="eyebrow">Customer</p><h2>客户信息</h2></div></div>
+                <div className="sheet-block"><p className="sheet-label">项目 / 客户名称</p><input className="area-input" value={newOrderForm.customerName} onChange={(e) => setNewOrderForm((form) => ({ ...form, customerName: e.target.value }))} placeholder="例如：南通万达 A3 写字楼" /></div>
+                <div className="sheet-block"><p className="sheet-label">联系人</p><input className="area-input" value={newOrderForm.contactName} onChange={(e) => setNewOrderForm((form) => ({ ...form, contactName: e.target.value }))} placeholder="例如：王经理" /></div>
+                <div className="sheet-block"><p className="sheet-label">联系电话</p><input className="area-input" inputMode="tel" value={newOrderForm.phone} onChange={(e) => setNewOrderForm((form) => ({ ...form, phone: e.target.value }))} placeholder="例如：13800001111" /></div>
+                <div className="sheet-block"><p className="sheet-label">客户地址</p><input className="area-input" value={newOrderForm.address} onChange={(e) => setNewOrderForm((form) => ({ ...form, address: e.target.value }))} placeholder="例如：南通港闸区万达 A3 写字楼" /></div>
+              </section>
+
+              <section className="plan-summary-card" style={{ margin: 0 }}>
+                <div className="section-title-row"><div><p className="eyebrow">Project</p><h2>项目需求</h2></div></div>
+                <div className="sheet-block"><p className="sheet-label">订单来源</p><div className="option-grid payment-grid">{ORDER_SOURCES.map((source) => (<button key={source} className={newOrderForm.source === source ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, source }))}>{source}</button>))}</div></div>
+                <div className="sheet-block"><p className="sheet-label">项目面积</p><input className="area-input" value={newOrderForm.areaSize} onChange={(e) => setNewOrderForm((form) => ({ ...form, areaSize: e.target.value }))} placeholder="例如：260㎡" /></div>
+                <div className="sheet-block"><p className="sheet-label">期望进场时间</p><input className="area-input" value={newOrderForm.expectedDate} onChange={(e) => setNewOrderForm((form) => ({ ...form, expectedDate: e.target.value }))} placeholder="例如：2026-06-08" /></div>
+                <div className="sheet-block"><p className="sheet-label">标签，用英文逗号分隔</p><input className="area-input" value={newOrderForm.tagsText} onChange={(e) => setNewOrderForm((form) => ({ ...form, tagsText: e.target.value }))} placeholder="例如：办公室,长期租赁" /></div>
+                <div className="sheet-block"><p className="sheet-label">需求描述</p><input className="area-input" value={newOrderForm.description} onChange={(e) => setNewOrderForm((form) => ({ ...form, description: e.target.value }))} placeholder="例如：前台和会议室需要绿植配置" /></div>
+              </section>
+            </div>
+
+            <div className="empty-card" style={{ marginTop: 16 }}>
+              <p>创建后会直接进入待接单</p>
+              <span>员工端刷新后即可接单，后续再配置区域、商品和报价。</span>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+              <button className="ghost-button" onClick={() => setShowCreateOrderSheet(false)}>取消</button>
+              <button className="submit-plan-button" onClick={createMerchantOrder}>创建并派发订单</button>
+            </div>
+          </section>
+        </div>
+      );
+    }
+
     const sheetStyle = {
       maxHeight: "86vh",
       overflowY: "auto",
@@ -2641,7 +3010,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v2.8</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v2.9</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
@@ -2734,7 +3103,7 @@ ${areaText || "暂无区域"}
   return (
     <div className="app">
       <header className="app-header">
-        <div><p className="eyebrow">Staff Mobile · v2.8</p><h1>员工接单端</h1></div>
+        <div><p className="eyebrow">Staff Mobile · v2.9</p><h1>员工接单端</h1></div>
         <button className="role-button" onClick={() => switchRole("merchant")}>商户测试</button>
       </header>
 
