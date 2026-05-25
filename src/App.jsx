@@ -499,6 +499,7 @@ function App() {
   const [isCreateOrderInputFocused, setIsCreateOrderInputFocused] = useState(false);
 
   const [showDetailBlock, setShowDetailBlock] = useState(false);
+  const [completeForm, setCompleteForm] = useState({ scenePhotos: ["", "", ""], plantPhotos: ["", "", ""], remark: "" });
 
   const [newOrderForm, setNewOrderForm] = useState({
     customerName: "",
@@ -869,6 +870,7 @@ function App() {
     setEditingCustomerId(null);
     setIsCreateOrderInputFocused(false);
     setShowDetailBlock(false);
+    setCompleteForm({ scenePhotos: ["", "", ""], plantPhotos: ["", "", ""], remark: "" });
   }
 
   function openMerchantPlanWorkbench(order) {
@@ -1027,6 +1029,7 @@ function App() {
     setCurrentOrderId(order.id);
     setCurrentPage("plan");
     setShowDetailBlock(false);
+    setCompleteForm({ scenePhotos: ["", "", ""], plantPhotos: ["", "", ""], remark: "" });
   }
 
   function addAreaWithName(inputName) {
@@ -1831,7 +1834,7 @@ ${areaText || "暂无区域"}
               <button className="primary-button" onClick={() => openPlanForOrder(order)}>
                 查看方案
               </button>
-              <button className="submit-plan-button" onClick={() => completeOrderByStaff(order.id)}>
+              <button className="submit-plan-button" onClick={() => { setCurrentOrderId(order.id); setCurrentPage("completeUpload"); }}>
                 完成
               </button>
             </>
@@ -2088,6 +2091,113 @@ ${areaText || "暂无区域"}
     );
   }
 
+
+  function updateCompletePhoto(group, index, value) {
+    setCompleteForm((form) => ({
+      ...form,
+      [group]: form[group].map((item, i) => (i === index ? value : item)),
+    }));
+  }
+
+  function renderPhotoUploadBlock(title, group, tip) {
+    const values = completeForm[group] || ["", "", ""];
+    return (
+      <section className="plan-summary-card" style={{ padding: 18 }}>
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">UPLOAD</p>
+            <h2>{title}</h2>
+          </div>
+          <span className="area-size">最多 3 张</span>
+        </div>
+        <div className="empty-card" style={{ textAlign: "left", marginBottom: 12 }}>
+          <p>{tip}</p>
+          <span>当前先用图片链接模拟上传，后面接 Supabase Storage 后会改成真正选择照片上传。</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+          {values.map((url, index) => (
+            <div key={`${group}-${index}`} style={{ border: "1px solid rgba(39,92,61,.14)", borderRadius: 18, padding: 10, background: "#f7fbf7" }}>
+              <div style={{ aspectRatio: "1 / 1", borderRadius: 14, background: "#eef6ee", display: "grid", placeItems: "center", overflow: "hidden", marginBottom: 8 }}>
+                {isImageUrl(url) ? <img src={url} alt="上传预览" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <strong style={{ fontSize: 28, color: "#2b7a4b" }}>＋</strong>}
+              </div>
+              <input
+                className="area-input"
+                value={url}
+                onChange={(e) => updateCompletePhoto(group, index, e.target.value)}
+                placeholder={`图片链接 ${index + 1}`}
+                style={{ padding: "10px 12px", fontSize: 13 }}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  function submitCompleteUpload() {
+    if (!currentOrder) return;
+    updateOrder(
+      currentOrder.id,
+      (order) => {
+        const next = {
+          ...order,
+          completePhotos: completeForm,
+        };
+        return addTimeline(next, "员工提交完成照片和备注");
+      },
+      "完成照片已同步"
+    );
+    completeOrderByStaff(currentOrder.id);
+    setCurrentPage("orders");
+  }
+
+  function renderCompleteUploadPage() {
+    if (!currentOrder) return null;
+    return (
+      <div className="app">
+        <header className="plan-header">
+          <button className="back-button" onClick={() => setCurrentPage("plan")}>←</button>
+          <div>
+            <p className="eyebrow">Task Complete · v3.3</p>
+            <h1>任务完成</h1>
+          </div>
+        </header>
+
+        <section className="plan-summary-card" style={{ padding: 18 }}>
+          <div className="plan-summary-top">
+            <div><p>当前订单</p><strong>{currentOrder.customerName}</strong></div>
+            <div><p>完成资料</p><strong>照片 + 备注</strong></div>
+          </div>
+          <div className="empty-card" style={{ marginTop: 12, textAlign: "left" }}>
+            <p>提交前补充现场资料</p>
+            <span>先按视频逻辑搭建：大场景图、植物状态图，每组最多 3 张。后续再接真实上传。</span>
+          </div>
+        </section>
+
+        {renderPhotoUploadBlock("大场景图", "scenePhotos", "用于记录客户现场整体摆放效果。")}
+        {renderPhotoUploadBlock("植物状态图", "plantPhotos", "用于记录植物状态、细节和现场交付情况。")}
+
+        <section className="plan-summary-card" style={{ padding: 18 }}>
+          <p className="sheet-label">完成备注</p>
+          <textarea
+            className="area-input"
+            value={completeForm.remark}
+            onChange={(e) => setCompleteForm((form) => ({ ...form, remark: e.target.value }))}
+            placeholder="例如：已按方案完成摆放，客户现场确认无异议。"
+            rows={4}
+            style={{ resize: "vertical", minHeight: 110 }}
+          />
+        </section>
+
+        <nav className="bottom-actions">
+          <button onClick={() => setCurrentPage("plan")}>返回方案</button>
+          <button onClick={() => copyCustomerPlanLink(currentOrder)}>客户链接</button>
+          <button className="submit-plan-button" onClick={submitCompleteUpload}>提交完成</button>
+        </nav>
+      </div>
+    );
+  }
+
   function renderCustomerPlanView() {
     if (!customerPlanId) return null;
 
@@ -2166,8 +2276,8 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
-            <p className="eyebrow">Staff Workbench · v3.2</p>
-            <h1>{currentOrder.customerName}</h1>
+            <p className="eyebrow">Staff Workbench · v3.3</p>
+            <h1>{currentPage === "plan" ? "建方案" : currentOrder.customerName}</h1>
           </div>
         </header>
 
@@ -2213,8 +2323,8 @@ ${areaText || "暂无区域"}
               <p>订单执行中</p>
               <span>服务完成后可以标记订单完成。</span>
             </div>
-            <button className="submit-sheet-button" onClick={() => completeOrderByStaff(currentOrder.id)}>
-              完成订单
+            <button className="submit-sheet-button" onClick={() => setCurrentPage("completeUpload")}>
+              完成任务并上传照片
             </button>
           </section>
         )}
@@ -2352,12 +2462,12 @@ ${areaText || "暂无区域"}
 
   function renderProductSheet() {
     const sheetStyle = {
-      height: "88vh",
-      maxHeight: "88vh",
+      height: "92vh",
+      maxHeight: "92vh",
       overflow: "hidden",
       display: "flex",
       flexDirection: "column",
-      paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
+      paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
     };
 
     const topStyle = {
@@ -2375,7 +2485,7 @@ ${areaText || "暂无区域"}
       minHeight: 0,
       overflow: "hidden",
       display: "grid",
-      gridTemplateColumns: "112px minmax(0, 1fr)",
+      gridTemplateColumns: "96px minmax(0, 1fr)",
       gap: 10,
       paddingTop: 10,
     };
@@ -2384,7 +2494,7 @@ ${areaText || "暂无区域"}
       overflowY: "auto",
       minHeight: 0,
       paddingRight: 4,
-      paddingBottom: 112,
+      paddingBottom: 150,
     };
 
     const clearButtonStyle = {
@@ -2413,6 +2523,14 @@ ${areaText || "暂无区域"}
             <div className="rent-preview">
               <span>当前区域</span>
               <strong>已选 {getAreaProductCount(currentArea)} 件｜日租金 ¥ {money(getAreaDailyRent(currentArea))}</strong>
+            </div>
+
+            <div className="category-tabs" style={{ marginBottom: 10 }}>
+              {['植物', '花盆', '资材'].map((name) => (
+                <button key={name} className={name === '植物' ? 'active' : ''} onClick={() => name !== '植物' && alert(`${name}库已经预留，后续补充数据。`)}>
+                  {name}
+                </button>
+              ))}
             </div>
 
             <div className="sheet-block" style={{ marginBottom: 8 }}>
@@ -2454,8 +2572,8 @@ ${areaText || "暂无区域"}
                   const selectedQuantity = selected ? Number(selected.quantity || 0) : 0;
 
                   return (
-                    <article className="product-card" key={product.id}>
-                      <div className="product-image">{isImageUrl(getProductImage(product)) ? <img src={getProductImage(product)} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 16 }} /> : getProductImage(product)}</div>
+                    <article className="product-card" key={product.id} style={{ minHeight: 118, padding: 12, gap: 12 }}>
+                      <div className="product-image" style={{ width: 76, height: 76, flexShrink: 0 }}>{isImageUrl(getProductImage(product)) ? <img src={getProductImage(product)} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 16 }} /> : getProductImage(product)}</div>
                       <div className="product-info">
                         <h3>{product.name}</h3>
                         <p>{product.description}</p>
@@ -2473,11 +2591,12 @@ ${areaText || "暂无区域"}
             </section>
           </main>
 
-          <button className="submit-sheet-button" onClick={() => setShowProductSheet(false)}>
-            已选 {getAreaProductCount(currentArea)} 件｜日租金 ¥ {money(getAreaDailyRent(currentArea))}｜完成选品
-          </button>
-
-          <button style={clearButtonStyle} onClick={clearCurrentAreaItems}>清空当前区域商品</button>
+          <div style={{ position: "sticky", bottom: 0, zIndex: 10, background: "linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.96) 22%, #fff 100%)", padding: "18px 0 4px" }}>
+            <button className="submit-sheet-button" onClick={() => setShowProductSheet(false)}>
+              已选 {getAreaProductCount(currentArea)} 件｜日租金 ¥ {money(getAreaDailyRent(currentArea))}｜完成选品
+            </button>
+            <button style={clearButtonStyle} onClick={clearCurrentAreaItems}>清空当前区域商品</button>
+          </div>
         </section>
       </div>
     );
@@ -2867,7 +2986,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.shell}>
           <div style={desktopStyles.topbar}>
             <div>
-              <p className="eyebrow">Review Desk · v3.2</p>
+              <p className="eyebrow">Review Desk · v3.3</p>
               <h1>{order.customerName}</h1>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -2950,7 +3069,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.layout}>
           <aside style={desktopStyles.sidebar}>
             <div style={desktopStyles.brand}>
-              <p className="eyebrow">Merchant Admin · v3.2</p>
+              <p className="eyebrow">Merchant Admin · v3.3</p>
               <h2 style={{ margin: 0 }}>绿植租赁后台</h2>
               <span style={{ color: "#738278", fontSize: 13 }}>公司端 / 商户端</span>
             </div>
@@ -3105,7 +3224,7 @@ ${areaText || "暂无区域"}
                           key={product.id}
                           style={isListed ? undefined : { opacity: 0.55, filter: "grayscale(0.75)", background: "#f4f6f2" }}
                         >
-                          <div className="product-image">
+                          <div className="product-image" style={{ width: 76, height: 76, flexShrink: 0 }}>
                             {isImageUrl(getProductImage(product)) ? (
                               <img src={getProductImage(product)} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 16 }} />
                             ) : (
@@ -3250,7 +3369,7 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">Customer Editor · v3.2</p><h2>{editingCustomerId ? "编辑客户" : "新增客户"}</h2></div>
+            <div><p className="eyebrow">Customer Editor · v3.3</p><h2>{editingCustomerId ? "编辑客户" : "新增客户"}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>×</button>
           </div>
 
@@ -3315,7 +3434,7 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => setShowCreateProductSheet(false)}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">Product Editor · v3.2</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
+            <div><p className="eyebrow">Product Editor · v3.3</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}>×</button>
           </div>
 
@@ -3374,7 +3493,7 @@ ${areaText || "暂无区域"}
               <div><p className="eyebrow">Preview</p><h2>商品预览</h2></div>
             </div>
             <article className="product-card" style={{ maxWidth: 360 }}>
-              <div className="product-image">
+              <div className="product-image" style={{ width: 76, height: 76, flexShrink: 0 }}>
                 {isImageUrl(preview) ? <img src={preview} alt={newProductForm.name || "商品预览"} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 16 }} /> : preview}
               </div>
               <div className="product-info">
@@ -3444,7 +3563,7 @@ ${areaText || "暂无区域"}
         >
           <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
             <div className="section-title-row">
-              <div><p className="eyebrow">New Order · v3.2</p><h2>创建新订单</h2></div>
+              <div><p className="eyebrow">New Order · v3.3</p><h2>创建新订单</h2></div>
               <button
                 className="close-button"
                 onClick={() => {
@@ -3576,7 +3695,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v3.2</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v3.3</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
@@ -3647,15 +3766,24 @@ ${areaText || "暂无区域"}
           )}
 
           <div style={stickyStyle}>
-            <button
-              className="submit-sheet-button"
-              onClick={() => {
-                setIsCreateOrderInputFocused(false);
-                createMerchantOrder();
-              }}
-            >
-              创建并派发订单
-            </button>
+            <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12 }}>
+              <button
+                className="ghost-button"
+                style={{ borderRadius: 18, padding: "15px 18px", fontWeight: 900 }}
+                onClick={() => { setShowCreateOrderSheet(false); setIsCreateOrderInputFocused(false); }}
+              >
+                取消
+              </button>
+              <button
+                className="submit-sheet-button"
+                onClick={() => {
+                  setIsCreateOrderInputFocused(false);
+                  createMerchantOrder();
+                }}
+              >
+                创建并派发订单
+              </button>
+            </div>
           </div>
         </section>
       </div>
@@ -3663,13 +3791,14 @@ ${areaText || "暂无区域"}
   }
 
   if (customerPlanId) return renderCustomerPlanView();
+  if (currentPage === "completeUpload" && currentOrder) return renderCompleteUploadPage();
   if (currentPage === "plan" && currentOrder && currentPlan) return renderPlanPage();
   if (activeRole === "merchant") return renderMerchantPage();
 
   return (
     <div className="app">
       <header className="app-header">
-        <div><p className="eyebrow">Staff Mobile · v3.2</p><h1>员工接单端</h1></div>
+        <div><p className="eyebrow">Staff Mobile · v3.3</p><h1>员工接单端</h1></div>
         <button className="role-button" onClick={() => switchRole("merchant")}>商户测试</button>
       </header>
 
