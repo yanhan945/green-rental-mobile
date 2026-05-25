@@ -7,8 +7,8 @@ const ORDERS_API = `${SUPABASE_URL}/rest/v1/orders`;
 
 const STORAGE_KEY = "green-rental-mobile-v24";
 
-const STAFF_TABS = ["待接单", "进行中", "待确认", "已完成"];
-const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "已完成"];
+const STAFF_TABS = ["待接单", "做方案", "执行中", "已完成"];
+const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "待商户归档", "已完成"];
 const MERCHANT_STATUS_TABS = ["全部", ...ORDER_STATUS];
 
 const ORDER_SOURCES = ["商户派单", "客户预约", "电话登记", "线下登记"];
@@ -290,9 +290,9 @@ function createEmptyPlan(order, planType = "租赁方案") {
 
 function getStaffStatuses(tab) {
   if (tab === "待接单") return ["待接单"];
-  if (tab === "进行中") return ["配置中", "方案已确认", "执行中"];
-  if (tab === "待确认") return ["待商户确认"];
-  if (tab === "已完成") return ["已完成"];
+  if (tab === "做方案") return ["配置中", "待商户确认"];
+  if (tab === "执行中") return ["方案已确认", "执行中"];
+  if (tab === "已完成") return ["待商户归档", "已完成"];
   return ["待接单"];
 }
 
@@ -366,9 +366,13 @@ function App() {
     return orders.filter((order) => order.status === "待商户确认");
   }, [orders]);
 
+  const pendingArchiveOrders = useMemo(() => {
+    return orders.filter((order) => order.status === "待商户归档");
+  }, [orders]);
+
   const submittedOrders = useMemo(() => {
     return orders.filter((order) =>
-      ["待商户确认", "方案已确认", "执行中", "已完成"].includes(order.status)
+      ["待商户确认", "方案已确认", "执行中", "待商户归档", "已完成"].includes(order.status)
     );
   }, [orders]);
 
@@ -491,6 +495,20 @@ function App() {
     }, 100);
 
     setSyncMessage("已切换到“待商户确认”列表。");
+  }
+
+  function handleViewPendingArchive() {
+    setMerchantTab("订单总览");
+    setMerchantStatusFilter("待商户归档");
+
+    window.setTimeout(() => {
+      merchantListRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+
+    setSyncMessage("已切换到“待商户归档”列表。");
   }
 
   function updateOrderPlan(orderId, planUpdater, cloudMessage = "方案已同步") {
@@ -666,7 +684,7 @@ function App() {
     setCurrentPage("plan");
     setSelectedOrder(null);
     setPlanType("租赁方案");
-    setActiveStaffTab("进行中");
+    setActiveStaffTab("做方案");
   }
 
   function openPlanForOrder(order) {
@@ -856,7 +874,7 @@ function App() {
 
     setShowSubmitSheet(false);
     setCurrentPage("orders");
-    setActiveStaffTab("待确认");
+    setActiveStaffTab("做方案");
   }
 
   function merchantConfirmPlan(orderId) {
@@ -944,7 +962,7 @@ function App() {
       "执行状态已同步"
     );
 
-    setActiveStaffTab("进行中");
+    setActiveStaffTab("执行中");
   }
 
   function completeOrderByStaff(orderId) {
@@ -963,26 +981,54 @@ function App() {
       (order) => {
         const next = {
           ...order,
-          status: "已完成",
-          planStatus: "已完成",
+          status: "待商户归档",
+          planStatus: "待商户归档",
+          merchantArchiveStatus: "待归档",
           deliveryStatus: "已到达",
           executionStatus: "已完成服务",
           completedAt: nowText(),
           plan: order.plan
             ? {
                 ...order.plan,
-                status: "已完成",
+                status: "待商户归档",
                 completedAt: nowText(),
               }
             : order.plan,
         };
 
-        return addTimeline(next, "员工标记订单已完成");
+        return addTimeline(next, "员工标记订单已完成，等待商户确认归档");
       },
-      "订单完成已同步"
+      "订单完成待归档已同步"
     );
 
     setActiveStaffTab("已完成");
+  }
+
+  function merchantArchiveOrder(orderId) {
+    updateOrder(
+      orderId,
+      (order) => {
+        const next = {
+          ...order,
+          status: "已完成",
+          planStatus: "已完成",
+          merchantArchiveStatus: "已归档",
+          archivedAt: nowText(),
+          plan: order.plan
+            ? {
+                ...order.plan,
+                status: "已完成",
+                archivedAt: nowText(),
+              }
+            : order.plan,
+        };
+
+        return addTimeline(next, "商户确认订单完成并归档");
+      },
+      "订单归档已同步"
+    );
+
+    alert("已确认归档，订单正式完成。");
   }
 
   function createMerchantOrder() {
@@ -1087,6 +1133,8 @@ function App() {
   function getOrderHint(order) {
     if (order.status === "待商户确认") return "员工已提交方案，等待商户确认。";
     if (order.status === "方案已确认") return "商户已确认方案，可以开始执行。";
+    if (order.status === "待商户归档") return "员工已完成订单，等待商户查看并确认归档。";
+    if (order.status === "已完成") return "商户已确认归档，订单正式完成。";
     if (order.status === "配置中" && order.merchantConfirmStatus === "要求修改") {
       return `商户要求修改：${order.revisionReason || "请调整方案"}`;
     }
@@ -1272,7 +1320,7 @@ ${areaText || "暂无区域"}
             </>
           )}
 
-          {mode === "staff" && order.status === "已完成" && (
+          {mode === "staff" && ["待商户归档", "已完成"].includes(order.status) && (
             <button className="primary-button" onClick={() => openPlanForOrder(order)}>
               查看
             </button>
@@ -1601,7 +1649,7 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
-            <p className="eyebrow">Staff Workbench · v2.4</p>
+            <p className="eyebrow">Staff Workbench · v2.5</p>
             <h1>{currentOrder.customerName}</h1>
           </div>
         </header>
@@ -1647,6 +1695,15 @@ ${areaText || "暂无区域"}
             <button className="submit-sheet-button" onClick={() => completeOrderByStaff(currentOrder.id)}>
               完成订单
             </button>
+          </section>
+        )}
+
+        {currentOrder.status === "待商户归档" && (
+          <section className="plan-summary-card">
+            <div className="empty-card">
+              <p>订单已完成，等待商户归档</p>
+              <span>商户端确认归档后，这单才会进入正式已完成。</span>
+            </div>
           </section>
         )}
 
@@ -1959,8 +2016,8 @@ ${areaText || "暂无区域"}
 
           <div className="sheet-block">
             <div className="empty-card">
-              <p>提交后会进入“待确认”</p>
-              <span>商户确认后，员工端刷新订单即可看到执行入口。</span>
+              <p>提交后会留在“做方案”</p>
+              <span>商户确认前显示为待商户确认；确认后会进入执行中。</span>
             </div>
 
             <div className="confirm-row"><span>项目 / 客户</span><strong>{currentOrder.customerName}</strong></div>
@@ -2047,6 +2104,18 @@ ${areaText || "暂无区域"}
             </section>
           )}
 
+          {selectedOrderDetail.status === "待商户归档" && (
+            <section className="plan-summary-card">
+              <div className="empty-card">
+                <p>订单已完成，待商户归档</p>
+                <span>员工已完成服务。确认后订单会进入正式已完成。</span>
+              </div>
+              <button className="submit-sheet-button" onClick={() => merchantArchiveOrder(selectedOrderDetail.id)}>
+                确认归档
+              </button>
+            </section>
+          )}
+
           <StatusSummaryCard order={selectedOrderDetail} />
           <ExtraDetails order={selectedOrderDetail} />
         </div>
@@ -2084,6 +2153,18 @@ ${areaText || "暂无区域"}
                   标记已转发客户
                 </button>
               </div>
+            </section>
+          )}
+
+          {merchantViewingOrder.status === "待商户归档" && (
+            <section className="plan-summary-card">
+              <div className="empty-card">
+                <p>订单已完成，待商户归档</p>
+                <span>员工已完成服务。确认后订单会进入正式已完成。</span>
+              </div>
+              <button className="submit-sheet-button" onClick={() => merchantArchiveOrder(merchantViewingOrder.id)}>
+                确认归档
+              </button>
             </section>
           )}
 
@@ -2131,7 +2212,7 @@ ${areaText || "暂无区域"}
     return (
       <div className="app">
         <header className="app-header">
-          <div><p className="eyebrow">Merchant Console · v2.4</p><h1>商户管理端</h1></div>
+          <div><p className="eyebrow">Merchant Console · v2.5</p><h1>商户管理端</h1></div>
           <button className="role-button" onClick={() => switchRole("staff")}>切到员工端</button>
         </header>
 
@@ -2145,6 +2226,18 @@ ${areaText || "暂无区域"}
             </div>
             <button className="submit-sheet-button" onClick={handleViewPendingMerchantConfirm}>
               查看待确认方案
+            </button>
+          </section>
+        )}
+
+        {pendingArchiveOrders.length > 0 && (
+          <section className="plan-summary-card">
+            <div className="empty-card">
+              <p>有 {pendingArchiveOrders.length} 个订单已完成，待归档</p>
+              <span>员工已标记完成，请查看订单后确认归档。</span>
+            </div>
+            <button className="submit-sheet-button" onClick={handleViewPendingArchive}>
+              查看待归档订单
             </button>
           </section>
         )}
@@ -2168,7 +2261,11 @@ ${areaText || "暂无区域"}
           </div>
           <div className="plan-summary-top">
             <div><p>执行中</p><strong>{statusCounts["执行中"] || 0} 单</strong></div>
+            <div><p>待归档</p><strong>{statusCounts["待商户归档"] || 0} 单</strong></div>
+          </div>
+          <div className="plan-summary-top">
             <div><p>已完成</p><strong>{statusCounts["已完成"] || 0} 单</strong></div>
+            <div><p>云同步</p><strong>{syncState}</strong></div>
           </div>
         </section>
 
@@ -2374,7 +2471,7 @@ ${areaText || "暂无区域"}
   return (
     <div className="app">
       <header className="app-header">
-        <div><p className="eyebrow">Staff Mobile · v2.4</p><h1>员工接单端</h1></div>
+        <div><p className="eyebrow">Staff Mobile · v2.5</p><h1>员工接单端</h1></div>
         <button className="role-button" onClick={() => switchRole("merchant")}>商户测试</button>
       </header>
 
