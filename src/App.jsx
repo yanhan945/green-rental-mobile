@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
-const STORAGE_KEY = "green-rental-mobile-v20";
+const STORAGE_KEY = "green-rental-mobile-v21";
 
-const STATUS_TABS = ["待接单", "配置中", "方案已提交", "已完成"];
-const MERCHANT_STATUS_TABS = ["全部", "待接单", "配置中", "方案已提交", "已完成"];
+const ORDER_STATUS = [
+  "待接单",
+  "配置中",
+  "待商户确认",
+  "方案已确认",
+  "执行中",
+  "已完成",
+];
+
+const MERCHANT_STATUS_TABS = ["全部", ...ORDER_STATUS];
+
 const ORDER_SOURCES = ["商户派单", "客户预约", "电话登记", "线下登记"];
 const DELIVERY_STATUS = ["未出发", "前往中", "已到达"];
 const EXECUTION_STATUS = ["待联系", "已联系", "已出发", "已到达", "已完成服务"];
@@ -15,15 +24,87 @@ const productCategories = ["室内绿植", "室外植物", "月租套餐", "仿�
 const subCategories = ["大型植物", "中型植物", "小型植物", "水培植物", "盆景植物"];
 
 const products = [
-  { id: 1, name: "原生发财树", category: "室内绿植", subCategory: "大型植物", description: "寓意财源滚滚，适合前台、办公室、会议室。", pricePerDay: 2.5, image: "🌳" },
-  { id: 2, name: "天堂鸟", category: "室内绿植", subCategory: "大型植物", description: "株型舒展，适合大堂、休息区、开放办公区。", pricePerDay: 3.2, image: "🪴" },
-  { id: 3, name: "绿萝柱", category: "室内绿植", subCategory: "中型植物", description: "耐阴好养，适合办公室角落和走廊区域。", pricePerDay: 1.6, image: "🌿" },
-  { id: 4, name: "红掌", category: "室内绿植", subCategory: "小型植物", description: "颜色鲜明，适合前台、桌面、接待区点缀。", pricePerDay: 0.8, image: "🌺" },
-  { id: 5, name: "水培白掌", category: "室内绿植", subCategory: "水培植物", description: "干净清爽，适合会议桌、茶水间、前台。", pricePerDay: 0.7, image: "💧" },
-  { id: 6, name: "罗汉松盆景", category: "室内绿植", subCategory: "盆景植物", description: "稳重大气，适合老板办公室、会客区。", pricePerDay: 4.5, image: "🎍" },
-  { id: 7, name: "户外铁树", category: "室外植物", subCategory: "大型植物", description: "耐晒耐养，适合门口、庭院、园区入口。", pricePerDay: 3.8, image: "🌴" },
-  { id: 8, name: "月租前台组合", category: "月租套餐", subCategory: "中型植物", description: "适合前台和接待区的基础组合套餐。", pricePerDay: 5.8, image: "🧺" },
-  { id: 9, name: "仿真龟背竹", category: "仿真植物", subCategory: "大型植物", description: "无需养护，适合光线不足或维护不便区域。", pricePerDay: 1.2, image: "🍃" },
+  {
+    id: 1,
+    name: "原生发财树",
+    category: "室内绿植",
+    subCategory: "大型植物",
+    description: "寓意财源滚滚，适合前台、办公室、会议室。",
+    pricePerDay: 2.5,
+    image: "🌳",
+  },
+  {
+    id: 2,
+    name: "天堂鸟",
+    category: "室内绿植",
+    subCategory: "大型植物",
+    description: "株型舒展，适合大堂、休息区、开放办公区。",
+    pricePerDay: 3.2,
+    image: "🪴",
+  },
+  {
+    id: 3,
+    name: "绿萝柱",
+    category: "室内绿植",
+    subCategory: "中型植物",
+    description: "耐阴好养，适合办公室角落和走廊区域。",
+    pricePerDay: 1.6,
+    image: "🌿",
+  },
+  {
+    id: 4,
+    name: "红掌",
+    category: "室内绿植",
+    subCategory: "小型植物",
+    description: "颜色鲜明，适合前台、桌面、接待区点缀。",
+    pricePerDay: 0.8,
+    image: "🌺",
+  },
+  {
+    id: 5,
+    name: "水培白掌",
+    category: "室内绿植",
+    subCategory: "水培植物",
+    description: "干净清爽，适合会议桌、茶水间、前台。",
+    pricePerDay: 0.7,
+    image: "💧",
+  },
+  {
+    id: 6,
+    name: "罗汉松盆景",
+    category: "室内绿植",
+    subCategory: "盆景植物",
+    description: "稳重大气，适合老板办公室、会客区。",
+    pricePerDay: 4.5,
+    image: "🎍",
+  },
+  {
+    id: 7,
+    name: "户外铁树",
+    category: "室外植物",
+    subCategory: "大型植物",
+    description: "耐晒耐养，适合门口、庭院、园区入口。",
+    pricePerDay: 3.8,
+    image: "🌴",
+  },
+  {
+    id: 8,
+    name: "月租前台组合",
+    category: "月租套餐",
+    subCategory: "中型植物",
+    description: "适合前台和接待区的基础组合套餐。",
+    pricePerDay: 5.8,
+    image: "🧺",
+  },
+  {
+    id: 9,
+    name: "仿真龟背竹",
+    category: "仿真植物",
+    subCategory: "大型植物",
+    description: "无需养护，适合光线不足或维护不便区域。",
+    pricePerDay: 1.2,
+    image: "🍃",
+  },
 ];
 
 const initialOrders = [
@@ -36,6 +117,7 @@ const initialOrders = [
     deliveryStatus: "未出发",
     executionStatus: "待联系",
     customerConfirmStatus: "待确认",
+    merchantConfirmStatus: "未提交",
     planLinkStatus: "未生成",
     tags: ["需比价", "室外", "租过绿植"],
     areaSize: "300㎡",
@@ -61,6 +143,7 @@ const initialOrders = [
     deliveryStatus: "未出发",
     executionStatus: "待联系",
     customerConfirmStatus: "待确认",
+    merchantConfirmStatus: "未提交",
     planLinkStatus: "未生成",
     tags: ["办公室", "长期租赁"],
     areaSize: "500㎡",
@@ -170,6 +253,7 @@ function createEmptyPlan(order, planType = "租赁方案") {
     createdAt: nowText(),
     updatedAt: nowText(),
     submittedAt: "",
+    merchantConfirmedAt: "",
     completedAt: "",
   };
 }
@@ -179,6 +263,7 @@ function ensureOrderDefaults(order) {
     deliveryStatus: "未出发",
     executionStatus: "待联系",
     customerConfirmStatus: "待确认",
+    merchantConfirmStatus: "未提交",
     planLinkStatus: "未生成",
     staffLocation: null,
     distanceText: "待定位",
@@ -228,7 +313,6 @@ function App() {
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [showSubmitSheet, setShowSubmitSheet] = useState(false);
   const [showCreateOrderSheet, setShowCreateOrderSheet] = useState(false);
-  const [showExecutionSheet, setShowExecutionSheet] = useState(false);
   const [isCreateOrderInputFocused, setIsCreateOrderInputFocused] = useState(false);
 
   const [newOrderForm, setNewOrderForm] = useState({
@@ -256,8 +340,14 @@ function App() {
     return orders.filter((order) => order.status === merchantStatusFilter);
   }, [orders, merchantStatusFilter]);
 
+  const pendingMerchantConfirmOrders = useMemo(() => {
+    return orders.filter((order) => order.status === "待商户确认");
+  }, [orders]);
+
   const submittedOrders = useMemo(() => {
-    return orders.filter((order) => order.status === "方案已提交" || order.status === "已完成");
+    return orders.filter((order) =>
+      ["待商户确认", "方案已确认", "执行中", "已完成"].includes(order.status)
+    );
   }, [orders]);
 
   const filteredProducts = products.filter((product) => {
@@ -331,7 +421,6 @@ function App() {
     setShowMoreSheet(false);
     setShowSubmitSheet(false);
     setShowCreateOrderSheet(false);
-    setShowExecutionSheet(false);
     setIsCreateOrderInputFocused(false);
   }
 
@@ -405,7 +494,8 @@ function App() {
           const next = {
             ...order,
             deliveryStatus: order.deliveryStatus === "未出发" ? "前往中" : order.deliveryStatus,
-            executionStatus: order.executionStatus === "待联系" ? "已出发" : order.executionStatus,
+            executionStatus:
+              order.executionStatus === "待联系" ? "已出发" : order.executionStatus,
             staffLocation: {
               latitude,
               longitude,
@@ -433,54 +523,6 @@ function App() {
     );
   }
 
-  function updateDeliveryStatus(orderId, nextStatus) {
-    updateOrder(orderId, (order) => {
-      const next = {
-        ...order,
-        deliveryStatus: nextStatus,
-        deliveryUpdatedAt: nowText(),
-      };
-
-      return addTimeline(next, `配送状态更新为：${nextStatus}`);
-    });
-  }
-
-  function updateExecutionStatus(orderId, nextStatus) {
-    updateOrder(orderId, (order) => {
-      const next = {
-        ...order,
-        executionStatus: nextStatus,
-        executionUpdatedAt: nowText(),
-      };
-
-      return addTimeline(next, `执行状态更新为：${nextStatus}`);
-    });
-  }
-
-  function updateCustomerConfirmStatus(orderId, nextStatus) {
-    updateOrder(orderId, (order) => {
-      const next = {
-        ...order,
-        customerConfirmStatus: nextStatus,
-        customerConfirmUpdatedAt: nowText(),
-      };
-
-      return addTimeline(next, `客户确认状态更新为：${nextStatus}`);
-    });
-  }
-
-  function updatePlanLinkStatus(orderId, nextStatus) {
-    updateOrder(orderId, (order) => {
-      const next = {
-        ...order,
-        planLinkStatus: nextStatus,
-        planLinkUpdatedAt: nowText(),
-      };
-
-      return addTimeline(next, `方案链接状态更新为：${nextStatus}`);
-    });
-  }
-
   function acceptOrderAndCreatePlan() {
     if (!selectedOrder) return;
 
@@ -489,7 +531,7 @@ function App() {
         ...order,
         status: "配置中",
         planStatus: "配置中",
-        deliveryStatus: order.deliveryStatus || "未出发",
+        merchantConfirmStatus: "未提交",
         executionStatus: "已联系",
         acceptedAt: order.acceptedAt || nowText(),
         plan: order.plan || createEmptyPlan(order, planType),
@@ -646,32 +688,104 @@ function App() {
     updateOrder(currentOrder.id, (order) => {
       const next = {
         ...order,
-        status: "方案已提交",
-        planStatus: "方案已提交",
+        status: "待商户确认",
+        planStatus: "待商户确认",
+        merchantConfirmStatus: "待确认",
         submittedAt: nowText(),
         customerConfirmStatus: "待确认",
-        planLinkStatus: order.planLinkStatus || "未生成",
         plan: {
           ...order.plan,
           submittedAt: nowText(),
-          status: "方案已提交",
+          status: "待商户确认",
         },
       };
 
-      return addTimeline(next, "员工提交方案");
+      return addTimeline(next, "员工提交方案，等待商户确认");
     });
 
     setShowSubmitSheet(false);
     setCurrentPage("orders");
-    setActiveStatus("方案已提交");
+    setActiveStatus("待商户确认");
+  }
+
+  function merchantConfirmPlan(orderId) {
+    updateOrder(orderId, (order) => {
+      const next = {
+        ...order,
+        status: "方案已确认",
+        planStatus: "方案已确认",
+        merchantConfirmStatus: "已确认",
+        merchantConfirmedAt: nowText(),
+        plan: order.plan
+          ? {
+              ...order.plan,
+              status: "方案已确认",
+              merchantConfirmedAt: nowText(),
+            }
+          : order.plan,
+      };
+
+      return addTimeline(next, "商户确认方案");
+    });
+
+    alert("已确认方案，员工端可以开始执行。");
+  }
+
+  function merchantRequestRevision(orderId) {
+    const reason = window.prompt("请输入要求修改的原因，例如：价格偏高 / 植物数量太少 / 区域需要调整");
+    if (reason === null) return;
+
+    updateOrder(orderId, (order) => {
+      const next = {
+        ...order,
+        status: "配置中",
+        planStatus: "配置中",
+        merchantConfirmStatus: "要求修改",
+        revisionReason: reason || "商户要求修改方案",
+      };
+
+      return addTimeline(next, `商户要求修改方案：${reason || "未填写原因"}`);
+    });
+
+    alert("已退回员工端修改。");
+  }
+
+  function markPlanSentToCustomer(orderId) {
+    updateOrder(orderId, (order) => {
+      const next = {
+        ...order,
+        planLinkStatus: "已发送",
+        customerConfirmStatus: "待确认",
+      };
+
+      return addTimeline(next, "商户标记方案已转发客户");
+    });
+
+    alert("已标记为已转发客户。");
+  }
+
+  function startExecution(orderId) {
+    updateOrder(orderId, (order) => {
+      const next = {
+        ...order,
+        status: "执行中",
+        planStatus: "执行中",
+        executionStatus: "已出发",
+        deliveryStatus: "前往中",
+      };
+
+      return addTimeline(next, "员工开始执行服务");
+    });
+
+    setActiveStatus("执行中");
   }
 
   function completeOrderByStaff(orderId) {
     const target = orders.find((order) => order.id === orderId);
     if (!target) return;
 
-    if (target.status !== "方案已提交") {
-      alert("只有方案已提交后，员工才能标记为已完成。");
+    if (!["方案已确认", "执行中"].includes(target.status)) {
+      alert("需要商户确认方案后，员工才能完成订单。");
       return;
     }
 
@@ -729,11 +843,8 @@ function App() {
       deliveryStatus: "未出发",
       executionStatus: "待联系",
       customerConfirmStatus: "待确认",
+      merchantConfirmStatus: "未提交",
       planLinkStatus: "未生成",
-      deliveryUpdatedAt: "",
-      executionUpdatedAt: "",
-      customerConfirmUpdatedAt: "",
-      planLinkUpdatedAt: "",
       staffLocation: null,
       distanceText: "待定位",
       etaText: "待定位",
@@ -770,47 +881,6 @@ function App() {
     setMerchantStatusFilter("全部");
   }
 
-  function buildPlanText(order) {
-    const plan = order?.plan;
-    const stats = getPlanStats(plan);
-
-    const areaText = safeAreas(plan)
-      .map((area) => {
-        const items = safeItems(area)
-          .map((item) => `- ${item.name} × ${item.quantity}（¥${item.pricePerDay}/天）`)
-          .join("\n");
-
-        return `【${area.name}】\n${items || "- 暂无商品"}`;
-      })
-      .join("\n\n");
-
-    return `绿植租赁方案
-项目 / 客户：${order?.customerName || "-"}
-联系人：${order?.contactName || "-"}
-电话：${order?.phone || "-"}
-项目面积：${order?.areaSize || "-"}
-进场时间：${order?.expectedDate || "-"}
-客户地址：${order?.address || "-"}
-执行状态：${order?.executionStatus || "待联系"}
-配送状态：${order?.deliveryStatus || "未出发"}
-客户确认：${order?.customerConfirmStatus || "待确认"}
-预计路程：${order?.distanceText || "待定位"}
-预计时间：${order?.etaText || "待定位"}
-
-方案明细：
-${areaText || "暂无区域"}
-
-日租金：¥${money(stats.dailyRent)}
-租期：${plan?.leaseMonths || 12}月
-系统总租金：¥${money(stats.systemTotalRent)}
-最终报价：¥${money(stats.finalRent)}
-支付方式：${plan?.paymentMethod || "月付"}
-押金：${plan?.needDeposit ? "需要" : "不需要"}
-
-现场备注：${order?.fieldNote || "-"}
-内部备注：${order?.internalNote || "-"}`;
-  }
-
   function copyCustomerPlanLink(order) {
     if (!order?.plan?.id) {
       alert("还没有方案，无法生成链接。");
@@ -818,7 +888,15 @@ ${areaText || "暂无区域"}
     }
 
     copyText(`${window.location.origin}?planId=${order.plan.id}`, "客户方案链接已复制");
-    updatePlanLinkStatus(order.id, "已复制");
+
+    updateOrder(order.id, (old) => {
+      const next = {
+        ...old,
+        planLinkStatus: "已复制",
+      };
+
+      return addTimeline(next, "复制客户方案链接");
+    });
   }
 
   function exportOrderData(order) {
@@ -831,13 +909,13 @@ ${areaText || "暂无区域"}
     copyText(JSON.stringify(data, null, 2), "订单数据已复制");
   }
 
-  function getNextSuggestion(order) {
-    if (order.status === "待接单") return "下一步：员工确认接单";
-    if (order.status === "配置中") return "下一步：配置区域和商品，提交方案";
-    if (order.status === "方案已提交" && order.customerConfirmStatus === "待确认") return "下一步：联系客户确认方案";
-    if (order.status === "方案已提交" && order.executionStatus !== "已完成服务") return "下一步：执行服务并标记完成";
-    if (order.status === "已完成") return "订单已完成，可归档";
-    return "继续跟进订单";
+  function getOrderHint(order) {
+    if (order.status === "待商户确认") return "员工已提交方案，等待商户确认。";
+    if (order.status === "方案已确认") return "商户已确认方案，员工可以开始执行。";
+    if (order.status === "配置中" && order.merchantConfirmStatus === "要求修改") {
+      return `商户要求修改：${order.revisionReason || "请调整方案"}`;
+    }
+    return "";
   }
 
   function StatusControlGroup({ title, options, value, onChange }) {
@@ -846,7 +924,11 @@ ${areaText || "暂无区域"}
         <p className="sheet-label">{title}</p>
         <div className="option-grid payment-grid">
           {options.map((item) => (
-            <button key={item} className={value === item ? "selected" : ""} onClick={() => onChange(item)}>
+            <button
+              key={item}
+              className={value === item ? "selected" : ""}
+              onClick={() => onChange(item)}
+            >
               {item}
             </button>
           ))}
@@ -885,9 +967,22 @@ ${areaText || "暂无区域"}
     );
   }
 
-  function DeliveryInfoCard({ order, showControls = false }) {
+  function StatusCard({ order, editable = false }) {
+    const hint = getOrderHint(order);
+
     return (
       <section className="plan-summary-card">
+        <div className="plan-summary-top">
+          <div>
+            <p>订单状态</p>
+            <strong>{order.status}</strong>
+          </div>
+          <div>
+            <p>商户确认</p>
+            <strong>{order.merchantConfirmStatus || "未提交"}</strong>
+          </div>
+        </div>
+
         <div className="plan-summary-top">
           <div>
             <p>执行状态</p>
@@ -911,11 +1006,6 @@ ${areaText || "暂无区域"}
         </div>
 
         <div className="plan-info-line">
-          <span>预计路程</span>
-          <strong>{order.distanceText || "待定位"}</strong>
-        </div>
-
-        <div className="plan-info-line">
           <span>预计时间</span>
           <strong>{order.etaText || "待定位"}</strong>
         </div>
@@ -925,46 +1015,35 @@ ${areaText || "暂无区域"}
           <strong>{order.staffLocation?.locatedAt || "未定位"}</strong>
         </div>
 
-        {order.staffLocation && (
-          <div className="plan-info-line">
-            <span>定位精度</span>
-            <strong>约 {order.staffLocation.accuracy || "-"} 米</strong>
+        {hint && (
+          <div className="empty-card">
+            <p>流程提醒</p>
+            <span>{hint}</span>
           </div>
         )}
 
-        <div className="empty-card">
-          <p>下一步建议</p>
-          <span>{getNextSuggestion(order)}</span>
-        </div>
-
-        {showControls && (
+        {editable && (
           <>
             <StatusControlGroup
               title="执行状态"
               options={EXECUTION_STATUS}
               value={order.executionStatus || "待联系"}
-              onChange={(value) => updateExecutionStatus(order.id, value)}
+              onChange={(value) =>
+                updateOrder(order.id, (old) =>
+                  addTimeline({ ...old, executionStatus: value }, `执行状态更新为：${value}`)
+                )
+              }
             />
 
             <StatusControlGroup
               title="配送状态"
               options={DELIVERY_STATUS}
               value={order.deliveryStatus || "未出发"}
-              onChange={(value) => updateDeliveryStatus(order.id, value)}
-            />
-
-            <StatusControlGroup
-              title="客户确认状态"
-              options={CUSTOMER_CONFIRM_STATUS}
-              value={order.customerConfirmStatus || "待确认"}
-              onChange={(value) => updateCustomerConfirmStatus(order.id, value)}
-            />
-
-            <StatusControlGroup
-              title="方案链接状态"
-              options={PLAN_LINK_STATUS}
-              value={order.planLinkStatus || "未生成"}
-              onChange={(value) => updatePlanLinkStatus(order.id, value)}
+              onChange={(value) =>
+                updateOrder(order.id, (old) =>
+                  addTimeline({ ...old, deliveryStatus: value }, `配送状态更新为：${value}`)
+                )
+              }
             />
 
             <div className="actions mini-actions">
@@ -1057,33 +1136,7 @@ ${areaText || "暂无区域"}
           </div>
         </header>
 
-        <section className="plan-summary-card">
-          <div className="plan-summary-top">
-            <div>
-              <p>方案状态</p>
-              <strong>{customerViewOrder.status}</strong>
-            </div>
-            <div>
-              <p>最终报价</p>
-              <strong>¥ {money(stats.finalRent)}</strong>
-            </div>
-          </div>
-
-          <div className="plan-info-line">
-            <span>联系人</span>
-            <strong>{customerViewOrder.contactName || "-"}</strong>
-          </div>
-          <div className="plan-info-line">
-            <span>联系电话</span>
-            <strong>{customerViewOrder.phone || "-"}</strong>
-          </div>
-          <div className="plan-info-line">
-            <span>客户地址</span>
-            <strong>{customerViewOrder.address}</strong>
-          </div>
-        </section>
-
-        <DeliveryInfoCard order={customerViewOrder} />
+        <StatusCard order={customerViewOrder} />
 
         <section className="price-card price-detail-card">
           <div><span>日租金</span><strong>¥ {money(stats.dailyRent)}</strong></div>
@@ -1135,7 +1188,7 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
-            <p className="eyebrow">Plan Editor · v2.0</p>
+            <p className="eyebrow">Plan Editor · v2.1</p>
             <h1>{currentOrder.customerName}</h1>
           </div>
         </header>
@@ -1159,8 +1212,32 @@ ${areaText || "暂无区域"}
           </div>
         </section>
 
-        <DeliveryInfoCard order={currentOrder} showControls />
+        <StatusCard order={currentOrder} editable />
         <NotesCard order={currentOrder} editable />
+
+        {currentOrder.status === "方案已确认" && (
+          <section className="plan-summary-card">
+            <div className="empty-card">
+              <p>商户已确认方案</p>
+              <span>现在可以开始执行服务。</span>
+            </div>
+            <button className="submit-sheet-button" onClick={() => startExecution(currentOrder.id)}>
+              开始执行服务
+            </button>
+          </section>
+        )}
+
+        {currentOrder.status === "执行中" && (
+          <section className="plan-summary-card">
+            <div className="empty-card">
+              <p>订单执行中</p>
+              <span>服务完成后可以标记订单完成。</span>
+            </div>
+            <button className="submit-sheet-button" onClick={() => completeOrderByStaff(currentOrder.id)}>
+              完成订单
+            </button>
+          </section>
+        )}
 
         <section className="area-section">
           <div className="section-title-row">
@@ -1225,11 +1302,15 @@ ${areaText || "暂无区域"}
           <div><span>押金</span><strong>{currentPlan.needDeposit ? "需要" : "不需要"}</strong></div>
         </section>
 
+        <TimelineCard order={currentOrder} />
+
         <nav className="bottom-actions">
           <button onClick={() => setShowMoreSheet(true)}>更多</button>
           <button onClick={() => setShowPriceSheet(true)}>改价</button>
           <button onClick={() => setShowPaymentSheet(true)}>租期与支付</button>
-          <button className="submit-plan-button" onClick={() => setShowSubmitSheet(true)}>提交方案</button>
+          <button className="submit-plan-button" onClick={() => setShowSubmitSheet(true)}>
+            提交方案
+          </button>
         </nav>
 
         {showAreaSheet && renderAreaSheet()}
@@ -1433,7 +1514,7 @@ ${areaText || "暂无区域"}
 
           <button className="submit-sheet-button" onClick={() => copyText(buildPlanText(currentOrder), "方案摘要已复制")}>复制方案摘要</button>
           <button className="submit-sheet-button" onClick={() => copyCustomerPlanLink(currentOrder)}>复制客户方案链接</button>
-          <button className="submit-sheet-button" onClick={() => updatePlanLinkStatus(currentOrder.id, "已发送")}>标记方案已发送</button>
+          <button className="submit-sheet-button" onClick={() => markPlanSentToCustomer(currentOrder.id)}>标记已转发客户</button>
           <button className="submit-sheet-button" onClick={() => openRouteNavigation(currentOrder.address)}>打开客户地址导航</button>
           <button className="submit-sheet-button" onClick={() => locateStaff(currentOrder.id)}>定位当前位置</button>
           <button className="submit-sheet-button" onClick={() => exportOrderData(currentOrder)}>导出当前订单数据</button>
@@ -1449,46 +1530,80 @@ ${areaText || "暂无区域"}
     );
   }
 
+  function buildPlanText(order) {
+    const plan = order?.plan;
+    const stats = getPlanStats(plan);
+
+    const areaText = safeAreas(plan)
+      .map((area) => {
+        const items = safeItems(area)
+          .map((item) => `- ${item.name} × ${item.quantity}（¥${item.pricePerDay}/天）`)
+          .join("\n");
+
+        return `【${area.name}】\n${items || "- 暂无商品"}`;
+      })
+      .join("\n\n");
+
+    return `绿植租赁方案
+项目 / 客户：${order?.customerName || "-"}
+联系人：${order?.contactName || "-"}
+电话：${order?.phone || "-"}
+项目面积：${order?.areaSize || "-"}
+进场时间：${order?.expectedDate || "-"}
+客户地址：${order?.address || "-"}
+订单状态：${order?.status || "-"}
+商户确认：${order?.merchantConfirmStatus || "-"}
+客户确认：${order?.customerConfirmStatus || "-"}
+
+方案明细：
+${areaText || "暂无区域"}
+
+日租金：¥${money(stats.dailyRent)}
+租期：${plan?.leaseMonths || 12}月
+系统总租金：¥${money(stats.systemTotalRent)}
+最终报价：¥${money(stats.finalRent)}
+支付方式：${plan?.paymentMethod || "月付"}
+押金：${plan?.needDeposit ? "需要" : "不需要"}`;
+  }
+
   function renderSubmitSheet() {
     return (
       <div className="sheet-mask" onClick={() => setShowSubmitSheet(false)}>
         <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
           <div className="sheet-handle" />
           <div className="sheet-header">
-            <div><p className="eyebrow">Submit Plan</p><h2>确认提交方案</h2></div>
+            <div><p className="eyebrow">Submit Plan</p><h2>提交给商户确认</h2></div>
             <button className="close-button" onClick={() => setShowSubmitSheet(false)}>×</button>
           </div>
 
           <div className="sheet-block">
-            <p className="sheet-label">方案摘要</p>
+            <p className="sheet-label">提交后流程</p>
+            <div className="empty-card">
+              <p>方案会进入“待商户确认”</p>
+              <span>商户确认后，员工端才会出现执行和完成订单入口。</span>
+            </div>
+
             <div className="confirm-row"><span>项目 / 客户</span><strong>{currentOrder.customerName}</strong></div>
-            <div className="confirm-row"><span>联系人</span><strong>{currentOrder.contactName || "-"}</strong></div>
-            <div className="confirm-row"><span>电话</span><strong>{currentOrder.phone || "-"}</strong></div>
-            <div className="confirm-row"><span>执行状态</span><strong>{currentOrder.executionStatus || "待联系"}</strong></div>
-            <div className="confirm-row"><span>配送状态</span><strong>{currentOrder.deliveryStatus || "未出发"}</strong></div>
             <div className="confirm-row"><span>区域数量</span><strong>{currentStats.areaCount} 个</strong></div>
             <div className="confirm-row"><span>商品数量</span><strong>{currentStats.productCount} 件</strong></div>
-            <div className="confirm-row"><span>日租金</span><strong>¥ {money(currentStats.dailyRent)}</strong></div>
             <div className="confirm-row"><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
-            <div className="confirm-row"><span>支付方式</span><strong>{currentPlan.paymentMethod}</strong></div>
-            <div className="confirm-row"><span>押金</span><strong>{currentPlan.needDeposit ? "需要" : "不需要"}</strong></div>
           </div>
 
           {currentStats.productCount === 0 && (
             <div className="rent-preview"><span>提醒</span><strong>当前还没有添加商品，也可以先提交测试流程</strong></div>
           )}
 
-          <button className="submit-sheet-button" onClick={submitPlan}>确认提交方案</button>
+          <button className="submit-sheet-button" onClick={submitPlan}>确认提交给商户</button>
         </section>
       </div>
     );
   }
 
   function renderMerchantPage() {
-    const pendingCount = orders.filter((order) => order.status === "待接单").length;
-    const configuringCount = orders.filter((order) => order.status === "配置中").length;
-    const submittedCount = orders.filter((order) => order.status === "方案已提交").length;
-    const completedCount = orders.filter((order) => order.status === "已完成").length;
+    const statusCounts = ORDER_STATUS.reduce((result, status) => {
+      result[status] = orders.filter((order) => order.status === status).length;
+      return result;
+    }, {});
 
     if (selectedOrderDetail) {
       const stats = getPlanStats(selectedOrderDetail.plan);
@@ -1502,13 +1617,12 @@ ${areaText || "暂无区域"}
 
           <section className="plan-summary-card">
             <div className="plan-summary-top">
-              <div><p>订单状态</p><strong>{selectedOrderDetail.planStatus || selectedOrderDetail.status}</strong></div>
+              <div><p>订单状态</p><strong>{selectedOrderDetail.status}</strong></div>
               <div><p>项目面积</p><strong>{selectedOrderDetail.areaSize}</strong></div>
             </div>
 
             <div className="plan-info-line"><span>联系人</span><strong>{selectedOrderDetail.contactName || "-"}</strong></div>
             <div className="plan-info-line"><span>联系电话</span><strong>{selectedOrderDetail.phone || "-"}</strong></div>
-            <div className="plan-info-line"><span>期望进场</span><strong>{selectedOrderDetail.expectedDate}</strong></div>
             <div className="plan-info-line"><span>客户地址</span><strong>{selectedOrderDetail.address}</strong></div>
             <div className="plan-info-line"><span>订单来源</span><strong>{selectedOrderDetail.source || "商户派单"}</strong></div>
 
@@ -1516,12 +1630,9 @@ ${areaText || "暂无区域"}
               <div className="plan-info-line"><span>当前报价</span><strong>¥ {money(stats.finalRent)}</strong></div>
             )}
 
-            <p className="description">{selectedOrderDetail.description}</p>
-
             <div className="actions">
               <button className="ghost-button" onClick={() => callPhone(selectedOrderDetail.phone)}>拨打电话</button>
               <button className="ghost-button" onClick={() => copyText(selectedOrderDetail.address, "地址已复制")}>复制地址</button>
-              <button className="ghost-button" onClick={() => openMapSearch(selectedOrderDetail.address)}>搜索地址</button>
               <button className="ghost-button" onClick={() => openRouteNavigation(selectedOrderDetail.address)}>路线导航</button>
               <button className="ghost-button" onClick={() => exportOrderData(selectedOrderDetail)}>导出数据</button>
 
@@ -1533,7 +1644,28 @@ ${areaText || "暂无区域"}
             </div>
           </section>
 
-          <DeliveryInfoCard order={selectedOrderDetail} />
+          {selectedOrderDetail.status === "待商户确认" && (
+            <section className="plan-summary-card">
+              <div className="empty-card">
+                <p>有方案等待确认</p>
+                <span>确认后员工才能开始执行；也可以要求员工修改。</span>
+              </div>
+
+              <div className="actions">
+                <button className="submit-sheet-button" onClick={() => merchantConfirmPlan(selectedOrderDetail.id)}>
+                  确认方案
+                </button>
+                <button className="ghost-button danger" onClick={() => merchantRequestRevision(selectedOrderDetail.id)}>
+                  要求修改
+                </button>
+                <button className="ghost-button" onClick={() => markPlanSentToCustomer(selectedOrderDetail.id)}>
+                  标记已转发客户
+                </button>
+              </div>
+            </section>
+          )}
+
+          <StatusCard order={selectedOrderDetail} />
           <NotesCard order={selectedOrderDetail} />
           <TimelineCard order={selectedOrderDetail} />
         </div>
@@ -1550,28 +1682,28 @@ ${areaText || "暂无区域"}
             <div><p className="eyebrow">Plan Detail</p><h1>{merchantViewingOrder.customerName}</h1></div>
           </header>
 
-          <section className="plan-summary-card">
-            <div className="plan-summary-top">
-              <div><p>方案状态</p><strong>{merchantViewingOrder.status}</strong></div>
-              <div><p>最终报价</p><strong>¥ {money(stats.finalRent)}</strong></div>
-            </div>
+          <StatusCard order={merchantViewingOrder} />
 
-            <div className="plan-info-line"><span>联系人</span><strong>{merchantViewingOrder.contactName || "-"}</strong></div>
-            <div className="plan-info-line"><span>电话</span><strong>{merchantViewingOrder.phone || "-"}</strong></div>
-            <div className="plan-info-line"><span>客户地址</span><strong>{merchantViewingOrder.address}</strong></div>
-            <div className="plan-info-line"><span>提交时间</span><strong>{merchantViewingOrder.submittedAt || "-"}</strong></div>
+          {merchantViewingOrder.status === "待商户确认" && (
+            <section className="plan-summary-card">
+              <div className="empty-card">
+                <p>请确认员工提交的方案</p>
+                <span>确认后员工可以执行服务；要求修改后订单会回到配置中。</span>
+              </div>
 
-            <div className="actions">
-              <button className="ghost-button" onClick={() => callPhone(merchantViewingOrder.phone)}>拨打电话</button>
-              <button className="ghost-button" onClick={() => copyText(merchantViewingOrder.address, "地址已复制")}>复制地址</button>
-              <button className="ghost-button" onClick={() => openRouteNavigation(merchantViewingOrder.address)}>路线导航</button>
-              <button className="ghost-button" onClick={() => copyText(buildPlanText(merchantViewingOrder), "方案已复制")}>复制方案</button>
-            </div>
-          </section>
-
-          <DeliveryInfoCard order={merchantViewingOrder} />
-          <NotesCard order={merchantViewingOrder} />
-          <TimelineCard order={merchantViewingOrder} />
+              <div className="actions">
+                <button className="submit-sheet-button" onClick={() => merchantConfirmPlan(merchantViewingOrder.id)}>
+                  确认方案
+                </button>
+                <button className="ghost-button danger" onClick={() => merchantRequestRevision(merchantViewingOrder.id)}>
+                  要求修改
+                </button>
+                <button className="ghost-button" onClick={() => markPlanSentToCustomer(merchantViewingOrder.id)}>
+                  标记已转发客户
+                </button>
+              </div>
+            </section>
+          )}
 
           <section className="price-card price-detail-card">
             <div><span>日租金</span><strong>¥ {money(stats.dailyRent)}</strong></div>
@@ -1607,12 +1739,10 @@ ${areaText || "暂无区域"}
                 ))}
               </div>
             )}
-
-            <div className="empty-card">
-              <p>商户端仅查看订单状态</p>
-              <span>订单完成由员工端操作，商户端这里只负责查看结果。</span>
-            </div>
           </section>
+
+          <NotesCard order={merchantViewingOrder} />
+          <TimelineCard order={merchantViewingOrder} />
         </div>
       );
     }
@@ -1620,9 +1750,27 @@ ${areaText || "暂无区域"}
     return (
       <div className="app">
         <header className="app-header">
-          <div><p className="eyebrow">Merchant Console · v2.0</p><h1>商户管理端</h1></div>
+          <div><p className="eyebrow">Merchant Console · v2.1</p><h1>商户管理端</h1></div>
           <button className="role-button" onClick={() => switchRole("staff")}>切到员工端</button>
         </header>
+
+        {pendingMerchantConfirmOrders.length > 0 && (
+          <section className="plan-summary-card">
+            <div className="empty-card">
+              <p>有 {pendingMerchantConfirmOrders.length} 个方案待确认</p>
+              <span>请进入订单详情查看并确认方案。</span>
+            </div>
+            <button
+              className="submit-sheet-button"
+              onClick={() => {
+                setMerchantStatusFilter("待商户确认");
+                setMerchantTab("订单总览");
+              }}
+            >
+              查看待确认方案
+            </button>
+          </section>
+        )}
 
         <section className="tabs">
           {["订单总览", "已提交方案"].map((tab) => (
@@ -1634,14 +1782,17 @@ ${areaText || "暂无区域"}
 
         <section className="plan-summary-card">
           <div className="plan-summary-top">
-            <div><p>待接单</p><strong>{pendingCount} 单</strong></div>
-            <div><p>配置中</p><strong>{configuringCount} 单</strong></div>
+            <div><p>待接单</p><strong>{statusCounts["待接单"] || 0} 单</strong></div>
+            <div><p>配置中</p><strong>{statusCounts["配置中"] || 0} 单</strong></div>
           </div>
           <div className="plan-summary-top">
-            <div><p>方案已提交</p><strong>{submittedCount} 单</strong></div>
-            <div><p>已完成</p><strong>{completedCount} 单</strong></div>
+            <div><p>待商户确认</p><strong>{statusCounts["待商户确认"] || 0} 单</strong></div>
+            <div><p>方案已确认</p><strong>{statusCounts["方案已确认"] || 0} 单</strong></div>
           </div>
-          <div className="plan-info-line"><span>已提交方案</span><strong>{submittedOrders.length} 份</strong></div>
+          <div className="plan-summary-top">
+            <div><p>执行中</p><strong>{statusCounts["执行中"] || 0} 单</strong></div>
+            <div><p>已完成</p><strong>{statusCounts["已完成"] || 0} 单</strong></div>
+          </div>
         </section>
 
         {merchantTab === "订单总览" && (
@@ -1676,7 +1827,7 @@ ${areaText || "暂无区域"}
                     return (
                       <article className="order-card" key={order.id}>
                         <div className="order-card-header">
-                          <div><h2>{order.customerName}</h2><p>{order.planStatus || order.status}</p></div>
+                          <div><h2>{order.customerName}</h2><p>{order.status}</p></div>
                           <span className="area-size">{order.areaSize}</span>
                         </div>
 
@@ -1686,25 +1837,13 @@ ${areaText || "暂无区域"}
 
                         <div className="info-row"><span>联系人</span><strong>{order.contactName || "-"}</strong></div>
                         <div className="info-row"><span>联系电话</span><strong>{order.phone || "-"}</strong></div>
-                        <div className="info-row"><span>执行状态</span><strong>{order.executionStatus || "待联系"}</strong></div>
-                        <div className="info-row"><span>配送状态</span><strong>{order.deliveryStatus || "未出发"}</strong></div>
+                        <div className="info-row"><span>商户确认</span><strong>{order.merchantConfirmStatus || "未提交"}</strong></div>
                         <div className="info-row"><span>客户确认</span><strong>{order.customerConfirmStatus || "待确认"}</strong></div>
-                        <div className="info-row"><span>预计时间</span><strong>{order.etaText || "待定位"}</strong></div>
-                        <div className="info-row"><span>订单来源</span><strong>{order.source || "商户派单"}</strong></div>
-                        <div className="info-row"><span>期望进场</span><strong>{order.expectedDate}</strong></div>
                         <div className="info-row"><span>客户地址</span><strong>{order.address}</strong></div>
 
                         {order.plan && (
                           <div className="info-row"><span>当前报价</span><strong>¥ {money(stats.finalRent)}</strong></div>
                         )}
-
-                        <div className="empty-card">
-                          <p>下一步建议</p>
-                          <span>{getNextSuggestion(order)}</span>
-                        </div>
-
-                        <p className="description">{order.description}</p>
-                        <p className="dispatch-time">派单时间：{order.dispatchTime}</p>
 
                         <div className="actions">
                           <button className="ghost-button" onClick={() => callPhone(order.phone)}>拨打电话</button>
@@ -1728,7 +1867,7 @@ ${areaText || "暂无区域"}
             </div>
 
             {submittedOrders.length === 0 ? (
-              <div className="empty-card"><p>暂时还没有员工提交方案</p><span>先切到员工端，完成一次提交方案流程</span></div>
+              <div className="empty-card"><p>暂时还没有员工提交方案</p></div>
             ) : (
               <div className="order-list">
                 {submittedOrders.map((order) => {
@@ -1741,11 +1880,8 @@ ${areaText || "暂无区域"}
                         <span className="area-size">¥ {money(stats.finalRent)}</span>
                       </div>
 
-                      <div className="info-row"><span>联系人</span><strong>{order.contactName || "-"}</strong></div>
-                      <div className="info-row"><span>执行状态</span><strong>{order.executionStatus || "待联系"}</strong></div>
-                      <div className="info-row"><span>客户确认</span><strong>{order.customerConfirmStatus || "待确认"}</strong></div>
+                      <div className="info-row"><span>商户确认</span><strong>{order.merchantConfirmStatus || "未提交"}</strong></div>
                       <div className="info-row"><span>商品数量</span><strong>{stats.productCount} 件</strong></div>
-                      <div className="info-row"><span>支付方式</span><strong>{order.plan?.paymentMethod || "月付"}</strong></div>
                       <div className="info-row"><span>提交时间</span><strong>{order.submittedAt || "-"}</strong></div>
 
                       <div className="actions">
@@ -1790,7 +1926,10 @@ ${areaText || "暂无区域"}
       onBlur: () => {
         window.setTimeout(() => {
           const active = document.activeElement;
-          const stillInCreateForm = active && active.classList && active.classList.contains("create-order-input");
+          const stillInCreateForm =
+            active &&
+            active.classList &&
+            active.classList.contains("create-order-input");
           if (!stillInCreateForm) {
             setIsCreateOrderInputFocused(false);
           }
@@ -1812,7 +1951,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v2.0</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v2.1</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
@@ -1905,12 +2044,12 @@ ${areaText || "暂无区域"}
   return (
     <div className="app">
       <header className="app-header">
-        <div><p className="eyebrow">Green Rental · v2.0</p><h1>绿植租赁接单系统</h1></div>
+        <div><p className="eyebrow">Green Rental · v2.1</p><h1>绿植租赁接单系统</h1></div>
         <button className="role-button" onClick={() => switchRole("merchant")}>切到商户端</button>
       </header>
 
       <section className="tabs">
-        {STATUS_TABS.map((status) => (
+        {ORDER_STATUS.map((status) => (
           <button key={status} className={activeStatus === status ? "tab active" : "tab"} onClick={() => setActiveStatus(status)}>
             {status}
           </button>
@@ -1924,7 +2063,7 @@ ${areaText || "暂无区域"}
           filteredStaffOrders.map((order) => (
             <article className="order-card" key={order.id}>
               <div className="order-card-header">
-                <div><h2>{order.customerName}</h2><p>{order.planStatus || order.status}</p></div>
+                <div><h2>{order.customerName}</h2><p>{order.status}</p></div>
                 <span className="area-size">{order.areaSize}</span>
               </div>
 
@@ -1934,18 +2073,16 @@ ${areaText || "暂无区域"}
 
               <div className="info-row"><span>联系人</span><strong>{order.contactName || "-"}</strong></div>
               <div className="info-row"><span>联系电话</span><strong>{order.phone || "-"}</strong></div>
-              <div className="info-row"><span>执行状态</span><strong>{order.executionStatus || "待联系"}</strong></div>
-              <div className="info-row"><span>配送状态</span><strong>{order.deliveryStatus || "未出发"}</strong></div>
+              <div className="info-row"><span>商户确认</span><strong>{order.merchantConfirmStatus || "未提交"}</strong></div>
               <div className="info-row"><span>客户确认</span><strong>{order.customerConfirmStatus || "待确认"}</strong></div>
-              <div className="info-row"><span>预计时间</span><strong>{order.etaText || "待定位"}</strong></div>
-              <div className="info-row"><span>订单来源</span><strong>{order.source || "商户派单"}</strong></div>
-              <div className="info-row"><span>期望进场</span><strong>{order.expectedDate}</strong></div>
               <div className="info-row"><span>客户地址</span><strong>{order.address}</strong></div>
 
-              <div className="empty-card">
-                <p>下一步建议</p>
-                <span>{getNextSuggestion(order)}</span>
-              </div>
+              {getOrderHint(order) && (
+                <div className="empty-card">
+                  <p>流程提醒</p>
+                  <span>{getOrderHint(order)}</span>
+                </div>
+              )}
 
               <p className="description">{order.description}</p>
               <p className="dispatch-time">派单时间：{order.dispatchTime}</p>
@@ -1967,7 +2104,15 @@ ${areaText || "暂无区域"}
                   <button className="primary-button" onClick={() => openPlanForOrder(order)}>继续编辑方案</button>
                 )}
 
-                {order.status === "方案已提交" && (
+                {order.status === "待商户确认" && (
+                  <button className="primary-button" onClick={() => openPlanForOrder(order)}>查看已提交方案</button>
+                )}
+
+                {order.status === "方案已确认" && (
+                  <button className="submit-plan-button" onClick={() => openPlanForOrder(order)}>开始执行</button>
+                )}
+
+                {order.status === "执行中" && (
                   <>
                     <button className="primary-button" onClick={() => openPlanForOrder(order)}>查看方案</button>
                     <button className="submit-plan-button" onClick={() => completeOrderByStaff(order.id)}>完成订单</button>
