@@ -167,13 +167,17 @@ function persistOrdersToLocalStore(orders) {
 
 function normalizeProducts(data) {
   const list = Array.isArray(data) ? data : defaultProducts;
-  return list.map((product) => ({
-    status: "上架",
-    stock: "充足",
-    imageUrl: "",
-    note: "",
-    ...product,
-  }));
+  return list.map((product) => {
+    const rawStatus = product?.status || "已上架";
+    const status = rawStatus === "停用" || rawStatus === "未上架" ? "未上架" : "已上架";
+    return {
+      stock: "充足",
+      imageUrl: "",
+      note: "",
+      ...product,
+      status,
+    };
+  });
 }
 
 function loadProductsFromLocalStore() {
@@ -372,7 +376,7 @@ function App() {
 
   const [showProductSheet, setShowProductSheet] = useState(false);
   const [currentAreaId, setCurrentAreaId] = useState(null);
-  const [activeCategory, setActiveCategory] = useState("室内绿植");
+  const [activeCategory, setActiveCategory] = useState("全部商品");
   const [activeSubCategory, setActiveSubCategory] = useState("大型植物");
   const [searchText, setSearchText] = useState("");
 
@@ -411,7 +415,7 @@ function App() {
     image: "🪴",
     stock: "充足",
     note: "",
-    status: "上架",
+    status: "已上架",
   });
 
   const currentOrder = orders.find((order) => order.id === currentOrderId) || null;
@@ -474,14 +478,12 @@ function App() {
 
   const filteredProducts = merchantProducts.filter((product) => {
     const keyword = searchText.trim();
-    return (
-      product.status !== "停用" &&
-      product.category === activeCategory &&
-      product.subCategory === activeSubCategory &&
-      (keyword === "" ||
-        product.name.includes(keyword) ||
-        product.description.includes(keyword))
-    );
+    const visible = product.status !== "停用" && product.status !== "未上架";
+    const matchCategory = activeCategory === "全部商品" || product.category === activeCategory;
+    const matchSubCategory = activeSubCategory === "全部规格" || product.subCategory === activeSubCategory;
+    const text = [product.name, product.category, product.subCategory, product.description, product.note].filter(Boolean).join(" ");
+
+    return visible && matchCategory && matchSubCategory && (keyword === "" || text.includes(keyword));
   });
 
   const customerPlanId = new URLSearchParams(window.location.search).get("planId");
@@ -841,8 +843,8 @@ function App() {
     setAreaName("");
     setShowAreaSheet(false);
     setCurrentAreaId(newAreaId);
-    setActiveCategory("室内绿植");
-    setActiveSubCategory("大型植物");
+    setActiveCategory("全部商品");
+    setActiveSubCategory("全部规格");
     setSearchText("");
     window.setTimeout(() => setShowProductSheet(true), 80);
   }
@@ -853,8 +855,8 @@ function App() {
 
   function openProductSheet(area) {
     setCurrentAreaId(area.id);
-    setActiveCategory("室内绿植");
-    setActiveSubCategory("大型植物");
+    setActiveCategory("全部商品");
+    setActiveSubCategory("全部规格");
     setSearchText("");
     setShowProductSheet(true);
   }
@@ -1239,7 +1241,7 @@ function App() {
       image: "🪴",
       stock: "充足",
       note: "",
-      status: "上架",
+      status: "已上架",
     });
   }
 
@@ -1267,7 +1269,7 @@ function App() {
       image: newProductForm.image || "🪴",
       stock: newProductForm.stock || "充足",
       note: newProductForm.note.trim(),
-      status: newProductForm.status || "上架",
+      status: newProductForm.status || "已上架",
       createdAt: nowText(),
     };
 
@@ -1281,7 +1283,7 @@ function App() {
     setMerchantProducts((prev) =>
       prev.map((product) =>
         product.id === productId
-          ? { ...product, status: product.status === "上架" ? "停用" : "上架" }
+          ? { ...product, status: product.status === "已上架" || product.status === "上架" ? "未上架" : "已上架" }
           : product
       )
     );
@@ -1849,22 +1851,32 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
-            <p className="eyebrow">Staff Workbench · v2.9</p>
+            <p className="eyebrow">Staff Workbench · v3.0</p>
             <h1>{currentOrder.customerName}</h1>
           </div>
         </header>
 
-        <section className="plan-summary-card">
+        <section className="plan-summary-card" style={{ padding: 18 }}>
           <div className="plan-summary-top">
-            <div><p>当前步骤</p><strong>{currentOrder.status}</strong></div>
+            <div><p>当前任务</p><strong>{currentOrder.status === "配置中" ? "配置方案" : currentOrder.status}</strong></div>
             <div><p>已配区域</p><strong>{planAreas.length} 个</strong></div>
           </div>
-          <div className="plan-info-line"><span>客户</span><strong>{currentOrder.customerName}｜{currentOrder.areaSize}</strong></div>
-          <div className="plan-info-line"><span>联系人</span><strong>{currentOrder.contactName || "-"} {currentOrder.phone ? `｜${currentOrder.phone}` : ""}</strong></div>
+          <div className="empty-card" style={{ marginTop: 12, textAlign: "left" }}>
+            <p>{currentOrder.customerName}｜{currentOrder.areaSize}</p>
+            <span>{currentOrder.contactName || "待确认"}{currentOrder.phone ? `｜${currentOrder.phone}` : ""}｜{currentOrder.address}</span>
+          </div>
           <div className="actions mini-actions">
             <button className="ghost-button" onClick={() => callPhone(currentOrder.phone)}>电话</button>
             <button className="ghost-button" onClick={() => openRouteNavigation(currentOrder.address)}>导航</button>
             <button className="ghost-button" onClick={() => copyText(currentOrder.address, "地址已复制")}>地址</button>
+          </div>
+        </section>
+
+        <section className="plan-summary-card" style={{ padding: 16 }}>
+          <div className="plan-summary-top">
+            <div><p>第一步</p><strong>区域</strong></div>
+            <div><p>第二步</p><strong>植物</strong></div>
+            <div><p>第三步</p><strong>报价</strong></div>
           </div>
         </section>
 
@@ -1905,15 +1917,15 @@ ${areaText || "暂无区域"}
           <div className="section-title-row">
             <div>
               <p className="eyebrow">区域</p>
-              <h2>区域配置</h2>
+              <h2>配置区域与植物</h2>
             </div>
-            <button className="add-area-button" onClick={() => setShowAreaSheet(true)}>新增区域</button>
+            <button className="add-area-button" onClick={() => setShowAreaSheet(true)}>添加区域</button>
           </div>
 
           {planAreas.length === 0 ? (
             <div className="empty-card">
-              <p>先添加一个区域开始配置</p>
-              <span>现场员工不需要先看报价，先把前台、办公室、会议室这些区域配起来。</span>
+              <p>先选一个区域，马上开始配植物</p>
+              <span>选完区域会自动打开植物库，不需要再找入口。</span>
               <div className="quick-area-list" style={{ marginTop: 12 }}>
                 {["前台", "办公室", "会议室", "走廊", "门口"].map((name) => (
                   <button key={name} onClick={() => addAreaWithName(name)}>{name}</button>
@@ -2043,8 +2055,15 @@ ${areaText || "暂无区域"}
           </div>
 
           <div className="category-tabs">
-            {productCategories.map((category) => (
-              <button key={category} className={activeCategory === category ? "active" : ""} onClick={() => { setActiveCategory(category); setActiveSubCategory("大型植物"); }}>
+            {["全部商品", ...productCategories].map((category) => (
+              <button
+                key={category}
+                className={activeCategory === category ? "active" : ""}
+                onClick={() => {
+                  setActiveCategory(category);
+                  setActiveSubCategory(category === "全部商品" ? "全部规格" : "大型植物");
+                }}
+              >
                 {category}
               </button>
             ))}
@@ -2052,7 +2071,7 @@ ${areaText || "暂无区域"}
 
           <main className="product-layout">
             <aside className="sub-category-list">
-              {subCategories.map((subCategory) => (
+              {(["全部规格", ...subCategories]).map((subCategory) => (
                 <button key={subCategory} className={activeSubCategory === subCategory ? "active" : ""} onClick={() => setActiveSubCategory(subCategory)}>
                   {subCategory}
                 </button>
@@ -2061,7 +2080,7 @@ ${areaText || "暂无区域"}
 
             <section className="product-list">
               {filteredProducts.length === 0 ? (
-                <div className="empty-product-card"><p>暂无商品</p><span>可以换个分类，或清空搜索关键词</span></div>
+                <div className="empty-product-card"><p>暂无商品</p><span>可以切到“全部商品”，或搜索刚新增的商品名称。</span></div>
               ) : (
                 filteredProducts.map((product) => {
                   const selected = safeItems(currentArea).find((item) => item.productId === product.id);
@@ -2481,7 +2500,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.shell}>
           <div style={desktopStyles.topbar}>
             <div>
-              <p className="eyebrow">Review Desk · v2.9</p>
+              <p className="eyebrow">Review Desk · v3.0</p>
               <h1>{order.customerName}</h1>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -2564,7 +2583,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.layout}>
           <aside style={desktopStyles.sidebar}>
             <div style={desktopStyles.brand}>
-              <p className="eyebrow">Merchant Admin · v2.9</p>
+              <p className="eyebrow">Merchant Admin · v3.0</p>
               <h2 style={{ margin: 0 }}>绿植租赁后台</h2>
               <span style={{ color: "#738278", fontSize: 13 }}>公司端 / 商户端</span>
             </div>
@@ -2706,7 +2725,7 @@ ${areaText || "暂无区域"}
 
                   <div className="empty-card" style={{ marginBottom: 14 }}>
                     <p>商品库已进入后台管理雏形</p>
-                    <span>这一版先支持新增商品、图片链接预览、上架/停用。后续接 Supabase Storage 后，就能真正上传商品照片。</span>
+                    <span>这一版支持新增商品、图片链接预览、已上架/未上架，并会同步到员工端选品。后续接 Supabase Storage 后，就能真正上传商品照片。</span>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
@@ -2725,7 +2744,7 @@ ${areaText || "暂无区域"}
                           <p>{product.description}</p>
                           <div className="product-bottom">
                             <strong>¥ {product.pricePerDay}/天</strong>
-                            <button onClick={() => toggleProductStatus(product.id)}>{product.status || "上架"}</button>
+                            <button onClick={() => toggleProductStatus(product.id)}>{product.status === "已上架" || product.status === "上架" ? "已上架" : "未上架"}</button>
                           </div>
                         </div>
                       </article>
@@ -2804,7 +2823,7 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => setShowCreateProductSheet(false)}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">New Product · v2.9</p><h2>新增商品</h2></div>
+            <div><p className="eyebrow">New Product · v3.0</p><h2>新增商品</h2></div>
             <button className="close-button" onClick={() => setShowCreateProductSheet(false)}>×</button>
           </div>
 
@@ -2853,7 +2872,7 @@ ${areaText || "暂无区域"}
 
               <div className="empty-card">
                 <p>照片上传入口已预留</p>
-                <span>这一版先用图片链接预览；后面接 Supabase Storage 后，商户就可以直接上传本地照片。</span>
+                <span>现在先用图片链接预览；后面接 Supabase Storage 后，这里会变成“上传本地照片”。</span>
               </div>
             </section>
           </div>
@@ -2917,7 +2936,7 @@ ${areaText || "暂无区域"}
         >
           <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
             <div className="section-title-row">
-              <div><p className="eyebrow">New Order · v2.9</p><h2>创建新订单</h2></div>
+              <div><p className="eyebrow">New Order · v3.0</p><h2>创建新订单</h2></div>
               <button
                 className="close-button"
                 onClick={() => {
@@ -2951,9 +2970,19 @@ ${areaText || "暂无区域"}
               <span>员工端刷新后即可接单，后续再配置区域、商品和报价。</span>
             </div>
 
-            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
-              <button className="ghost-button" onClick={() => setShowCreateOrderSheet(false)}>取消</button>
-              <button className="submit-plan-button" onClick={createMerchantOrder}>创建并派发订单</button>
+            <div style={{
+              display: "flex",
+              gap: 14,
+              justifyContent: "flex-end",
+              alignItems: "center",
+              marginTop: 18,
+              padding: 16,
+              borderRadius: 22,
+              background: "rgba(239, 247, 241, 0.92)",
+              border: "1px solid rgba(34, 116, 67, 0.12)"
+            }}>
+              <button className="ghost-button" style={{ minWidth: 110 }} onClick={() => setShowCreateOrderSheet(false)}>取消</button>
+              <button className="submit-plan-button" style={{ minWidth: 180, margin: 0 }} onClick={createMerchantOrder}>创建并派发订单</button>
             </div>
           </section>
         </div>
@@ -3010,7 +3039,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v2.9</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v3.0</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
@@ -3103,7 +3132,7 @@ ${areaText || "暂无区域"}
   return (
     <div className="app">
       <header className="app-header">
-        <div><p className="eyebrow">Staff Mobile · v2.9</p><h1>员工接单端</h1></div>
+        <div><p className="eyebrow">Staff Mobile · v3.0</p><h1>员工接单端</h1></div>
         <button className="role-button" onClick={() => switchRole("merchant")}>商户测试</button>
       </header>
 
