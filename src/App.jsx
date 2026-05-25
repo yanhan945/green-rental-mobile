@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
-const STORAGE_KEY = "green-rental-mobile-v11";
+const STORAGE_KEY = "green-rental-mobile-v15";
 
 const STATUS_TABS = ["待接单", "配置中", "方案已提交", "已完成"];
 const MERCHANT_STATUS_TABS = ["全部", "待接单", "配置中", "方案已提交", "已完成"];
 const ORDER_SOURCES = ["商户派单", "客户预约", "电话登记", "线下登记"];
+const DELIVERY_STATUS = ["未出发", "前往中", "已到达"];
 
 const productCategories = ["室内绿植", "室外植物", "月租套餐", "仿真植物"];
 const subCategories = ["大型植物", "中型植物", "小型植物", "水培植物", "盆景植物"];
@@ -29,6 +30,7 @@ const initialOrders = [
     contactName: "王经理",
     phone: "13800001111",
     status: "待接单",
+    deliveryStatus: "未出发",
     tags: ["需比价", "室外", "租过绿植"],
     areaSize: "300㎡",
     expectedDate: "2026-05-28",
@@ -36,6 +38,9 @@ const initialOrders = [
     description: "客户希望办公室和门口都摆放绿植，偏好大气、好养护的植物。",
     dispatchTime: "2026-05-24 21:30",
     source: "商户派单",
+    staffLocation: null,
+    distanceText: "待定位",
+    etaText: "待定位",
     plan: null,
   },
   {
@@ -44,6 +49,7 @@ const initialOrders = [
     contactName: "李总",
     phone: "13900002222",
     status: "待接单",
+    deliveryStatus: "未出发",
     tags: ["办公室", "长期租赁"],
     areaSize: "500㎡",
     expectedDate: "2026-06-01",
@@ -51,6 +57,9 @@ const initialOrders = [
     description: "需要为前台、会议室、开放办公区配置绿植方案。",
     dispatchTime: "2026-05-24 19:10",
     source: "客户预约",
+    staffLocation: null,
+    distanceText: "待定位",
+    etaText: "待定位",
     plan: null,
   },
 ];
@@ -146,6 +155,20 @@ function createEmptyPlan(order, planType = "租赁方案") {
   };
 }
 
+function ensureOrderDefaults(order) {
+  return {
+    deliveryStatus: "未出发",
+    staffLocation: null,
+    distanceText: "待定位",
+    etaText: "待定位",
+    contactName: order.contactName || "待确认",
+    phone: order.phone || "",
+    source: order.source || "商户派单",
+    plan: order.plan || null,
+    ...order,
+  };
+}
+
 function App() {
   const [activeRole, setActiveRole] = useState("staff");
   const [activeStatus, setActiveStatus] = useState("待接单");
@@ -154,7 +177,8 @@ function App() {
 
   const [orders, setOrders] = useState(() => {
     const saved = readStorage();
-    return Array.isArray(saved?.orders) ? saved.orders : initialOrders;
+    const data = Array.isArray(saved?.orders) ? saved.orders : initialOrders;
+    return data.map(ensureOrderDefaults);
   });
 
   const [currentPage, setCurrentPage] = useState("orders");
@@ -179,6 +203,7 @@ function App() {
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [showSubmitSheet, setShowSubmitSheet] = useState(false);
   const [showCreateOrderSheet, setShowCreateOrderSheet] = useState(false);
+  const [isCreateOrderInputFocused, setIsCreateOrderInputFocused] = useState(false);
 
   const [newOrderForm, setNewOrderForm] = useState({
     customerName: "",
@@ -191,7 +216,6 @@ function App() {
     tagsText: "办公室,长期租赁",
     source: "商户派单",
   });
-    const [isCreateOrderInputFocused, setIsCreateOrderInputFocused] = useState(false);
 
   const currentOrder = orders.find((order) => order.id === currentOrderId) || null;
   const currentPlan = currentOrder?.plan || null;
@@ -274,6 +298,7 @@ function App() {
     setShowMoreSheet(false);
     setShowSubmitSheet(false);
     setShowCreateOrderSheet(false);
+    setIsCreateOrderInputFocused(false);
   }
 
   function switchRole(role) {
@@ -303,7 +328,17 @@ function App() {
     }
   }
 
-  function openMap(address) {
+  function openMapSearch(address) {
+    if (!address) {
+      alert("暂无地址");
+      return;
+    }
+
+    const encodedAddress = encodeURIComponent(address);
+    window.open(`https://uri.amap.com/search?keyword=${encodedAddress}&callnative=1`, "_blank");
+  }
+
+  function openRouteNavigation(address) {
     if (!address) {
       alert("暂无地址");
       return;
@@ -322,6 +357,51 @@ function App() {
     window.location.href = `tel:${phone}`;
   }
 
+  function locateStaff(orderId) {
+    if (!navigator.geolocation) {
+      alert("当前浏览器不支持定位。");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+
+        updateOrder(orderId, (order) => ({
+          ...order,
+          deliveryStatus: order.deliveryStatus === "未出发" ? "前往中" : order.deliveryStatus,
+          staffLocation: {
+            latitude,
+            longitude,
+            accuracy: Math.round(accuracy || 0),
+            locatedAt: nowText(),
+          },
+          distanceText: "已定位，打开地图查看路线",
+          etaText: "由地图 App 实时计算",
+        }));
+
+        alert("定位成功，已保存到订单。");
+      },
+      (error) => {
+        console.error("定位失败：", error);
+        alert("定位失败，请检查浏览器定位权限。");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 30000,
+      }
+    );
+  }
+
+  function updateDeliveryStatus(orderId, nextStatus) {
+    updateOrder(orderId, (order) => ({
+      ...order,
+      deliveryStatus: nextStatus,
+      deliveryUpdatedAt: nowText(),
+    }));
+  }
+
   function acceptOrderAndCreatePlan() {
     if (!selectedOrder) return;
 
@@ -329,6 +409,7 @@ function App() {
       ...order,
       status: "配置中",
       planStatus: "配置中",
+      deliveryStatus: order.deliveryStatus || "未出发",
       acceptedAt: order.acceptedAt || nowText(),
       plan: order.plan || createEmptyPlan(order, planType),
     }));
@@ -510,6 +591,7 @@ function App() {
       ...order,
       status: "已完成",
       planStatus: "已完成",
+      deliveryStatus: "已到达",
       completedAt: nowText(),
       plan: order.plan
         ? {
@@ -545,6 +627,11 @@ function App() {
       contactName: newOrderForm.contactName.trim() || "待确认",
       phone: newOrderForm.phone.trim(),
       status: "待接单",
+      deliveryStatus: "未出发",
+      deliveryUpdatedAt: "",
+      staffLocation: null,
+      distanceText: "待定位",
+      etaText: "待定位",
       tags: tags.length ? tags : ["新订单"],
       areaSize: newOrderForm.areaSize.trim() || "待确认",
       expectedDate: newOrderForm.expectedDate.trim() || "待确认",
@@ -570,6 +657,7 @@ function App() {
     });
 
     setShowCreateOrderSheet(false);
+    setIsCreateOrderInputFocused(false);
     setMerchantTab("订单总览");
     setMerchantStatusFilter("全部");
   }
@@ -595,6 +683,9 @@ function App() {
 项目面积：${order?.areaSize || "-"}
 进场时间：${order?.expectedDate || "-"}
 客户地址：${order?.address || "-"}
+配送状态：${order?.deliveryStatus || "未出发"}
+预计路程：${order?.distanceText || "待定位"}
+预计时间：${order?.etaText || "待定位"}
 
 方案明细：
 ${areaText || "暂无区域"}
@@ -614,6 +705,72 @@ ${areaText || "暂无区域"}
     }
 
     copyText(`${window.location.origin}?planId=${order.plan.id}`, "客户方案链接已复制");
+  }
+
+  function DeliveryInfoCard({ order, showControls = false }) {
+    return (
+      <section className="plan-summary-card">
+        <div className="plan-summary-top">
+          <div>
+            <p>配送状态</p>
+            <strong>{order.deliveryStatus || "未出发"}</strong>
+          </div>
+          <div>
+            <p>预计时间</p>
+            <strong>{order.etaText || "待定位"}</strong>
+          </div>
+        </div>
+
+        <div className="plan-info-line">
+          <span>预计路程</span>
+          <strong>{order.distanceText || "待定位"}</strong>
+        </div>
+
+        <div className="plan-info-line">
+          <span>员工定位</span>
+          <strong>{order.staffLocation?.locatedAt || "未定位"}</strong>
+        </div>
+
+        {order.staffLocation && (
+          <div className="plan-info-line">
+            <span>定位精度</span>
+            <strong>约 {order.staffLocation.accuracy || "-"} 米</strong>
+          </div>
+        )}
+
+        {order.deliveryUpdatedAt && (
+          <div className="plan-info-line">
+            <span>状态更新时间</span>
+            <strong>{order.deliveryUpdatedAt}</strong>
+          </div>
+        )}
+
+        {showControls && (
+          <>
+            <div className="option-grid payment-grid">
+              {DELIVERY_STATUS.map((status) => (
+                <button
+                  key={status}
+                  className={order.deliveryStatus === status ? "selected" : ""}
+                  onClick={() => updateDeliveryStatus(order.id, status)}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+
+            <div className="actions mini-actions">
+              <button className="ghost-button" onClick={() => locateStaff(order.id)}>
+                定位当前位置
+              </button>
+              <button className="ghost-button" onClick={() => openRouteNavigation(order.address)}>
+                路线导航
+              </button>
+            </div>
+          </>
+        )}
+      </section>
+    );
   }
 
   function renderCustomerPlanView() {
@@ -666,6 +823,8 @@ ${areaText || "暂无区域"}
             <strong>{customerViewOrder.address}</strong>
           </div>
         </section>
+
+        <DeliveryInfoCard order={customerViewOrder} />
 
         <section className="price-card price-detail-card">
           <div><span>日租金</span><strong>¥ {money(stats.dailyRent)}</strong></div>
@@ -736,9 +895,12 @@ ${areaText || "暂无区域"}
           <div className="actions mini-actions">
             <button className="ghost-button" onClick={() => callPhone(currentOrder.phone)}>拨打电话</button>
             <button className="ghost-button" onClick={() => copyText(currentOrder.address, "地址已复制")}>复制地址</button>
-            <button className="ghost-button" onClick={() => openMap(currentOrder.address)}>打开导航</button>
+            <button className="ghost-button" onClick={() => openMapSearch(currentOrder.address)}>搜索地址</button>
+            <button className="ghost-button" onClick={() => openRouteNavigation(currentOrder.address)}>路线导航</button>
           </div>
         </section>
+
+        <DeliveryInfoCard order={currentOrder} showControls />
 
         <section className="area-section">
           <div className="section-title-row">
@@ -1011,7 +1173,8 @@ ${areaText || "暂无区域"}
 
           <button className="submit-sheet-button" onClick={() => copyText(buildPlanText(currentOrder), "方案摘要已复制")}>复制方案摘要</button>
           <button className="submit-sheet-button" onClick={() => copyCustomerPlanLink(currentOrder)}>复制客户方案链接</button>
-          <button className="submit-sheet-button" onClick={() => openMap(currentOrder.address)}>打开客户地址导航</button>
+          <button className="submit-sheet-button" onClick={() => openRouteNavigation(currentOrder.address)}>打开客户地址导航</button>
+          <button className="submit-sheet-button" onClick={() => locateStaff(currentOrder.id)}>定位当前位置</button>
 
           <button className="ghost-button danger" onClick={() => {
             updateOrderPlan(currentOrder.id, (plan) => ({ ...plan, areas: [] }));
@@ -1039,6 +1202,7 @@ ${areaText || "暂无区域"}
             <div className="confirm-row"><span>客户名称</span><strong>{currentOrder.customerName}</strong></div>
             <div className="confirm-row"><span>联系人</span><strong>{currentOrder.contactName || "-"}</strong></div>
             <div className="confirm-row"><span>电话</span><strong>{currentOrder.phone || "-"}</strong></div>
+            <div className="confirm-row"><span>配送状态</span><strong>{currentOrder.deliveryStatus || "未出发"}</strong></div>
             <div className="confirm-row"><span>区域数量</span><strong>{currentStats.areaCount} 个</strong></div>
             <div className="confirm-row"><span>商品数量</span><strong>{currentStats.productCount} 件</strong></div>
             <div className="confirm-row"><span>日租金</span><strong>¥ {money(currentStats.dailyRent)}</strong></div>
@@ -1094,7 +1258,8 @@ ${areaText || "暂无区域"}
             <div className="actions">
               <button className="ghost-button" onClick={() => callPhone(selectedOrderDetail.phone)}>拨打电话</button>
               <button className="ghost-button" onClick={() => copyText(selectedOrderDetail.address, "地址已复制")}>复制地址</button>
-              <button className="ghost-button" onClick={() => openMap(selectedOrderDetail.address)}>打开导航</button>
+              <button className="ghost-button" onClick={() => openMapSearch(selectedOrderDetail.address)}>搜索地址</button>
+              <button className="ghost-button" onClick={() => openRouteNavigation(selectedOrderDetail.address)}>路线导航</button>
 
               {selectedOrderDetail.plan && (
                 <button className="primary-button" onClick={() => { setMerchantViewingOrder(selectedOrderDetail); setSelectedOrderDetail(null); }}>
@@ -1103,6 +1268,8 @@ ${areaText || "暂无区域"}
               )}
             </div>
           </section>
+
+          <DeliveryInfoCard order={selectedOrderDetail} />
         </div>
       );
     }
@@ -1131,10 +1298,12 @@ ${areaText || "暂无区域"}
             <div className="actions">
               <button className="ghost-button" onClick={() => callPhone(merchantViewingOrder.phone)}>拨打电话</button>
               <button className="ghost-button" onClick={() => copyText(merchantViewingOrder.address, "地址已复制")}>复制地址</button>
-              <button className="ghost-button" onClick={() => openMap(merchantViewingOrder.address)}>打开导航</button>
+              <button className="ghost-button" onClick={() => openRouteNavigation(merchantViewingOrder.address)}>路线导航</button>
               <button className="ghost-button" onClick={() => copyText(buildPlanText(merchantViewingOrder), "方案已复制")}>复制方案</button>
             </div>
           </section>
+
+          <DeliveryInfoCard order={merchantViewingOrder} />
 
           <section className="price-card price-detail-card">
             <div><span>日租金</span><strong>¥ {money(stats.dailyRent)}</strong></div>
@@ -1183,7 +1352,7 @@ ${areaText || "暂无区域"}
     return (
       <div className="app">
         <header className="app-header">
-          <div><p className="eyebrow">Merchant Console · v1.1</p><h1>商户管理端</h1></div>
+          <div><p className="eyebrow">Merchant Console · v1.5</p><h1>商户管理端</h1></div>
           <button className="role-button" onClick={() => switchRole("staff")}>切到员工端</button>
         </header>
 
@@ -1249,6 +1418,8 @@ ${areaText || "暂无区域"}
 
                         <div className="info-row"><span>联系人</span><strong>{order.contactName || "-"}</strong></div>
                         <div className="info-row"><span>联系电话</span><strong>{order.phone || "-"}</strong></div>
+                        <div className="info-row"><span>配送状态</span><strong>{order.deliveryStatus || "未出发"}</strong></div>
+                        <div className="info-row"><span>预计时间</span><strong>{order.etaText || "待定位"}</strong></div>
                         <div className="info-row"><span>订单来源</span><strong>{order.source || "商户派单"}</strong></div>
                         <div className="info-row"><span>期望进场</span><strong>{order.expectedDate}</strong></div>
                         <div className="info-row"><span>客户地址</span><strong>{order.address}</strong></div>
@@ -1263,7 +1434,7 @@ ${areaText || "暂无区域"}
                         <div className="actions">
                           <button className="ghost-button" onClick={() => callPhone(order.phone)}>拨打电话</button>
                           <button className="ghost-button" onClick={() => copyText(order.address, "地址已复制")}>复制地址</button>
-                          <button className="ghost-button" onClick={() => openMap(order.address)}>打开导航</button>
+                          <button className="ghost-button" onClick={() => openRouteNavigation(order.address)}>路线导航</button>
                           <button className="primary-button" onClick={() => { setSelectedOrderDetail(order); setMerchantViewingOrder(null); }}>查看订单详情</button>
                         </div>
                       </article>
@@ -1296,6 +1467,7 @@ ${areaText || "暂无区域"}
                       </div>
 
                       <div className="info-row"><span>联系人</span><strong>{order.contactName || "-"}</strong></div>
+                      <div className="info-row"><span>配送状态</span><strong>{order.deliveryStatus || "未出发"}</strong></div>
                       <div className="info-row"><span>商品数量</span><strong>{stats.productCount} 件</strong></div>
                       <div className="info-row"><span>支付方式</span><strong>{order.plan?.paymentMethod || "月付"}</strong></div>
                       <div className="info-row"><span>提交时间</span><strong>{order.submittedAt || "-"}</strong></div>
@@ -1316,7 +1488,7 @@ ${areaText || "暂无区域"}
     );
   }
 
-    function renderCreateOrderSheet() {
+  function renderCreateOrderSheet() {
     const sheetStyle = {
       maxHeight: "86vh",
       overflowY: "auto",
@@ -1335,9 +1507,7 @@ ${areaText || "暂无区域"}
       display: isCreateOrderInputFocused ? "none" : "block",
     };
 
-    const compactBlockStyle = {
-      marginBottom: 10,
-    };
+    const compactBlockStyle = { marginBottom: 10 };
 
     const inputFocusProps = {
       onFocus: () => setIsCreateOrderInputFocused(true),
@@ -1356,18 +1526,11 @@ ${areaText || "暂无区域"}
           setIsCreateOrderInputFocused(false);
         }}
       >
-        <section
-          className="bottom-sheet"
-          style={sheetStyle}
-          onClick={(event) => event.stopPropagation()}
-        >
+        <section className="bottom-sheet" style={sheetStyle} onClick={(event) => event.stopPropagation()}>
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div>
-              <p className="eyebrow">New Order · v1.2</p>
-              <h2>创建新订单</h2>
-            </div>
+            <div><p className="eyebrow">New Order · v1.5</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
@@ -1381,67 +1544,24 @@ ${areaText || "暂无区域"}
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">客户名称</p>
-            <input
-              className="area-input"
-              {...inputFocusProps}
-              value={newOrderForm.customerName}
-              onChange={(e) =>
-                setNewOrderForm((form) => ({
-                  ...form,
-                  customerName: e.target.value,
-                }))
-              }
-              placeholder="例如：西湖写字楼客户"
-            />
+            <input className="area-input" {...inputFocusProps} value={newOrderForm.customerName} onChange={(e) => setNewOrderForm((form) => ({ ...form, customerName: e.target.value }))} placeholder="例如：西湖写字楼客户" />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">联系人</p>
-            <input
-              className="area-input"
-              {...inputFocusProps}
-              value={newOrderForm.contactName}
-              onChange={(e) =>
-                setNewOrderForm((form) => ({
-                  ...form,
-                  contactName: e.target.value,
-                }))
-              }
-              placeholder="例如：王经理"
-            />
+            <input className="area-input" {...inputFocusProps} value={newOrderForm.contactName} onChange={(e) => setNewOrderForm((form) => ({ ...form, contactName: e.target.value }))} placeholder="例如：王经理" />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">联系电话</p>
-            <input
-              className="area-input"
-              inputMode="tel"
-              {...inputFocusProps}
-              value={newOrderForm.phone}
-              onChange={(e) =>
-                setNewOrderForm((form) => ({
-                  ...form,
-                  phone: e.target.value,
-                }))
-              }
-              placeholder="例如：13800001111"
-            />
+            <input className="area-input" inputMode="tel" {...inputFocusProps} value={newOrderForm.phone} onChange={(e) => setNewOrderForm((form) => ({ ...form, phone: e.target.value }))} placeholder="例如：13800001111" />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">订单来源</p>
             <div className="option-grid">
               {ORDER_SOURCES.map((source) => (
-                <button
-                  key={source}
-                  className={newOrderForm.source === source ? "selected" : ""}
-                  onClick={() =>
-                    setNewOrderForm((form) => ({
-                      ...form,
-                      source,
-                    }))
-                  }
-                >
+                <button key={source} className={newOrderForm.source === source ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, source }))}>
                   {source}
                 </button>
               ))}
@@ -1450,82 +1570,27 @@ ${areaText || "暂无区域"}
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">项目面积</p>
-            <input
-              className="area-input"
-              {...inputFocusProps}
-              value={newOrderForm.areaSize}
-              onChange={(e) =>
-                setNewOrderForm((form) => ({
-                  ...form,
-                  areaSize: e.target.value,
-                }))
-              }
-              placeholder="例如：260㎡"
-            />
+            <input className="area-input" {...inputFocusProps} value={newOrderForm.areaSize} onChange={(e) => setNewOrderForm((form) => ({ ...form, areaSize: e.target.value }))} placeholder="例如：260㎡" />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">期望进场时间</p>
-            <input
-              className="area-input"
-              {...inputFocusProps}
-              value={newOrderForm.expectedDate}
-              onChange={(e) =>
-                setNewOrderForm((form) => ({
-                  ...form,
-                  expectedDate: e.target.value,
-                }))
-              }
-              placeholder="例如：2026-06-08"
-            />
+            <input className="area-input" {...inputFocusProps} value={newOrderForm.expectedDate} onChange={(e) => setNewOrderForm((form) => ({ ...form, expectedDate: e.target.value }))} placeholder="例如：2026-06-08" />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">客户地址</p>
-            <input
-              className="area-input"
-              {...inputFocusProps}
-              value={newOrderForm.address}
-              onChange={(e) =>
-                setNewOrderForm((form) => ({
-                  ...form,
-                  address: e.target.value,
-                }))
-              }
-              placeholder="例如：杭州市西湖区文三路"
-            />
+            <input className="area-input" {...inputFocusProps} value={newOrderForm.address} onChange={(e) => setNewOrderForm((form) => ({ ...form, address: e.target.value }))} placeholder="例如：杭州市西湖区文三路" />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">需求描述</p>
-            <input
-              className="area-input"
-              {...inputFocusProps}
-              value={newOrderForm.description}
-              onChange={(e) =>
-                setNewOrderForm((form) => ({
-                  ...form,
-                  description: e.target.value,
-                }))
-              }
-              placeholder="例如：前台和会议室需要绿植配置"
-            />
+            <input className="area-input" {...inputFocusProps} value={newOrderForm.description} onChange={(e) => setNewOrderForm((form) => ({ ...form, description: e.target.value }))} placeholder="例如：前台和会议室需要绿植配置" />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">标签，用英文逗号分隔</p>
-            <input
-              className="area-input"
-              {...inputFocusProps}
-              value={newOrderForm.tagsText}
-              onChange={(e) =>
-                setNewOrderForm((form) => ({
-                  ...form,
-                  tagsText: e.target.value,
-                }))
-              }
-              placeholder="例如：办公室,长期租赁"
-            />
+            <input className="area-input" {...inputFocusProps} value={newOrderForm.tagsText} onChange={(e) => setNewOrderForm((form) => ({ ...form, tagsText: e.target.value }))} placeholder="例如：办公室,长期租赁" />
           </div>
 
           {isCreateOrderInputFocused && (
@@ -1558,7 +1623,7 @@ ${areaText || "暂无区域"}
   return (
     <div className="app">
       <header className="app-header">
-        <div><p className="eyebrow">Green Rental · v1.1</p><h1>绿植租赁接单系统</h1></div>
+        <div><p className="eyebrow">Green Rental · v1.5</p><h1>绿植租赁接单系统</h1></div>
         <button className="role-button" onClick={() => switchRole("merchant")}>切到商户端</button>
       </header>
 
@@ -1587,6 +1652,8 @@ ${areaText || "暂无区域"}
 
               <div className="info-row"><span>联系人</span><strong>{order.contactName || "-"}</strong></div>
               <div className="info-row"><span>联系电话</span><strong>{order.phone || "-"}</strong></div>
+              <div className="info-row"><span>配送状态</span><strong>{order.deliveryStatus || "未出发"}</strong></div>
+              <div className="info-row"><span>预计时间</span><strong>{order.etaText || "待定位"}</strong></div>
               <div className="info-row"><span>订单来源</span><strong>{order.source || "商户派单"}</strong></div>
               <div className="info-row"><span>期望进场</span><strong>{order.expectedDate}</strong></div>
               <div className="info-row"><span>客户地址</span><strong>{order.address}</strong></div>
@@ -1596,7 +1663,8 @@ ${areaText || "暂无区域"}
 
               <div className="actions">
                 <button className="ghost-button" onClick={() => callPhone(order.phone)}>拨打电话</button>
-                <button className="ghost-button" onClick={() => openMap(order.address)}>导航</button>
+                <button className="ghost-button" onClick={() => openRouteNavigation(order.address)}>路线导航</button>
+                <button className="ghost-button" onClick={() => locateStaff(order.id)}>定位</button>
                 <button className="ghost-button" onClick={() => copyText(order.address, "地址已复制")}>复制地址</button>
 
                 {order.status === "待接单" && (
