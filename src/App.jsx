@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
-const STORAGE_KEY = "green-rental-mobile-v8";
+const STORAGE_KEY = "green-rental-mobile-v9";
 
 const initialOrders = [
   {
@@ -152,23 +152,58 @@ const nowText = () => {
 
 const safeAreas = (plan) => (Array.isArray(plan?.areas) ? plan.areas : []);
 const safeItems = (area) => (Array.isArray(area?.items) ? area.items : []);
+const money = (value) => Number(value || 0).toFixed(1);
 
-const areaCount = (area) =>
+const getAreaCount = (area) =>
   safeItems(area).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 
-const areaRent = (area) =>
+const getAreaDailyRent = (area) =>
   safeItems(area).reduce(
     (sum, item) => sum + Number(item.pricePerDay || 0) * Number(item.quantity || 0),
     0
   );
 
-const planCount = (areas) =>
-  (Array.isArray(areas) ? areas : []).reduce((sum, area) => sum + areaCount(area), 0);
+const getPlanStats = (plan) => {
+  const areas = safeAreas(plan);
+  const dailyRent = areas.reduce((sum, area) => sum + getAreaDailyRent(area), 0);
+  const productCount = areas.reduce((sum, area) => sum + getAreaCount(area), 0);
+  const leaseMonths = Number(plan?.leaseMonths || 12);
+  const systemTotal = dailyRent * leaseMonths * 30;
+  const customFinalRent = plan?.customFinalRent;
+  const hasCustomPrice =
+    customFinalRent !== "" &&
+    customFinalRent !== null &&
+    customFinalRent !== undefined &&
+    !Number.isNaN(Number(customFinalRent));
 
-const planRent = (areas) =>
-  (Array.isArray(areas) ? areas : []).reduce((sum, area) => sum + areaRent(area), 0);
+  return {
+    areaCount: areas.length,
+    productCount,
+    dailyRent,
+    leaseMonths,
+    systemTotal,
+    finalRent: hasCustomPrice ? Number(customFinalRent) : systemTotal,
+  };
+};
 
-const formatRent = (value) => Number(value || 0).toFixed(1);
+const createEmptyPlan = (order, planType = "租赁方案") => ({
+  id: Date.now(),
+  orderId: order.id,
+  customerName: order.customerName,
+  planType,
+  address: order.address,
+  areaSize: order.areaSize,
+  expectedDate: order.expectedDate,
+  areas: [],
+  leaseMonths: 12,
+  paymentMethod: "月付",
+  needDeposit: true,
+  customFinalRent: "",
+  status: "配置中",
+  submitted: false,
+  createdAt: nowText(),
+  updatedAt: nowText(),
+});
 
 function App() {
   const [activeRole, setActiveRole] = useState("staff");
@@ -181,14 +216,9 @@ function App() {
     return Array.isArray(saved?.orders) ? saved.orders : initialOrders;
   });
 
-  const [draftPlans, setDraftPlans] = useState(() => {
+  const [plans, setPlans] = useState(() => {
     const saved = readStorage();
-    return Array.isArray(saved?.draftPlans) ? saved.draftPlans : [];
-  });
-
-  const [submittedPlans, setSubmittedPlans] = useState(() => {
-    const saved = readStorage();
-    return Array.isArray(saved?.submittedPlans) ? saved.submittedPlans : [];
+    return Array.isArray(saved?.plans) ? saved.plans : [];
   });
 
   const [currentPage, setCurrentPage] = useState("orders");
@@ -209,13 +239,7 @@ function App() {
   const [searchText, setSearchText] = useState("");
 
   const [showPaymentSheet, setShowPaymentSheet] = useState(false);
-  const [leaseMonths, setLeaseMonths] = useState(12);
-  const [paymentMethod, setPaymentMethod] = useState("月付");
-  const [needDeposit, setNeedDeposit] = useState(true);
-
   const [showPriceSheet, setShowPriceSheet] = useState(false);
-  const [customTotalRent, setCustomTotalRent] = useState("");
-
   const [showSubmitSheet, setShowSubmitSheet] = useState(false);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
 
@@ -229,18 +253,15 @@ function App() {
     tagsText: "办公室,长期租赁",
   });
 
-  const currentPlan = draftPlans.find((plan) => plan.id === currentPlanId) || null;
+  const currentPlan = plans.find((plan) => plan.id === currentPlanId) || null;
   const planAreas = safeAreas(currentPlan);
   const currentArea = planAreas.find((area) => area.id === currentAreaId) || null;
+  const currentStats = getPlanStats(currentPlan);
 
-  const dailyRent = planRent(planAreas);
-  const productCount = planCount(planAreas);
-  const systemTotalNumber = dailyRent * Number(leaseMonths || 0) * 30;
-  const systemTotal = formatRent(systemTotalNumber);
-  const finalRent = customTotalRent ? formatRent(customTotalRent) : systemTotal;
-
-  const currentAreaCount = areaCount(currentArea);
-  const currentAreaRent = areaRent(currentArea);
+  const submittedPlans = useMemo(
+    () => plans.filter((plan) => plan.status === "方案已提交" || plan.status === "已完成"),
+    [plans]
+  );
 
   const filteredOrders = orders.filter((order) => order.status === activeStatus);
 
@@ -261,45 +282,25 @@ function App() {
   });
 
   useEffect(() => {
-    saveStorage({ orders, draftPlans, submittedPlans });
-  }, [orders, draftPlans, submittedPlans]);
+    saveStorage({ orders, plans });
+  }, [orders, plans]);
 
   useEffect(() => {
     if (currentPage === "plan" && !currentPlan) setCurrentPage("orders");
     if (showProductSheet && !currentArea) setShowProductSheet(false);
   }, [currentPage, currentPlan, showProductSheet, currentArea]);
 
-  const updateCurrentPlan = (updater) => {
-    setDraftPlans((plans) =>
-      plans.map((plan) => {
-        if (plan.id !== currentPlanId) return plan;
-        const next = typeof updater === "function" ? updater(plan) : updater;
-        return { ...next, updatedAt: nowText() };
+  const updatePlan = (planId, updater) => {
+    setPlans((prevPlans) =>
+      prevPlans.map((plan) => {
+        if (plan.id !== planId) return plan;
+        const nextPlan = typeof updater === "function" ? updater(plan) : updater;
+        return {
+          ...nextPlan,
+          updatedAt: nowText(),
+        };
       })
     );
-  };
-
-  const syncPlanPriceInfo = () => {
-    updateCurrentPlan((plan) => {
-      const areas = safeAreas(plan);
-      const nextDailyRent = planRent(areas);
-      const nextProductCount = planCount(areas);
-      const nextSystemTotal = formatRent(nextDailyRent * Number(leaseMonths || 0) * 30);
-      const nextFinalRent = customTotalRent ? formatRent(customTotalRent) : nextSystemTotal;
-
-      return {
-        ...plan,
-        leaseMonths,
-        paymentMethod,
-        needDeposit,
-        customTotalRent,
-        dailyRent: formatRent(nextDailyRent),
-        totalRent: nextSystemTotal,
-        finalRent: nextFinalRent,
-        totalProductCount: nextProductCount,
-        areaCount: areas.length,
-      };
-    });
   };
 
   const resetAllSheets = () => {
@@ -350,47 +351,24 @@ function App() {
 
     const encodedAddress = encodeURIComponent(address);
     const amapUrl = `https://uri.amap.com/search?keyword=${encodedAddress}&callnative=1`;
-
     window.open(amapUrl, "_blank");
   };
 
   const createPlanFromOrder = () => {
     if (!selectedOrder) return;
 
-    const existedDraft = draftPlans.find((plan) => plan.orderId === selectedOrder.id);
+    const existedPlan = plans.find((plan) => plan.orderId === selectedOrder.id);
 
-    if (existedDraft) {
-      setCurrentPlanId(existedDraft.id);
+    if (existedPlan) {
+      setCurrentPlanId(existedPlan.id);
     } else {
-      const newPlan = {
-        id: Date.now(),
-        orderId: selectedOrder.id,
-        customerName: selectedOrder.customerName,
-        planType,
-        address: selectedOrder.address,
-        areaSize: selectedOrder.areaSize,
-        expectedDate: selectedOrder.expectedDate,
-        areas: [],
-        submitted: false,
-        leaseMonths: 12,
-        paymentMethod: "月付",
-        needDeposit: true,
-        customTotalRent: "",
-        dailyRent: "0.0",
-        totalRent: "0.0",
-        finalRent: "0.0",
-        totalProductCount: 0,
-        areaCount: 0,
-        createdAt: nowText(),
-        updatedAt: nowText(),
-      };
-
-      setDraftPlans((plans) => [newPlan, ...plans]);
+      const newPlan = createEmptyPlan(selectedOrder, planType);
+      setPlans((prevPlans) => [newPlan, ...prevPlans]);
       setCurrentPlanId(newPlan.id);
     }
 
-    setOrders((prev) =>
-      prev.map((order) =>
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
         order.id === selectedOrder.id
           ? {
               ...order,
@@ -402,58 +380,20 @@ function App() {
       )
     );
 
-    setLeaseMonths(12);
-    setPaymentMethod("月付");
-    setNeedDeposit(true);
-    setCustomTotalRent("");
     setCurrentPage("plan");
     setSelectedOrder(null);
     setPlanType("租赁方案");
   };
 
   const openPlanForOrder = (order) => {
-    const draft = draftPlans.find((plan) => plan.orderId === order.id);
-    const submitted = submittedPlans.find((plan) => plan.orderId === order.id);
-    const plan = draft || submitted;
+    const existedPlan = plans.find((plan) => plan.orderId === order.id);
 
-    if (plan) {
-      if (!draft) setDraftPlans((plans) => [plan, ...plans]);
-
-      setCurrentPlanId(plan.id);
-      setLeaseMonths(plan.leaseMonths || 12);
-      setPaymentMethod(plan.paymentMethod || "月付");
-      setNeedDeposit(plan.needDeposit ?? true);
-      setCustomTotalRent(plan.customTotalRent || "");
+    if (existedPlan) {
+      setCurrentPlanId(existedPlan.id);
     } else {
-      const newPlan = {
-        id: Date.now(),
-        orderId: order.id,
-        customerName: order.customerName,
-        planType: "租赁方案",
-        address: order.address,
-        areaSize: order.areaSize,
-        expectedDate: order.expectedDate,
-        areas: [],
-        submitted: false,
-        leaseMonths: 12,
-        paymentMethod: "月付",
-        needDeposit: true,
-        customTotalRent: "",
-        dailyRent: "0.0",
-        totalRent: "0.0",
-        finalRent: "0.0",
-        totalProductCount: 0,
-        areaCount: 0,
-        createdAt: nowText(),
-        updatedAt: nowText(),
-      };
-
-      setDraftPlans((plans) => [newPlan, ...plans]);
+      const newPlan = createEmptyPlan(order, "租赁方案");
+      setPlans((prevPlans) => [newPlan, ...prevPlans]);
       setCurrentPlanId(newPlan.id);
-      setLeaseMonths(12);
-      setPaymentMethod("月付");
-      setNeedDeposit(true);
-      setCustomTotalRent("");
     }
 
     setCurrentPage("plan");
@@ -461,11 +401,18 @@ function App() {
 
   const addArea = () => {
     const name = areaName.trim();
-    if (!name) return;
+    if (!name || !currentPlan) return;
 
-    updateCurrentPlan((plan) => ({
+    updatePlan(currentPlan.id, (plan) => ({
       ...plan,
-      areas: [...safeAreas(plan), { id: Date.now(), name, items: [] }],
+      areas: [
+        ...safeAreas(plan),
+        {
+          id: Date.now(),
+          name,
+          items: [],
+        },
+      ],
     }));
 
     setAreaName("");
@@ -481,196 +428,135 @@ function App() {
   };
 
   const addProductToArea = (product) => {
-    if (!currentAreaId) return;
+    if (!currentPlan || !currentAreaId) return;
 
-    setDraftPlans((plans) =>
-      plans.map((plan) => {
-        if (plan.id !== currentPlanId) return plan;
+    updatePlan(currentPlan.id, (plan) => ({
+      ...plan,
+      areas: safeAreas(plan).map((area) => {
+        if (area.id !== currentAreaId) return area;
 
-        const nextAreas = safeAreas(plan).map((area) => {
-          if (area.id !== currentAreaId) return area;
+        const items = safeItems(area);
+        const existed = items.find((item) => item.productId === product.id);
 
-          const items = safeItems(area);
-          const existed = items.find((item) => item.productId === product.id);
-
-          const nextItems = existed
-            ? items.map((item) =>
-                item.productId === product.id
-                  ? { ...item, quantity: Number(item.quantity || 0) + 1 }
-                  : item
-              )
-            : [
-                ...items,
-                {
-                  productId: product.id,
-                  name: product.name,
-                  pricePerDay: Number(product.pricePerDay || 0),
-                  quantity: 1,
-                },
-              ];
-
-          return { ...area, items: nextItems };
-        });
-
-        const nextDailyRent = planRent(nextAreas);
-        const nextProductCount = planCount(nextAreas);
-        const nextSystemTotal = formatRent(nextDailyRent * Number(leaseMonths || 0) * 30);
-        const nextFinalRent = customTotalRent ? formatRent(customTotalRent) : nextSystemTotal;
+        if (existed) {
+          return {
+            ...area,
+            items: items.map((item) =>
+              item.productId === product.id
+                ? {
+                    ...item,
+                    quantity: Number(item.quantity || 0) + 1,
+                  }
+                : item
+            ),
+          };
+        }
 
         return {
-          ...plan,
-          areas: nextAreas,
-          dailyRent: formatRent(nextDailyRent),
-          totalRent: nextSystemTotal,
-          finalRent: nextFinalRent,
-          totalProductCount: nextProductCount,
-          areaCount: nextAreas.length,
-          updatedAt: nowText(),
+          ...area,
+          items: [
+            ...items,
+            {
+              productId: product.id,
+              name: product.name,
+              pricePerDay: Number(product.pricePerDay || 0),
+              quantity: 1,
+            },
+          ],
         };
-      })
-    );
+      }),
+    }));
   };
 
   const changeItemQuantity = (areaId, productId, change) => {
-    setDraftPlans((plans) =>
-      plans.map((plan) => {
-        if (plan.id !== currentPlanId) return plan;
+    if (!currentPlan) return;
 
-        const nextAreas = safeAreas(plan).map((area) => {
-          if (area.id !== areaId) return area;
-
-          const nextItems = safeItems(area)
-            .map((item) =>
-              item.productId === productId
-                ? { ...item, quantity: Number(item.quantity || 0) + change }
-                : item
-            )
-            .filter((item) => Number(item.quantity || 0) > 0);
-
-          return { ...area, items: nextItems };
-        });
-
-        const nextDailyRent = planRent(nextAreas);
-        const nextProductCount = planCount(nextAreas);
-        const nextSystemTotal = formatRent(nextDailyRent * Number(leaseMonths || 0) * 30);
-        const nextFinalRent = customTotalRent ? formatRent(customTotalRent) : nextSystemTotal;
+    updatePlan(currentPlan.id, (plan) => ({
+      ...plan,
+      areas: safeAreas(plan).map((area) => {
+        if (area.id !== areaId) return area;
 
         return {
-          ...plan,
-          areas: nextAreas,
-          dailyRent: formatRent(nextDailyRent),
-          totalRent: nextSystemTotal,
-          finalRent: nextFinalRent,
-          totalProductCount: nextProductCount,
-          areaCount: nextAreas.length,
-          updatedAt: nowText(),
+          ...area,
+          items: safeItems(area)
+            .map((item) =>
+              item.productId === productId
+                ? {
+                    ...item,
+                    quantity: Math.max(0, Number(item.quantity || 0) + change),
+                  }
+                : item
+            )
+            .filter((item) => Number(item.quantity || 0) > 0),
         };
-      })
-    );
+      }),
+    }));
   };
 
   const removeItemFromArea = (areaId, productId) => {
-    setDraftPlans((plans) =>
-      plans.map((plan) => {
-        if (plan.id !== currentPlanId) return plan;
+    if (!currentPlan) return;
 
-        const nextAreas = safeAreas(plan).map((area) => {
-          if (area.id !== areaId) return area;
-
-          return {
-            ...area,
-            items: safeItems(area).filter((item) => item.productId !== productId),
-          };
-        });
-
-        const nextDailyRent = planRent(nextAreas);
-        const nextProductCount = planCount(nextAreas);
-        const nextSystemTotal = formatRent(nextDailyRent * Number(leaseMonths || 0) * 30);
-        const nextFinalRent = customTotalRent ? formatRent(customTotalRent) : nextSystemTotal;
+    updatePlan(currentPlan.id, (plan) => ({
+      ...plan,
+      areas: safeAreas(plan).map((area) => {
+        if (area.id !== areaId) return area;
 
         return {
-          ...plan,
-          areas: nextAreas,
-          dailyRent: formatRent(nextDailyRent),
-          totalRent: nextSystemTotal,
-          finalRent: nextFinalRent,
-          totalProductCount: nextProductCount,
-          areaCount: nextAreas.length,
-          updatedAt: nowText(),
+          ...area,
+          items: safeItems(area).filter((item) => item.productId !== productId),
         };
-      })
-    );
+      }),
+    }));
   };
 
   const clearCurrentAreaItems = () => {
-    if (!currentAreaId) return;
+    if (!currentPlan || !currentAreaId) return;
 
-    setDraftPlans((plans) =>
-      plans.map((plan) => {
-        if (plan.id !== currentPlanId) return plan;
-
-        const nextAreas = safeAreas(plan).map((area) =>
-          area.id === currentAreaId ? { ...area, items: [] } : area
-        );
-
-        const nextDailyRent = planRent(nextAreas);
-        const nextProductCount = planCount(nextAreas);
-        const nextSystemTotal = formatRent(nextDailyRent * Number(leaseMonths || 0) * 30);
-        const nextFinalRent = customTotalRent ? formatRent(customTotalRent) : nextSystemTotal;
-
-        return {
-          ...plan,
-          areas: nextAreas,
-          dailyRent: formatRent(nextDailyRent),
-          totalRent: nextSystemTotal,
-          finalRent: nextFinalRent,
-          totalProductCount: nextProductCount,
-          areaCount: nextAreas.length,
-          updatedAt: nowText(),
-        };
-      })
-    );
+    updatePlan(currentPlan.id, (plan) => ({
+      ...plan,
+      areas: safeAreas(plan).map((area) =>
+        area.id === currentAreaId
+          ? {
+              ...area,
+              items: [],
+            }
+          : area
+      ),
+    }));
   };
 
-  const savePaymentInfo = () => {
-    syncPlanPriceInfo();
-    setShowPaymentSheet(false);
-  };
+  const updateCurrentPlanField = (field, value) => {
+    if (!currentPlan) return;
 
-  const saveCustomPrice = () => {
-    syncPlanPriceInfo();
-    setShowPriceSheet(false);
+    updatePlan(currentPlan.id, (plan) => ({
+      ...plan,
+      [field]: value,
+    }));
   };
 
   const submitPlan = () => {
     if (!currentPlan) return;
 
+    const stats = getPlanStats(currentPlan);
+
     const submittedPlan = {
       ...currentPlan,
+      status: "方案已提交",
       submitted: true,
       submittedAt: nowText(),
-      leaseMonths,
-      paymentMethod,
-      needDeposit,
-      customTotalRent,
-      dailyRent: dailyRent.toFixed(1),
-      totalRent: systemTotal,
-      finalRent,
-      totalProductCount: productCount,
-      areaCount: planAreas.length,
+      dailyRent: money(stats.dailyRent),
+      totalRent: money(stats.systemTotal),
+      finalRent: money(stats.finalRent),
+      totalProductCount: stats.productCount,
+      areaCount: stats.areaCount,
     };
 
-    setDraftPlans((plans) =>
-      plans.map((plan) => (plan.id === currentPlan.id ? submittedPlan : plan))
+    setPlans((prevPlans) =>
+      prevPlans.map((plan) => (plan.id === currentPlan.id ? submittedPlan : plan))
     );
 
-    setSubmittedPlans((plans) => [
-      submittedPlan,
-      ...plans.filter((plan) => plan.orderId !== currentPlan.orderId),
-    ]);
-
-    setOrders((prev) =>
-      prev.map((order) =>
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
         order.id === currentPlan.orderId
           ? {
               ...order,
@@ -687,17 +573,22 @@ function App() {
     setCurrentPage("orders");
   };
 
-  const completeOrder = (orderId) => {
+  const completeOrderByStaff = (orderId) => {
     const targetOrder = orders.find((order) => order.id === orderId);
 
     if (!targetOrder) return;
+
+    if (targetOrder.status !== "方案已提交") {
+      alert("只有方案已提交的订单，员工才能标记为已完成。");
+      return;
+    }
 
     if (!window.confirm(`确认将「${targetOrder.customerName}」标记为已完成吗？`)) {
       return;
     }
 
-    setOrders((prev) =>
-      prev.map((order) =>
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
         order.id === orderId
           ? {
               ...order,
@@ -709,8 +600,8 @@ function App() {
       )
     );
 
-    setSubmittedPlans((plans) =>
-      plans.map((plan) =>
+    setPlans((prevPlans) =>
+      prevPlans.map((plan) =>
         plan.orderId === orderId
           ? {
               ...plan,
@@ -721,21 +612,7 @@ function App() {
       )
     );
 
-    if (selectedOrderDetail?.id === orderId) {
-      setSelectedOrderDetail((order) =>
-        order
-          ? {
-              ...order,
-              status: "已完成",
-              planStatus: "已完成",
-              completedAt: nowText(),
-            }
-          : order
-      );
-    }
-
     setActiveStatus("已完成");
-    setMerchantStatusFilter("已完成");
   };
 
   const createMerchantOrder = () => {
@@ -767,7 +644,7 @@ function App() {
       source: "商户手动创建",
     };
 
-    setOrders((prev) => [newOrder, ...prev]);
+    setOrders((prevOrders) => [newOrder, ...prevOrders]);
 
     setNewOrderForm({
       customerName: "",
@@ -783,8 +660,10 @@ function App() {
     setMerchantStatusFilter("全部");
   };
 
-  const buildPlanSummary = () => {
-    const areaText = planAreas
+  const buildPlanText = (plan) => {
+    const stats = getPlanStats(plan);
+
+    const areaText = safeAreas(plan)
       .map((area) => {
         const items = safeItems(area)
           .map((item) => `- ${item.name} × ${item.quantity}（¥${item.pricePerDay}/天）`)
@@ -795,25 +674,32 @@ function App() {
       .join("\n\n");
 
     return `绿植租赁方案
-客户：${currentPlan?.customerName || "-"}
-项目面积：${currentPlan?.areaSize || "-"}
-进场时间：${currentPlan?.expectedDate || "-"}
-客户地址：${currentPlan?.address || "-"}
+客户：${plan?.customerName || "-"}
+项目面积：${plan?.areaSize || "-"}
+进场时间：${plan?.expectedDate || "-"}
+客户地址：${plan?.address || "-"}
 
 方案明细：
 ${areaText || "暂无区域"}
 
-日租金：¥${dailyRent.toFixed(1)}
-租期：${leaseMonths}月
-系统总租金：¥${systemTotal}
-最终报价：¥${finalRent}
-支付方式：${paymentMethod}
-押金：${needDeposit ? "需要" : "不需要"}`;
+日租金：¥${money(stats.dailyRent)}
+租期：${plan?.leaseMonths || 12}月
+系统总租金：¥${money(stats.systemTotal)}
+最终报价：¥${money(stats.finalRent)}
+支付方式：${plan?.paymentMethod || "月付"}
+押金：${plan?.needDeposit ? "需要" : "不需要"}`;
   };
 
   const copyPlanSummary = async () => {
-    const summary = buildPlanSummary();
-    await copyText(summary, "方案摘要已复制");
+    if (!currentPlan) return;
+    await copyText(buildPlanText(currentPlan), "方案摘要已复制");
+  };
+
+  const copyCustomerPlanLink = async (plan) => {
+    if (!plan) return;
+
+    const link = `${window.location.origin}?planId=${plan.id}`;
+    await copyText(link, "客户方案链接已复制");
   };
 
   const renderPlanPage = () => {
@@ -886,8 +772,8 @@ ${areaText || "暂无区域"}
                   <div>
                     <h3>{area.name}</h3>
                     <p>
-                      已选商品：{areaCount(area)} 件｜区域日租金：¥{" "}
-                      {areaRent(area).toFixed(1)}
+                      已选商品：{getAreaCount(area)} 件｜区域日租金：¥{" "}
+                      {money(getAreaDailyRent(area))}
                     </p>
 
                     {safeItems(area).length > 0 && (
@@ -941,27 +827,27 @@ ${areaText || "暂无区域"}
         <section className="price-card price-detail-card">
           <div>
             <span>目前方案日租金</span>
-            <strong>¥ {dailyRent.toFixed(1)}</strong>
+            <strong>¥ {money(currentStats.dailyRent)}</strong>
           </div>
           <div>
             <span>租期</span>
-            <strong>{leaseMonths} 月</strong>
+            <strong>{currentPlan.leaseMonths || 12} 月</strong>
           </div>
           <div>
             <span>系统预计总租金</span>
-            <strong>¥ {systemTotal}</strong>
+            <strong>¥ {money(currentStats.systemTotal)}</strong>
           </div>
           <div>
             <span>最终报价</span>
-            <strong>¥ {finalRent}</strong>
+            <strong>¥ {money(currentStats.finalRent)}</strong>
           </div>
           <div>
             <span>支付方式</span>
-            <strong>{paymentMethod}</strong>
+            <strong>{currentPlan.paymentMethod || "月付"}</strong>
           </div>
           <div>
             <span>押金</span>
-            <strong>{needDeposit ? "需要" : "不需要"}</strong>
+            <strong>{currentPlan.needDeposit ? "需要" : "不需要"}</strong>
           </div>
         </section>
 
@@ -1030,7 +916,8 @@ ${areaText || "暂无区域"}
               <div className="rent-preview">
                 <span>当前区域</span>
                 <strong>
-                  已选 {currentAreaCount} 件｜日租金 ¥ {currentAreaRent.toFixed(1)}
+                  已选 {getAreaCount(currentArea)} 件｜日租金 ¥{" "}
+                  {money(getAreaDailyRent(currentArea))}
                 </strong>
               </div>
 
@@ -1107,8 +994,8 @@ ${areaText || "暂无区域"}
               </main>
 
               <button className="submit-sheet-button" onClick={() => setShowProductSheet(false)}>
-                已选 {currentAreaCount} 件｜日租金 ¥ {currentAreaRent.toFixed(1)}
-                ｜完成选品
+                已选 {getAreaCount(currentArea)} 件｜日租金 ¥{" "}
+                {money(getAreaDailyRent(currentArea))}｜完成选品
               </button>
 
               <button className="ghost-button" onClick={clearCurrentAreaItems}>
@@ -1138,8 +1025,8 @@ ${areaText || "暂无区域"}
                   {[6, 12, 24, 36].map((m) => (
                     <button
                       key={m}
-                      className={leaseMonths === m ? "selected" : ""}
-                      onClick={() => setLeaseMonths(m)}
+                      className={Number(currentPlan.leaseMonths || 12) === m ? "selected" : ""}
+                      onClick={() => updateCurrentPlanField("leaseMonths", m)}
                     >
                       {m} 月
                     </button>
@@ -1150,13 +1037,13 @@ ${areaText || "暂无区域"}
               <div className="sheet-block">
                 <p className="sheet-label">支付方式</p>
                 <div className="option-grid payment-grid">
-                  {["月付", "季付", "半年付", "年付"].map((m) => (
+                  {["月付", "季付", "半年付", "年付"].map((method) => (
                     <button
-                      key={m}
-                      className={paymentMethod === m ? "selected" : ""}
-                      onClick={() => setPaymentMethod(m)}
+                      key={method}
+                      className={currentPlan.paymentMethod === method ? "selected" : ""}
+                      onClick={() => updateCurrentPlanField("paymentMethod", method)}
                     >
-                      {m}
+                      {method}
                     </button>
                   ))}
                 </div>
@@ -1168,19 +1055,19 @@ ${areaText || "暂无区域"}
                   <span>真实业务里可根据客户情况调整</span>
                 </div>
                 <button
-                  className={needDeposit ? "switch-button active" : "switch-button"}
-                  onClick={() => setNeedDeposit(!needDeposit)}
+                  className={currentPlan.needDeposit ? "switch-button active" : "switch-button"}
+                  onClick={() => updateCurrentPlanField("needDeposit", !currentPlan.needDeposit)}
                 >
-                  {needDeposit ? "需要" : "不需要"}
+                  {currentPlan.needDeposit ? "需要" : "不需要"}
                 </button>
               </div>
 
               <div className="rent-preview">
                 <span>预计总租金</span>
-                <strong>¥ {systemTotal}</strong>
+                <strong>¥ {money(currentStats.systemTotal)}</strong>
               </div>
 
-              <button className="submit-sheet-button" onClick={savePaymentInfo}>
+              <button className="submit-sheet-button" onClick={() => setShowPaymentSheet(false)}>
                 保存租期与支付
               </button>
             </section>
@@ -1205,7 +1092,7 @@ ${areaText || "暂无区域"}
                 <p className="sheet-label">系统预计总租金</p>
                 <div className="price-preview-line">
                   <span>按当前商品和租期自动计算</span>
-                  <strong>¥ {systemTotal}</strong>
+                  <strong>¥ {money(currentStats.systemTotal)}</strong>
                 </div>
               </div>
 
@@ -1214,21 +1101,24 @@ ${areaText || "暂无区域"}
                 <input
                   className="price-input"
                   type="number"
-                  value={customTotalRent}
-                  onChange={(e) => setCustomTotalRent(e.target.value)}
-                  placeholder="例如：1980"
+                  value={currentPlan.customFinalRent || ""}
+                  onChange={(e) => updateCurrentPlanField("customFinalRent", e.target.value)}
+                  placeholder="不填则使用系统预计总租金"
                 />
               </div>
 
               <div className="quick-price-list">
-                {[systemTotal, 1980, 2880, 3880].map((price) => (
-                  <button key={price} onClick={() => setCustomTotalRent(String(price))}>
+                {[money(currentStats.systemTotal), 1980, 2880, 3880].map((price) => (
+                  <button
+                    key={price}
+                    onClick={() => updateCurrentPlanField("customFinalRent", String(price))}
+                  >
                     ¥ {price}
                   </button>
                 ))}
               </div>
 
-              <button className="submit-sheet-button" onClick={saveCustomPrice}>
+              <button className="submit-sheet-button" onClick={() => setShowPriceSheet(false)}>
                 保存最终报价
               </button>
             </section>
@@ -1255,6 +1145,13 @@ ${areaText || "暂无区域"}
 
               <button
                 className="submit-sheet-button"
+                onClick={() => copyCustomerPlanLink(currentPlan)}
+              >
+                复制客户方案链接
+              </button>
+
+              <button
+                className="submit-sheet-button"
                 onClick={() => openMap(currentPlan.address)}
               >
                 打开客户地址导航
@@ -1263,7 +1160,10 @@ ${areaText || "暂无区域"}
               <button
                 className="ghost-button danger"
                 onClick={() => {
-                  updateCurrentPlan((plan) => ({ ...plan, areas: [] }));
+                  updatePlan(currentPlan.id, (plan) => ({
+                    ...plan,
+                    areas: [],
+                  }));
                   setShowMoreSheet(false);
                 }}
               >
@@ -1295,31 +1195,31 @@ ${areaText || "暂无区域"}
                 </div>
                 <div className="confirm-row">
                   <span>区域数量</span>
-                  <strong>{planAreas.length} 个</strong>
+                  <strong>{currentStats.areaCount} 个</strong>
                 </div>
                 <div className="confirm-row">
                   <span>商品数量</span>
-                  <strong>{productCount} 件</strong>
+                  <strong>{currentStats.productCount} 件</strong>
                 </div>
                 <div className="confirm-row">
                   <span>日租金</span>
-                  <strong>¥ {dailyRent.toFixed(1)}</strong>
+                  <strong>¥ {money(currentStats.dailyRent)}</strong>
                 </div>
                 <div className="confirm-row">
                   <span>最终报价</span>
-                  <strong>¥ {finalRent}</strong>
+                  <strong>¥ {money(currentStats.finalRent)}</strong>
                 </div>
                 <div className="confirm-row">
                   <span>支付方式</span>
-                  <strong>{paymentMethod}</strong>
+                  <strong>{currentPlan.paymentMethod}</strong>
                 </div>
                 <div className="confirm-row">
                   <span>押金</span>
-                  <strong>{needDeposit ? "需要" : "不需要"}</strong>
+                  <strong>{currentPlan.needDeposit ? "需要" : "不需要"}</strong>
                 </div>
               </div>
 
-              {productCount === 0 && (
+              {currentStats.productCount === 0 && (
                 <div className="rent-preview">
                   <span>提醒</span>
                   <strong>当前还没有添加商品，也可以先提交测试流程</strong>
@@ -1343,6 +1243,9 @@ ${areaText || "暂无区域"}
     const completedCount = orders.filter((order) => order.status === "已完成").length;
 
     if (selectedOrderDetail) {
+      const relatedPlan = plans.find((plan) => plan.orderId === selectedOrderDetail.id);
+      const relatedStats = getPlanStats(relatedPlan);
+
       return (
         <div className="app">
           <header className="plan-header">
@@ -1384,6 +1287,13 @@ ${areaText || "暂无区域"}
               <strong>{selectedOrderDetail.source || "商户派单"}</strong>
             </div>
 
+            {relatedPlan && (
+              <div className="plan-info-line">
+                <span>当前报价</span>
+                <strong>¥ {money(relatedStats.finalRent)}</strong>
+              </div>
+            )}
+
             <p className="description">{selectedOrderDetail.description}</p>
 
             <div className="actions">
@@ -1400,12 +1310,15 @@ ${areaText || "暂无区域"}
                 打开导航
               </button>
 
-              {selectedOrderDetail.status === "方案已提交" && (
+              {relatedPlan && (
                 <button
                   className="primary-button"
-                  onClick={() => completeOrder(selectedOrderDetail.id)}
+                  onClick={() => {
+                    setMerchantViewingPlan(relatedPlan);
+                    setSelectedOrderDetail(null);
+                  }}
                 >
-                  完成订单
+                  查看方案
                 </button>
               )}
             </div>
@@ -1416,6 +1329,7 @@ ${areaText || "暂无区域"}
 
     if (merchantViewingPlan) {
       const viewAreas = safeAreas(merchantViewingPlan);
+      const viewStats = getPlanStats(merchantViewingPlan);
 
       return (
         <div className="app">
@@ -1437,7 +1351,7 @@ ${areaText || "暂无区域"}
               </div>
               <div>
                 <p>最终报价</p>
-                <strong>¥ {merchantViewingPlan.finalRent}</strong>
+                <strong>¥ {money(viewStats.finalRent)}</strong>
               </div>
             </div>
 
@@ -1455,7 +1369,7 @@ ${areaText || "暂无区域"}
             </div>
             <div className="plan-info-line">
               <span>提交时间</span>
-              <strong>{merchantViewingPlan.submittedAt}</strong>
+              <strong>{merchantViewingPlan.submittedAt || "-"}</strong>
             </div>
 
             <div className="actions">
@@ -1471,7 +1385,10 @@ ${areaText || "暂无区域"}
               >
                 打开导航
               </button>
-              <button className="ghost-button" onClick={() => copyText(buildPlanTextFromPlan(merchantViewingPlan), "方案已复制")}>
+              <button
+                className="ghost-button"
+                onClick={() => copyText(buildPlanText(merchantViewingPlan), "方案已复制")}
+              >
                 复制方案
               </button>
             </div>
@@ -1480,23 +1397,23 @@ ${areaText || "暂无区域"}
           <section className="price-card price-detail-card">
             <div>
               <span>日租金</span>
-              <strong>¥ {merchantViewingPlan.dailyRent}</strong>
+              <strong>¥ {money(viewStats.dailyRent)}</strong>
             </div>
             <div>
               <span>租期</span>
-              <strong>{merchantViewingPlan.leaseMonths} 月</strong>
+              <strong>{merchantViewingPlan.leaseMonths || 12} 月</strong>
             </div>
             <div>
               <span>系统总租金</span>
-              <strong>¥ {merchantViewingPlan.totalRent}</strong>
+              <strong>¥ {money(viewStats.systemTotal)}</strong>
             </div>
             <div>
               <span>最终报价</span>
-              <strong>¥ {merchantViewingPlan.finalRent}</strong>
+              <strong>¥ {money(viewStats.finalRent)}</strong>
             </div>
             <div>
               <span>支付方式</span>
-              <strong>{merchantViewingPlan.paymentMethod}</strong>
+              <strong>{merchantViewingPlan.paymentMethod || "月付"}</strong>
             </div>
             <div>
               <span>押金</span>
@@ -1523,8 +1440,8 @@ ${areaText || "暂无区域"}
                     <div>
                       <h3>{area.name}</h3>
                       <p>
-                        已选商品：{areaCount(area)} 件｜区域日租金：¥{" "}
-                        {areaRent(area).toFixed(1)}
+                        已选商品：{getAreaCount(area)} 件｜区域日租金：¥{" "}
+                        {money(getAreaDailyRent(area))}
                       </p>
 
                       {safeItems(area).length > 0 && (
@@ -1547,14 +1464,10 @@ ${areaText || "暂无区域"}
               </div>
             )}
 
-            {merchantViewingPlan.status !== "已完成" && (
-              <button
-                className="submit-sheet-button"
-                onClick={() => completeOrder(merchantViewingPlan.orderId)}
-              >
-                标记为已完成
-              </button>
-            )}
+            <div className="empty-card">
+              <p>商户端仅查看订单状态</p>
+              <span>订单完成由员工端操作，商户端这里只负责查看结果。</span>
+            </div>
           </section>
         </div>
       );
@@ -1652,62 +1565,68 @@ ${areaText || "暂无区域"}
                     <span>可以切换其他状态查看</span>
                   </div>
                 ) : (
-                  merchantOrders.map((order) => (
-                    <article className="order-card" key={order.id}>
-                      <div className="order-card-header">
-                        <div>
-                          <h2>{order.customerName}</h2>
-                          <p>{order.planStatus || order.status}</p>
+                  merchantOrders.map((order) => {
+                    const relatedPlan = plans.find((plan) => plan.orderId === order.id);
+                    const relatedStats = getPlanStats(relatedPlan);
+
+                    return (
+                      <article className="order-card" key={order.id}>
+                        <div className="order-card-header">
+                          <div>
+                            <h2>{order.customerName}</h2>
+                            <p>{order.planStatus || order.status}</p>
+                          </div>
+                          <span className="area-size">{order.areaSize}</span>
                         </div>
-                        <span className="area-size">{order.areaSize}</span>
-                      </div>
 
-                      <div className="tag-list">
-                        {(Array.isArray(order.tags) ? order.tags : []).map((tag) => (
-                          <span key={tag}>{tag}</span>
-                        ))}
-                      </div>
+                        <div className="tag-list">
+                          {(Array.isArray(order.tags) ? order.tags : []).map((tag) => (
+                            <span key={tag}>{tag}</span>
+                          ))}
+                        </div>
 
-                      <div className="info-row">
-                        <span>期望进场</span>
-                        <strong>{order.expectedDate}</strong>
-                      </div>
-                      <div className="info-row">
-                        <span>客户地址</span>
-                        <strong>{order.address}</strong>
-                      </div>
+                        <div className="info-row">
+                          <span>期望进场</span>
+                          <strong>{order.expectedDate}</strong>
+                        </div>
+                        <div className="info-row">
+                          <span>客户地址</span>
+                          <strong>{order.address}</strong>
+                        </div>
 
-                      <p className="description">{order.description}</p>
-                      <p className="dispatch-time">派单时间：{order.dispatchTime}</p>
-
-                      <div className="actions">
-                        <button
-                          className="ghost-button"
-                          onClick={() => copyText(order.address, "地址已复制")}
-                        >
-                          复制地址
-                        </button>
-                        <button className="ghost-button" onClick={() => openMap(order.address)}>
-                          打开导航
-                        </button>
-                        <button
-                          className="primary-button"
-                          onClick={() => {
-                            setSelectedOrderDetail(order);
-                            setMerchantViewingPlan(null);
-                          }}
-                        >
-                          查看订单详情
-                        </button>
-
-                        {order.status === "方案已提交" && (
-                          <button className="primary-button" onClick={() => completeOrder(order.id)}>
-                            完成订单
-                          </button>
+                        {relatedPlan && (
+                          <div className="info-row">
+                            <span>当前报价</span>
+                            <strong>¥ {money(relatedStats.finalRent)}</strong>
+                          </div>
                         )}
-                      </div>
-                    </article>
-                  ))
+
+                        <p className="description">{order.description}</p>
+                        <p className="dispatch-time">派单时间：{order.dispatchTime}</p>
+
+                        <div className="actions">
+                          <button
+                            className="ghost-button"
+                            onClick={() => copyText(order.address, "地址已复制")}
+                          >
+                            复制地址
+                          </button>
+                          <button className="ghost-button" onClick={() => openMap(order.address)}>
+                            打开导航
+                          </button>
+                          <button
+                            className="primary-button"
+                            onClick={() => {
+                              setSelectedOrderDetail(order);
+                              setMerchantViewingPlan(null);
+                            }}
+                          >
+                            查看订单详情
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })
                 )}
               </main>
             </section>
@@ -1730,55 +1649,50 @@ ${areaText || "暂无区域"}
               </div>
             ) : (
               <div className="order-list">
-                {submittedPlans.map((plan) => (
-                  <article className="order-card" key={plan.id}>
-                    <div className="order-card-header">
-                      <div>
-                        <h2>{plan.customerName}</h2>
-                        <p>{plan.status || "方案已提交"}</p>
+                {submittedPlans.map((plan) => {
+                  const stats = getPlanStats(plan);
+
+                  return (
+                    <article className="order-card" key={plan.id}>
+                      <div className="order-card-header">
+                        <div>
+                          <h2>{plan.customerName}</h2>
+                          <p>{plan.status || "方案已提交"}</p>
+                        </div>
+                        <span className="area-size">¥ {money(stats.finalRent)}</span>
                       </div>
-                      <span className="area-size">¥ {plan.finalRent}</span>
-                    </div>
 
-                    <div className="info-row">
-                      <span>区域数量</span>
-                      <strong>{plan.areaCount} 个</strong>
-                    </div>
-                    <div className="info-row">
-                      <span>商品数量</span>
-                      <strong>{plan.totalProductCount} 件</strong>
-                    </div>
-                    <div className="info-row">
-                      <span>支付方式</span>
-                      <strong>{plan.paymentMethod}</strong>
-                    </div>
-                    <div className="info-row">
-                      <span>提交时间</span>
-                      <strong>{plan.submittedAt}</strong>
-                    </div>
+                      <div className="info-row">
+                        <span>区域数量</span>
+                        <strong>{stats.areaCount} 个</strong>
+                      </div>
+                      <div className="info-row">
+                        <span>商品数量</span>
+                        <strong>{stats.productCount} 件</strong>
+                      </div>
+                      <div className="info-row">
+                        <span>支付方式</span>
+                        <strong>{plan.paymentMethod}</strong>
+                      </div>
+                      <div className="info-row">
+                        <span>提交时间</span>
+                        <strong>{plan.submittedAt || "-"}</strong>
+                      </div>
 
-                    <div className="actions">
-                      <button
-                        className="primary-button"
-                        onClick={() => {
-                          setMerchantViewingPlan(plan);
-                          setSelectedOrderDetail(null);
-                        }}
-                      >
-                        查看方案
-                      </button>
-
-                      {plan.status !== "已完成" && (
+                      <div className="actions">
                         <button
                           className="primary-button"
-                          onClick={() => completeOrder(plan.orderId)}
+                          onClick={() => {
+                            setMerchantViewingPlan(plan);
+                            setSelectedOrderDetail(null);
+                          }}
                         >
-                          完成订单
+                          查看方案
                         </button>
-                      )}
-                    </div>
-                  </article>
-                ))}
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -1830,36 +1744,6 @@ ${areaText || "暂无区域"}
         )}
       </div>
     );
-  };
-
-  const buildPlanTextFromPlan = (plan) => {
-    const areas = safeAreas(plan);
-
-    const areaText = areas
-      .map((area) => {
-        const items = safeItems(area)
-          .map((item) => `- ${item.name} × ${item.quantity}（¥${item.pricePerDay}/天）`)
-          .join("\n");
-
-        return `【${area.name}】\n${items || "- 暂无商品"}`;
-      })
-      .join("\n\n");
-
-    return `绿植租赁方案
-客户：${plan.customerName || "-"}
-项目面积：${plan.areaSize || "-"}
-进场时间：${plan.expectedDate || "-"}
-客户地址：${plan.address || "-"}
-
-方案明细：
-${areaText || "暂无区域"}
-
-日租金：¥${plan.dailyRent || "0.0"}
-租期：${plan.leaseMonths || "-"}月
-系统总租金：¥${plan.totalRent || "0.0"}
-最终报价：¥${plan.finalRent || "0.0"}
-支付方式：${plan.paymentMethod || "-"}
-押金：${plan.needDeposit ? "需要" : "不需要"}`;
   };
 
   if (currentPage === "plan" && currentPlan) return renderPlanPage();
@@ -1931,19 +1815,39 @@ ${areaText || "暂无区域"}
                 <button className="ghost-button" onClick={() => copyText(order.address, "地址已复制")}>
                   复制地址
                 </button>
-                <button className="ghost-button danger">拒绝接单</button>
 
-                {order.status === "待接单" ? (
-                  <button className="primary-button" onClick={() => setSelectedOrder(order)}>
-                    确认接单
-                  </button>
-                ) : order.status === "已完成" ? (
-                  <button className="primary-button" onClick={() => openPlanForOrder(order)}>
-                    查看方案
-                  </button>
-                ) : (
+                {order.status === "待接单" && (
+                  <>
+                    <button className="ghost-button danger">拒绝接单</button>
+                    <button className="primary-button" onClick={() => setSelectedOrder(order)}>
+                      确认接单
+                    </button>
+                  </>
+                )}
+
+                {order.status === "配置中" && (
                   <button className="primary-button" onClick={() => openPlanForOrder(order)}>
                     继续编辑方案
+                  </button>
+                )}
+
+                {order.status === "方案已提交" && (
+                  <>
+                    <button className="primary-button" onClick={() => openPlanForOrder(order)}>
+                      查看方案
+                    </button>
+                    <button
+                      className="submit-plan-button"
+                      onClick={() => completeOrderByStaff(order.id)}
+                    >
+                      完成订单
+                    </button>
+                  </>
+                )}
+
+                {order.status === "已完成" && (
+                  <button className="primary-button" onClick={() => openPlanForOrder(order)}>
+                    查看方案
                   </button>
                 )}
               </div>
