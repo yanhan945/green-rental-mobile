@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
-const STORAGE_KEY = "green-rental-mobile-v22";
+const STORAGE_KEY = "green-rental-mobile-v23";
 
 const STAFF_TABS = ["待接单", "进行中", "待确认", "已完成"];
 const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "已完成"];
@@ -13,91 +13,22 @@ const EXECUTION_STATUS = ["待联系", "已联系", "已出发", "已到达", "�
 const CUSTOMER_CONFIRM_STATUS = ["待确认", "已确认", "有异议"];
 const PLAN_LINK_STATUS = ["未生成", "已复制", "已发送"];
 
+const DATA_SOURCE_TEXT = "本地测试数据";
+const SYNC_STATUS_TEXT = "未连接云端";
+
 const productCategories = ["室内绿植", "室外植物", "月租套餐", "仿真植物"];
 const subCategories = ["大型植物", "中型植物", "小型植物", "水培植物", "盆景植物"];
 
 const products = [
-  {
-    id: 1,
-    name: "原生发财树",
-    category: "室内绿植",
-    subCategory: "大型植物",
-    description: "寓意财源滚滚，适合前台、办公室、会议室。",
-    pricePerDay: 2.5,
-    image: "🌳",
-  },
-  {
-    id: 2,
-    name: "天堂鸟",
-    category: "室内绿植",
-    subCategory: "大型植物",
-    description: "株型舒展，适合大堂、休息区、开放办公区。",
-    pricePerDay: 3.2,
-    image: "🪴",
-  },
-  {
-    id: 3,
-    name: "绿萝柱",
-    category: "室内绿植",
-    subCategory: "中型植物",
-    description: "耐阴好养，适合办公室角落和走廊区域。",
-    pricePerDay: 1.6,
-    image: "🌿",
-  },
-  {
-    id: 4,
-    name: "红掌",
-    category: "室内绿植",
-    subCategory: "小型植物",
-    description: "颜色鲜明，适合前台、桌面、接待区点缀。",
-    pricePerDay: 0.8,
-    image: "🌺",
-  },
-  {
-    id: 5,
-    name: "水培白掌",
-    category: "室内绿植",
-    subCategory: "水培植物",
-    description: "干净清爽，适合会议桌、茶水间、前台。",
-    pricePerDay: 0.7,
-    image: "💧",
-  },
-  {
-    id: 6,
-    name: "罗汉松盆景",
-    category: "室内绿植",
-    subCategory: "盆景植物",
-    description: "稳重大气，适合老板办公室、会客区。",
-    pricePerDay: 4.5,
-    image: "🎍",
-  },
-  {
-    id: 7,
-    name: "户外铁树",
-    category: "室外植物",
-    subCategory: "大型植物",
-    description: "耐晒耐养，适合门口、庭院、园区入口。",
-    pricePerDay: 3.8,
-    image: "🌴",
-  },
-  {
-    id: 8,
-    name: "月租前台组合",
-    category: "月租套餐",
-    subCategory: "中型植物",
-    description: "适合前台和接待区的基础组合套餐。",
-    pricePerDay: 5.8,
-    image: "🧺",
-  },
-  {
-    id: 9,
-    name: "仿真龟背竹",
-    category: "仿真植物",
-    subCategory: "大型植物",
-    description: "无需养护，适合光线不足或维护不便区域。",
-    pricePerDay: 1.2,
-    image: "🍃",
-  },
+  { id: 1, name: "原生发财树", category: "室内绿植", subCategory: "大型植物", description: "寓意财源滚滚，适合前台、办公室、会议室。", pricePerDay: 2.5, image: "🌳" },
+  { id: 2, name: "天堂鸟", category: "室内绿植", subCategory: "大型植物", description: "株型舒展，适合大堂、休息区、开放办公区。", pricePerDay: 3.2, image: "🪴" },
+  { id: 3, name: "绿萝柱", category: "室内绿植", subCategory: "中型植物", description: "耐阴好养，适合办公室角落和走廊区域。", pricePerDay: 1.6, image: "🌿" },
+  { id: 4, name: "红掌", category: "室内绿植", subCategory: "小型植物", description: "颜色鲜明，适合前台、桌面、接待区点缀。", pricePerDay: 0.8, image: "🌺" },
+  { id: 5, name: "水培白掌", category: "室内绿植", subCategory: "水培植物", description: "干净清爽，适合会议桌、茶水间、前台。", pricePerDay: 0.7, image: "💧" },
+  { id: 6, name: "罗汉松盆景", category: "室内绿植", subCategory: "盆景植物", description: "稳重大气，适合老板办公室、会客区。", pricePerDay: 4.5, image: "🎍" },
+  { id: 7, name: "户外铁树", category: "室外植物", subCategory: "大型植物", description: "耐晒耐养，适合门口、庭院、园区入口。", pricePerDay: 3.8, image: "🌴" },
+  { id: 8, name: "月租前台组合", category: "月租套餐", subCategory: "中型植物", description: "适合前台和接待区的基础组合套餐。", pricePerDay: 5.8, image: "🧺" },
+  { id: 9, name: "仿真龟背竹", category: "仿真植物", subCategory: "大型植物", description: "无需养护，适合光线不足或维护不便区域。", pricePerDay: 1.2, image: "🍃" },
 ];
 
 const initialOrders = [
@@ -167,21 +98,58 @@ function nowText() {
   return `${y}-${m}-${day} ${h}:${min}`;
 }
 
-function readStorage() {
+function ensureOrderDefaults(order) {
+  return {
+    deliveryStatus: "未出发",
+    executionStatus: "待联系",
+    customerConfirmStatus: "待确认",
+    merchantConfirmStatus: "未提交",
+    planLinkStatus: "未生成",
+    staffLocation: null,
+    distanceText: "待定位",
+    etaText: "待定位",
+    contactName: order.contactName || "待确认",
+    phone: order.phone || "",
+    source: order.source || "商户派单",
+    fieldNote: order.fieldNote || "",
+    internalNote: order.internalNote || "",
+    revisionReason: order.revisionReason || "",
+    timeline: Array.isArray(order.timeline) ? order.timeline : [],
+    plan: order.plan || null,
+    ...order,
+  };
+}
+
+function normalizeOrders(data) {
+  const orders = Array.isArray(data) ? data : initialOrders;
+  return orders.map(ensureOrderDefaults);
+}
+
+function loadOrdersFromLocalStore() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
+    if (!raw) return normalizeOrders(initialOrders);
+
+    const parsed = JSON.parse(raw);
+    return normalizeOrders(parsed?.orders);
+  } catch (error) {
+    console.error("读取本地订单失败：", error);
+    return normalizeOrders(initialOrders);
   }
 }
 
-function saveStorage(data) {
+function persistOrdersToLocalStore(orders) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        source: "localStorage",
+        savedAt: nowText(),
+        orders,
+      })
+    );
   } catch (error) {
-    console.error("保存本地数据失败：", error);
+    console.error("保存本地订单失败：", error);
   }
 }
 
@@ -213,7 +181,6 @@ function getAreaDailyRent(area) {
 
 function getPlanStats(plan) {
   const areas = safeAreas(plan);
-
   const areaCount = areas.length;
   const productCount = areas.reduce((sum, area) => sum + getAreaProductCount(area), 0);
   const dailyRent = areas.reduce((sum, area) => sum + getAreaDailyRent(area), 0);
@@ -254,28 +221,6 @@ function createEmptyPlan(order, planType = "租赁方案") {
   };
 }
 
-function ensureOrderDefaults(order) {
-  return {
-    deliveryStatus: "未出发",
-    executionStatus: "待联系",
-    customerConfirmStatus: "待确认",
-    merchantConfirmStatus: "未提交",
-    planLinkStatus: "未生成",
-    staffLocation: null,
-    distanceText: "待定位",
-    etaText: "待定位",
-    contactName: order.contactName || "待确认",
-    phone: order.phone || "",
-    source: order.source || "商户派单",
-    fieldNote: order.fieldNote || "",
-    internalNote: order.internalNote || "",
-    revisionReason: order.revisionReason || "",
-    timeline: Array.isArray(order.timeline) ? order.timeline : [],
-    plan: order.plan || null,
-    ...order,
-  };
-}
-
 function getStaffStatuses(tab) {
   if (tab === "待接单") return ["待接单"];
   if (tab === "进行中") return ["配置中", "方案已确认", "执行中"];
@@ -285,16 +230,15 @@ function getStaffStatuses(tab) {
 }
 
 function App() {
+  const merchantListRef = useRef(null);
+
   const [activeRole, setActiveRole] = useState("staff");
   const [activeStaffTab, setActiveStaffTab] = useState("待接单");
   const [merchantTab, setMerchantTab] = useState("订单总览");
   const [merchantStatusFilter, setMerchantStatusFilter] = useState("全部");
+  const [syncMessage, setSyncMessage] = useState("当前为本地测试数据，电脑和手机暂时不会互通。");
 
-  const [orders, setOrders] = useState(() => {
-    const saved = readStorage();
-    const data = Array.isArray(saved?.orders) ? saved.orders : initialOrders;
-    return data.map(ensureOrderDefaults);
-  });
+  const [orders, setOrders] = useState(() => loadOrdersFromLocalStore());
 
   const [currentPage, setCurrentPage] = useState("orders");
   const [currentOrderId, setCurrentOrderId] = useState(null);
@@ -375,7 +319,7 @@ function App() {
   const customerViewOrder = orders.find((order) => order.plan?.id === customerPlanId) || null;
 
   useEffect(() => {
-    saveStorage({ orders });
+    persistOrdersToLocalStore(orders);
   }, [orders]);
 
   useEffect(() => {
@@ -398,6 +342,30 @@ function App() {
         return { ...order, ...nextOrder };
       });
     });
+  }
+
+  function replaceAllOrders(nextOrders) {
+    setOrders(normalizeOrders(nextOrders));
+  }
+
+  function refreshOrdersFromLocal() {
+    const nextOrders = loadOrdersFromLocalStore();
+    replaceAllOrders(nextOrders);
+    setSyncMessage(`已从本地缓存刷新订单：${nowText()}`);
+  }
+
+  function handleViewPendingMerchantConfirm() {
+    setMerchantTab("订单总览");
+    setMerchantStatusFilter("待商户确认");
+
+    window.setTimeout(() => {
+      merchantListRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+
+    setSyncMessage("已切换到“待商户确认”列表。");
   }
 
   function updateOrderPlan(orderId, planUpdater) {
@@ -967,6 +935,38 @@ ${areaText || "暂无区域"}
 押金：${plan?.needDeposit ? "需要" : "不需要"}`;
   }
 
+  function SyncInfoCard({ compact = false }) {
+    return (
+      <section className="plan-summary-card">
+        <div className="plan-summary-top">
+          <div>
+            <p>数据来源</p>
+            <strong>{DATA_SOURCE_TEXT}</strong>
+          </div>
+          <div>
+            <p>同步状态</p>
+            <strong>{SYNC_STATUS_TEXT}</strong>
+          </div>
+        </div>
+
+        {!compact && (
+          <>
+            <div className="empty-card">
+              <p>云同步准备中</p>
+              <span>{syncMessage}</span>
+            </div>
+
+            <div className="actions">
+              <button className="ghost-button" onClick={refreshOrdersFromLocal}>
+                刷新订单
+              </button>
+            </div>
+          </>
+        )}
+      </section>
+    );
+  }
+
   function StatusPill({ children }) {
     return <span className="area-size">{children}</span>;
   }
@@ -1025,7 +1025,7 @@ ${areaText || "暂无区域"}
             导航
           </button>
           <button className="ghost-button" onClick={() => copyText(order.address, "地址已复制")}>
-            复制地址
+            地址
           </button>
 
           {mode === "merchant" && (
@@ -1339,6 +1339,7 @@ ${areaText || "暂无区域"}
           </div>
         </header>
 
+        <SyncInfoCard compact />
         <StatusSummaryCard order={customerViewOrder} />
 
         <section className="price-card price-detail-card">
@@ -1391,10 +1392,12 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
-            <p className="eyebrow">Staff Workbench · v2.2</p>
+            <p className="eyebrow">Staff Workbench · v2.3</p>
             <h1>{currentOrder.customerName}</h1>
           </div>
         </header>
+
+        <SyncInfoCard compact />
 
         <section className="plan-summary-card">
           <div className="plan-summary-top">
@@ -1783,6 +1786,8 @@ ${areaText || "暂无区域"}
             <div><p className="eyebrow">Order Detail</p><h1>{selectedOrderDetail.customerName}</h1></div>
           </header>
 
+          <SyncInfoCard compact />
+
           <section className="plan-summary-card">
             <div className="plan-summary-top">
               <div><p>订单状态</p><strong>{selectedOrderDetail.status}</strong></div>
@@ -1849,6 +1854,7 @@ ${areaText || "暂无区域"}
             <div><p className="eyebrow">Plan Detail</p><h1>{merchantViewingOrder.customerName}</h1></div>
           </header>
 
+          <SyncInfoCard compact />
           <StatusSummaryCard order={merchantViewingOrder} />
 
           {merchantViewingOrder.status === "待商户确认" && (
@@ -1916,9 +1922,11 @@ ${areaText || "暂无区域"}
     return (
       <div className="app">
         <header className="app-header">
-          <div><p className="eyebrow">Merchant Console · v2.2</p><h1>商户管理端</h1></div>
+          <div><p className="eyebrow">Merchant Console · v2.3</p><h1>商户管理端</h1></div>
           <button className="role-button" onClick={() => switchRole("staff")}>切到员工端</button>
         </header>
+
+        <SyncInfoCard />
 
         {pendingMerchantConfirmOrders.length > 0 && (
           <section className="plan-summary-card">
@@ -1926,13 +1934,7 @@ ${areaText || "暂无区域"}
               <p>有 {pendingMerchantConfirmOrders.length} 个方案待确认</p>
               <span>请进入订单详情查看并确认方案。</span>
             </div>
-            <button
-              className="submit-sheet-button"
-              onClick={() => {
-                setMerchantStatusFilter("待商户确认");
-                setMerchantTab("订单总览");
-              }}
-            >
+            <button className="submit-sheet-button" onClick={handleViewPendingMerchantConfirm}>
               查看待确认方案
             </button>
           </section>
@@ -1978,7 +1980,7 @@ ${areaText || "暂无区域"}
               ))}
             </section>
 
-            <section className="area-section">
+            <section className="area-section" ref={merchantListRef}>
               <div className="section-title-row">
                 <div><p className="eyebrow">Orders</p><h2>{merchantStatusFilter === "全部" ? "全部订单" : merchantStatusFilter}</h2></div>
               </div>
@@ -2070,7 +2072,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v2.2</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v2.3</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
@@ -2163,9 +2165,11 @@ ${areaText || "暂无区域"}
   return (
     <div className="app">
       <header className="app-header">
-        <div><p className="eyebrow">Staff Mobile · v2.2</p><h1>员工接单端</h1></div>
+        <div><p className="eyebrow">Staff Mobile · v2.3</p><h1>员工接单端</h1></div>
         <button className="role-button" onClick={() => switchRole("merchant")}>商户测试</button>
       </header>
+
+      <SyncInfoCard />
 
       <section className="tabs">
         {STAFF_TABS.map((tab) => (
