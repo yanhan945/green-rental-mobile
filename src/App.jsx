@@ -461,6 +461,7 @@ function App() {
   const [merchantSearchText, setMerchantSearchText] = useState("");
   const [syncMessage, setSyncMessage] = useState("当前已连接 Supabase。点击刷新订单即可读取云端数据。");
   const [syncState, setSyncState] = useState("云端待刷新");
+  const [autoSyncState, setAutoSyncState] = useState("自动同步准备中");
 
   const [orders, setOrders] = useState(() => loadOrdersFromLocalStore());
   const [merchantProducts, setMerchantProducts] = useState(() => loadProductsFromLocalStore());
@@ -638,6 +639,18 @@ function App() {
     if (showProductSheet && !currentArea) setShowProductSheet(false);
   }, [currentPage, currentOrder, showProductSheet, currentArea]);
 
+  useEffect(() => {
+    silentRefreshFromCloud("启动自动同步");
+
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        silentRefreshFromCloud("自动同步");
+      }
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
   function addTimeline(order, action) {
     return {
       ...order,
@@ -732,6 +745,39 @@ function App() {
       console.error(error);
       setSyncState("同步失败");
       setSyncMessage(error.message || "读取云端失败。");
+    }
+  }
+
+  async function silentRefreshFromCloud(reason = "自动同步") {
+    try {
+      const [cloudOrders, cloudProducts] = await Promise.all([
+        fetchOrdersFromCloud().catch(() => []),
+        fetchProductsFromCloud().catch(() => []),
+      ]);
+
+      if (cloudOrders.length > 0) {
+        const normalizedOrders = normalizeOrders(cloudOrders);
+        setOrders((prevOrders) => {
+          const prevText = JSON.stringify(prevOrders);
+          const nextText = JSON.stringify(normalizedOrders);
+          return prevText === nextText ? prevOrders : normalizedOrders;
+        });
+        setMerchantCustomers((prev) => mergeCustomers(prev, normalizedOrders));
+      }
+
+      if (cloudProducts.length > 0) {
+        const normalizedProducts = normalizeProducts(cloudProducts);
+        setMerchantProducts((prevProducts) => {
+          const prevText = JSON.stringify(prevProducts);
+          const nextText = JSON.stringify(normalizedProducts);
+          return prevText === nextText ? prevProducts : normalizedProducts;
+        });
+      }
+
+      setAutoSyncState(`${reason}：${nowText().slice(11)}`);
+    } catch (error) {
+      console.error("自动同步失败：", error);
+      setAutoSyncState("自动同步失败，手动刷新兜底");
     }
   }
 
@@ -1645,13 +1691,17 @@ ${areaText || "暂无区域"}
             <p>同步状态</p>
             <strong>{syncState}</strong>
           </div>
+          <div>
+            <p>实时同步</p>
+            <strong>{autoSyncState}</strong>
+          </div>
         </div>
 
         {!compact && (
           <>
             <div className="empty-card">
               <p>云同步已开启</p>
-              <span>{syncMessage}</span>
+              <span>{syncMessage}｜页面打开时会每 5 秒自动同步订单和商品，手动刷新仍然保留作兜底。</span>
             </div>
 
             <div className="actions">
@@ -2116,7 +2166,7 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
-            <p className="eyebrow">Staff Workbench · v3.1</p>
+            <p className="eyebrow">Staff Workbench · v3.2</p>
             <h1>{currentOrder.customerName}</h1>
           </div>
         </header>
@@ -2301,25 +2351,75 @@ ${areaText || "暂无区域"}
   }
 
   function renderProductSheet() {
+    const sheetStyle = {
+      height: "88vh",
+      maxHeight: "88vh",
+      overflow: "hidden",
+      display: "flex",
+      flexDirection: "column",
+      paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
+    };
+
+    const topStyle = {
+      flexShrink: 0,
+      position: "relative",
+      zIndex: 6,
+      background: "rgba(255,255,255,0.98)",
+      borderRadius: "0 0 24px 24px",
+      paddingBottom: 10,
+      boxShadow: "0 10px 22px rgba(24, 70, 44, 0.06)",
+    };
+
+    const productMainStyle = {
+      flex: 1,
+      minHeight: 0,
+      overflow: "hidden",
+      display: "grid",
+      gridTemplateColumns: "112px minmax(0, 1fr)",
+      gap: 10,
+      paddingTop: 10,
+    };
+
+    const productListStyle = {
+      overflowY: "auto",
+      minHeight: 0,
+      paddingRight: 4,
+      paddingBottom: 112,
+    };
+
+    const clearButtonStyle = {
+      border: "1px solid rgba(178, 68, 55, 0.22)",
+      borderRadius: 999,
+      padding: "14px 22px",
+      margin: "12px auto 0",
+      width: "fit-content",
+      display: "block",
+      background: "#fff3f0",
+      color: "#a5493e",
+      fontWeight: 900,
+      boxShadow: "0 10px 22px rgba(115, 45, 38, 0.08)",
+    };
+
     return (
       <div className="sheet-mask" onClick={() => setShowProductSheet(false)}>
-        <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
+        <section className="bottom-sheet" style={sheetStyle} onClick={(event) => event.stopPropagation()}>
           <div className="sheet-handle" />
-          <div className="sheet-header">
-            <div><p className="eyebrow">Product Library</p><h2>{currentArea?.name || "当前区域"}选品</h2></div>
-            <button className="close-button" onClick={() => setShowProductSheet(false)}>×</button>
-          </div>
+          <div style={topStyle}>
+            <div className="sheet-header">
+              <div><p className="eyebrow">Product Library</p><h2>{currentArea?.name || "当前区域"}选品</h2></div>
+              <button className="close-button" onClick={() => setShowProductSheet(false)}>×</button>
+            </div>
 
-          <div className="rent-preview">
-            <span>当前区域</span>
-            <strong>已选 {getAreaProductCount(currentArea)} 件｜日租金 ¥ {money(getAreaDailyRent(currentArea))}</strong>
-          </div>
+            <div className="rent-preview">
+              <span>当前区域</span>
+              <strong>已选 {getAreaProductCount(currentArea)} 件｜日租金 ¥ {money(getAreaDailyRent(currentArea))}</strong>
+            </div>
 
-          <div className="sheet-block">
-            <input className="area-input" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="搜索植物名称 / 寓意 / 场景" />
-          </div>
+            <div className="sheet-block" style={{ marginBottom: 8 }}>
+              <input className="area-input" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="搜索植物名称 / 寓意 / 场景" />
+            </div>
 
-          <div className="category-tabs">
+            <div className="category-tabs">
             {["全部商品", ...productCategories].map((category) => (
               <button
                 key={category}
@@ -2334,8 +2434,10 @@ ${areaText || "暂无区域"}
             ))}
           </div>
 
-          <main className="product-layout">
-            <aside className="sub-category-list">
+          </div>
+
+          <main className="product-layout" style={productMainStyle}>
+            <aside className="sub-category-list" style={{ overflowY: "auto", minHeight: 0, paddingBottom: 112 }}>
               {(["全部规格", ...subCategories]).map((subCategory) => (
                 <button key={subCategory} className={activeSubCategory === subCategory ? "active" : ""} onClick={() => setActiveSubCategory(subCategory)}>
                   {subCategory}
@@ -2343,7 +2445,7 @@ ${areaText || "暂无区域"}
               ))}
             </aside>
 
-            <section className="product-list">
+            <section className="product-list" style={productListStyle}>
               {filteredProducts.length === 0 ? (
                 <div className="empty-product-card"><p>暂无商品</p><span>可以切到“全部商品”，或搜索刚新增的商品名称。</span></div>
               ) : (
@@ -2375,7 +2477,7 @@ ${areaText || "暂无区域"}
             已选 {getAreaProductCount(currentArea)} 件｜日租金 ¥ {money(getAreaDailyRent(currentArea))}｜完成选品
           </button>
 
-          <button className="ghost-button danger" style={{ borderRadius: 18, padding: "14px 18px", marginTop: 10 }} onClick={clearCurrentAreaItems}>清空当前区域商品</button>
+          <button style={clearButtonStyle} onClick={clearCurrentAreaItems}>清空当前区域商品</button>
         </section>
       </div>
     );
@@ -2765,7 +2867,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.shell}>
           <div style={desktopStyles.topbar}>
             <div>
-              <p className="eyebrow">Review Desk · v3.1</p>
+              <p className="eyebrow">Review Desk · v3.2</p>
               <h1>{order.customerName}</h1>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -2848,7 +2950,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.layout}>
           <aside style={desktopStyles.sidebar}>
             <div style={desktopStyles.brand}>
-              <p className="eyebrow">Merchant Admin · v3.1</p>
+              <p className="eyebrow">Merchant Admin · v3.2</p>
               <h2 style={{ margin: 0 }}>绿植租赁后台</h2>
               <span style={{ color: "#738278", fontSize: 13 }}>公司端 / 商户端</span>
             </div>
@@ -2878,6 +2980,7 @@ ${areaText || "暂无区域"}
                 <p className="eyebrow">Dashboard</p>
                 <h1>{merchantTab}</h1>
                 <span style={{ color: "#738278" }}>{syncMessage}</span>
+                <span style={{ display: "block", color: "#217642", fontWeight: 800, marginTop: 4 }}>实时同步：{autoSyncState}</span>
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button style={desktopStyles.softButton} onClick={refreshOrdersFromCloud}>刷新订单</button>
@@ -2994,27 +3097,37 @@ ${areaText || "暂无区域"}
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
-                    {filteredMerchantProducts.map((product) => (
-                      <article className="product-card" key={product.id}>
-                        <div className="product-image">
-                          {isImageUrl(getProductImage(product)) ? (
-                            <img src={getProductImage(product)} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 16 }} />
-                          ) : (
-                            getProductImage(product)
-                          )}
-                        </div>
-                        <div className="product-info">
-                          <h3>{product.name}</h3>
-                          <p>{product.category}｜{product.subCategory}</p>
-                          <p>{product.description}</p>
-                          <div className="product-bottom">
-                            <strong>¥ {product.pricePerDay}/天</strong>
-                            <button onClick={() => toggleProductStatus(product.id)}>{product.status === "已上架" || product.status === "上架" ? "已上架" : "未上架"}</button>
-                            <button onClick={() => openEditProduct(product)}>编辑</button>
+                    {filteredMerchantProducts.map((product) => {
+                      const isListed = product.status === "已上架" || product.status === "上架";
+                      return (
+                        <article
+                          className="product-card"
+                          key={product.id}
+                          style={isListed ? undefined : { opacity: 0.55, filter: "grayscale(0.75)", background: "#f4f6f2" }}
+                        >
+                          <div className="product-image">
+                            {isImageUrl(getProductImage(product)) ? (
+                              <img src={getProductImage(product)} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 16 }} />
+                            ) : (
+                              getProductImage(product)
+                            )}
                           </div>
-                        </div>
-                      </article>
-                    ))}
+                          <div className="product-info">
+                            <h3>{product.name}</h3>
+                            <p>{product.category}｜{product.subCategory}</p>
+                            <p>{product.description}</p>
+                            <div className="product-bottom">
+                              <strong>¥ {product.pricePerDay}/天</strong>
+                              <button
+                                style={isListed ? undefined : { background: "#d8ddd5", color: "#6f766d" }}
+                                onClick={() => toggleProductStatus(product.id)}
+                              >{isListed ? "已上架" : "未上架"}</button>
+                              <button onClick={() => openEditProduct(product)}>编辑</button>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
                   </div>
 
                   {filteredMerchantProducts.length === 0 && (
@@ -3089,7 +3202,7 @@ ${areaText || "暂无区域"}
                 </div>
                 <div className="plan-summary-top">
                   <div><p>数据库</p><strong>Supabase orders</strong></div>
-                  <div><p>同步方式</p><strong>手动刷新</strong></div>
+                  <div><p>同步方式</p><strong>自动同步 + 手动兜底</strong></div>
                 </div>
                 <div className="plan-summary-top">
                   <div><p>当前角色</p><strong>商户 / 公司端</strong></div>
@@ -3137,7 +3250,7 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">Customer Editor · v3.1</p><h2>{editingCustomerId ? "编辑客户" : "新增客户"}</h2></div>
+            <div><p className="eyebrow">Customer Editor · v3.2</p><h2>{editingCustomerId ? "编辑客户" : "新增客户"}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>×</button>
           </div>
 
@@ -3202,7 +3315,7 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => setShowCreateProductSheet(false)}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">Product Editor · v3.1</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
+            <div><p className="eyebrow">Product Editor · v3.2</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}>×</button>
           </div>
 
@@ -3273,9 +3386,25 @@ ${areaText || "暂无区域"}
             </article>
           </section>
 
-          <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
-            <button className="ghost-button" onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}>取消</button>
-            <button className="submit-plan-button" onClick={createMerchantProduct}>{editingProductId ? "保存修改" : "保存商品"}</button>
+          <div style={{
+            display: "flex",
+            gap: 14,
+            justifyContent: "flex-end",
+            alignItems: "center",
+            marginTop: 18,
+            padding: 16,
+            borderRadius: 22,
+            background: "rgba(239, 247, 241, 0.92)",
+            border: "1px solid rgba(34, 116, 67, 0.12)"
+          }}>
+            <button
+              style={{ minWidth: 128, border: 0, borderRadius: 18, padding: "14px 22px", background: "#eef7ef", color: "#214b35", fontWeight: 900, cursor: "pointer" }}
+              onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}
+            >取消</button>
+            <button
+              style={{ minWidth: 180, border: 0, borderRadius: 18, padding: "14px 24px", background: "#217642", color: "#fff", fontWeight: 900, cursor: "pointer", boxShadow: "0 14px 28px rgba(33, 118, 66, 0.22)" }}
+              onClick={createMerchantProduct}
+            >{editingProductId ? "保存修改" : "保存商品"}</button>
           </div>
         </section>
       </div>
@@ -3315,7 +3444,7 @@ ${areaText || "暂无区域"}
         >
           <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
             <div className="section-title-row">
-              <div><p className="eyebrow">New Order · v3.1</p><h2>创建新订单</h2></div>
+              <div><p className="eyebrow">New Order · v3.2</p><h2>创建新订单</h2></div>
               <button
                 className="close-button"
                 onClick={() => {
@@ -3447,7 +3576,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v3.1</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v3.2</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
@@ -3540,7 +3669,7 @@ ${areaText || "暂无区域"}
   return (
     <div className="app">
       <header className="app-header">
-        <div><p className="eyebrow">Staff Mobile · v3.1</p><h1>员工接单端</h1></div>
+        <div><p className="eyebrow">Staff Mobile · v3.2</p><h1>员工接单端</h1></div>
         <button className="role-button" onClick={() => switchRole("merchant")}>商户测试</button>
       </header>
 
