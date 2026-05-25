@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
-const STORAGE_KEY = "green-rental-mobile-v23";
+const SUPABASE_URL = "https://kvdxgyymlfnnurdigtkj.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FFoHUmn4RwaOkvx2XK7QHg__O7iWYdJ";
+const ORDERS_API = `${SUPABASE_URL}/rest/v1/orders`;
+
+const STORAGE_KEY = "green-rental-mobile-v24";
 
 const STAFF_TABS = ["待接单", "进行中", "待确认", "已完成"];
 const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "已完成"];
@@ -12,9 +16,6 @@ const DELIVERY_STATUS = ["未出发", "前往中", "已到达"];
 const EXECUTION_STATUS = ["待联系", "已联系", "已出发", "已到达", "已完成服务"];
 const CUSTOMER_CONFIRM_STATUS = ["待确认", "已确认", "有异议"];
 const PLAN_LINK_STATUS = ["未生成", "已复制", "已发送"];
-
-const DATA_SOURCE_TEXT = "本地测试数据";
-const SYNC_STATUS_TEXT = "未连接云端";
 
 const productCategories = ["室内绿植", "室外植物", "月租套餐", "仿真植物"];
 const subCategories = ["大型植物", "中型植物", "小型植物", "水培植物", "盆景植物"];
@@ -98,6 +99,15 @@ function nowText() {
   return `${y}-${m}-${day} ${h}:${min}`;
 }
 
+function cloudHeaders(extra = {}) {
+  return {
+    apikey: SUPABASE_KEY,
+    Authorization: `Bearer ${SUPABASE_KEY}`,
+    "Content-Type": "application/json",
+    ...extra,
+  };
+}
+
 function ensureOrderDefaults(order) {
   return {
     deliveryStatus: "未出发",
@@ -150,6 +160,63 @@ function persistOrdersToLocalStore(orders) {
     );
   } catch (error) {
     console.error("保存本地订单失败：", error);
+  }
+}
+
+async function fetchOrdersFromCloud() {
+  const response = await fetch(`${ORDERS_API}?select=id,data,updated_at&order=updated_at.desc`, {
+    method: "GET",
+    headers: cloudHeaders(),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`读取云端失败：${response.status} ${text}`);
+  }
+
+  const rows = await response.json();
+  return normalizeOrders(rows.map((row) => row.data));
+}
+
+async function upsertOrderToCloud(order) {
+  const response = await fetch(`${ORDERS_API}?on_conflict=id`, {
+    method: "POST",
+    headers: cloudHeaders({
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    }),
+    body: JSON.stringify({
+      id: order.id,
+      data: order,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`写入云端失败：${response.status} ${text}`);
+  }
+}
+
+async function upsertOrdersToCloud(orders) {
+  if (!orders.length) return;
+
+  const response = await fetch(`${ORDERS_API}?on_conflict=id`, {
+    method: "POST",
+    headers: cloudHeaders({
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    }),
+    body: JSON.stringify(
+      orders.map((order) => ({
+        id: order.id,
+        data: order,
+        updated_at: new Date().toISOString(),
+      }))
+    ),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`批量写入云端失败：${response.status} ${text}`);
   }
 }
 
@@ -236,7 +303,8 @@ function App() {
   const [activeStaffTab, setActiveStaffTab] = useState("待接单");
   const [merchantTab, setMerchantTab] = useState("订单总览");
   const [merchantStatusFilter, setMerchantStatusFilter] = useState("全部");
-  const [syncMessage, setSyncMessage] = useState("当前为本地测试数据，电脑和手机暂时不会互通。");
+  const [syncMessage, setSyncMessage] = useState("当前已连接 Supabase。点击刷新订单即可读取云端数据。");
+  const [syncState, setSyncState] = useState("云端待刷新");
 
   const [orders, setOrders] = useState(() => loadOrdersFromLocalStore());
 
@@ -334,24 +402,81 @@ function App() {
     };
   }
 
-  function updateOrder(orderId, updater) {
-    setOrders((prevOrders) => {
-      return prevOrders.map((order) => {
-        if (order.id !== orderId) return order;
-        const nextOrder = typeof updater === "function" ? updater(order) : updater;
-        return { ...order, ...nextOrder };
+  function syncOneOrder(order, message = "云端已同步") {
+    setSyncState("同步中");
+    upsertOrderToCloud(order)
+      .then(() => {
+        setSyncState("已同步");
+        setSyncMessage(`${message}：${nowText()}`);
+      })
+      .catch((error) => {
+        console.error(error);
+        setSyncState("同步失败");
+        setSyncMessage(error.message || "写入云端失败，本地数据已保留。");
       });
+  }
+
+  function updateOrder(orderId, updater, cloudMessage = "订单已同步") {
+    setOrders((prevOrders) => {
+      let changedOrder = null;
+
+      const nextOrders = prevOrders.map((order) => {
+        if (order.id !== orderId) return order;
+        const patch = typeof updater === "function" ? updater(order) : updater;
+        changedOrder = ensureOrderDefaults({ ...order, ...patch });
+        return changedOrder;
+      });
+
+      if (changedOrder) {
+        window.setTimeout(() => syncOneOrder(changedOrder, cloudMessage), 0);
+      }
+
+      return nextOrders;
     });
   }
 
   function replaceAllOrders(nextOrders) {
-    setOrders(normalizeOrders(nextOrders));
+    const normalized = normalizeOrders(nextOrders);
+    setOrders(normalized);
+    return normalized;
   }
 
-  function refreshOrdersFromLocal() {
-    const nextOrders = loadOrdersFromLocalStore();
-    replaceAllOrders(nextOrders);
-    setSyncMessage(`已从本地缓存刷新订单：${nowText()}`);
+  async function refreshOrdersFromCloud() {
+    setSyncState("同步中");
+    setSyncMessage("正在从 Supabase 读取订单...");
+
+    try {
+      const cloudOrders = await fetchOrdersFromCloud();
+
+      if (cloudOrders.length === 0) {
+        setSyncState("云端为空");
+        setSyncMessage("云端暂无订单。可以先在商户端创建订单，或点击“上传本地到云端”。");
+        return;
+      }
+
+      replaceAllOrders(cloudOrders);
+      setSyncState("已同步");
+      setSyncMessage(`已从云端刷新订单：${nowText()}`);
+    } catch (error) {
+      console.error(error);
+      setSyncState("同步失败");
+      setSyncMessage(error.message || "读取云端失败。");
+    }
+  }
+
+  async function uploadLocalOrdersToCloud() {
+    setSyncState("同步中");
+    setSyncMessage("正在把当前本地订单上传到 Supabase...");
+
+    try {
+      await upsertOrdersToCloud(orders);
+      setSyncState("已同步");
+      setSyncMessage(`本地订单已上传云端：${nowText()}`);
+    } catch (error) {
+      console.error(error);
+      setSyncState("同步失败");
+      setSyncMessage(error.message || "上传云端失败。");
+    }
   }
 
   function handleViewPendingMerchantConfirm() {
@@ -368,23 +493,33 @@ function App() {
     setSyncMessage("已切换到“待商户确认”列表。");
   }
 
-  function updateOrderPlan(orderId, planUpdater) {
+  function updateOrderPlan(orderId, planUpdater, cloudMessage = "方案已同步") {
     setOrders((prevOrders) => {
-      return prevOrders.map((order) => {
+      let changedOrder = null;
+
+      const nextOrders = prevOrders.map((order) => {
         if (order.id !== orderId) return order;
 
         const current = order.plan || createEmptyPlan(order);
         const nextPlan =
           typeof planUpdater === "function" ? planUpdater(current, order) : planUpdater;
 
-        return {
+        changedOrder = ensureOrderDefaults({
           ...order,
           plan: {
             ...nextPlan,
             updatedAt: nowText(),
           },
-        };
+        });
+
+        return changedOrder;
       });
+
+      if (changedOrder) {
+        window.setTimeout(() => syncOneOrder(changedOrder, cloudMessage), 0);
+      }
+
+      return nextOrders;
     });
   }
 
@@ -469,24 +604,28 @@ function App() {
       (position) => {
         const { latitude, longitude, accuracy } = position.coords;
 
-        updateOrder(orderId, (order) => {
-          const next = {
-            ...order,
-            deliveryStatus: order.deliveryStatus === "未出发" ? "前往中" : order.deliveryStatus,
-            executionStatus:
-              order.executionStatus === "待联系" ? "已出发" : order.executionStatus,
-            staffLocation: {
-              latitude,
-              longitude,
-              accuracy: Math.round(accuracy || 0),
-              locatedAt: nowText(),
-            },
-            distanceText: "已定位，打开地图查看路线",
-            etaText: "由地图 App 实时计算",
-          };
+        updateOrder(
+          orderId,
+          (order) => {
+            const next = {
+              ...order,
+              deliveryStatus: order.deliveryStatus === "未出发" ? "前往中" : order.deliveryStatus,
+              executionStatus:
+                order.executionStatus === "待联系" ? "已出发" : order.executionStatus,
+              staffLocation: {
+                latitude,
+                longitude,
+                accuracy: Math.round(accuracy || 0),
+                locatedAt: nowText(),
+              },
+              distanceText: "已定位，打开地图查看路线",
+              etaText: "由地图 App 实时计算",
+            };
 
-          return addTimeline(next, "员工更新当前位置");
-        });
+            return addTimeline(next, "员工更新当前位置");
+          },
+          "定位已同步"
+        );
 
         alert("定位成功，已保存到订单。");
       },
@@ -505,19 +644,23 @@ function App() {
   function acceptOrderAndCreatePlan() {
     if (!selectedOrder) return;
 
-    updateOrder(selectedOrder.id, (order) => {
-      const next = {
-        ...order,
-        status: "配置中",
-        planStatus: "配置中",
-        merchantConfirmStatus: "未提交",
-        executionStatus: "已联系",
-        acceptedAt: order.acceptedAt || nowText(),
-        plan: order.plan || createEmptyPlan(order, planType),
-      };
+    updateOrder(
+      selectedOrder.id,
+      (order) => {
+        const next = {
+          ...order,
+          status: "配置中",
+          planStatus: "配置中",
+          merchantConfirmStatus: "未提交",
+          executionStatus: "已联系",
+          acceptedAt: order.acceptedAt || nowText(),
+          plan: order.plan || createEmptyPlan(order, planType),
+        };
 
-      return addTimeline(next, "员工确认接单并创建方案");
-    });
+        return addTimeline(next, "员工确认接单并创建方案");
+      },
+      "接单已同步"
+    );
 
     setCurrentOrderId(selectedOrder.id);
     setCurrentPage("plan");
@@ -528,7 +671,7 @@ function App() {
 
   function openPlanForOrder(order) {
     if (!order.plan) {
-      updateOrder(order.id, { plan: createEmptyPlan(order, "租赁方案") });
+      updateOrder(order.id, { plan: createEmptyPlan(order, "租赁方案") }, "方案已创建");
     }
 
     setCurrentOrderId(order.id);
@@ -540,19 +683,23 @@ function App() {
     const name = areaName.trim();
     if (!currentOrder || !name) return;
 
-    updateOrderPlan(currentOrder.id, (plan) => ({
-      ...plan,
-      areas: [
-        ...safeAreas(plan),
-        {
-          id: `area-${Date.now()}`,
-          name,
-          items: [],
-        },
-      ],
-    }));
+    updateOrderPlan(
+      currentOrder.id,
+      (plan) => ({
+        ...plan,
+        areas: [
+          ...safeAreas(plan),
+          {
+            id: `area-${Date.now()}`,
+            name,
+            items: [],
+          },
+        ],
+      }),
+      "新增区域已同步"
+    );
 
-    updateOrder(currentOrder.id, (order) => addTimeline(order, `新增区域：${name}`));
+    updateOrder(currentOrder.id, (order) => addTimeline(order, `新增区域：${name}`), "区域记录已同步");
 
     setAreaName("");
     setShowAreaSheet(false);
@@ -569,119 +716,143 @@ function App() {
   function addProductToArea(product) {
     if (!currentOrder || !currentAreaId) return;
 
-    updateOrderPlan(currentOrder.id, (plan) => ({
-      ...plan,
-      areas: safeAreas(plan).map((area) => {
-        if (area.id !== currentAreaId) return area;
+    updateOrderPlan(
+      currentOrder.id,
+      (plan) => ({
+        ...plan,
+        areas: safeAreas(plan).map((area) => {
+          if (area.id !== currentAreaId) return area;
 
-        const items = safeItems(area);
-        const existed = items.find((item) => item.productId === product.id);
+          const items = safeItems(area);
+          const existed = items.find((item) => item.productId === product.id);
 
-        if (existed) {
+          if (existed) {
+            return {
+              ...area,
+              items: items.map((item) =>
+                item.productId === product.id
+                  ? { ...item, quantity: Number(item.quantity || 0) + 1 }
+                  : item
+              ),
+            };
+          }
+
           return {
             ...area,
-            items: items.map((item) =>
-              item.productId === product.id
-                ? { ...item, quantity: Number(item.quantity || 0) + 1 }
-                : item
-            ),
+            items: [
+              ...items,
+              {
+                productId: product.id,
+                name: product.name,
+                pricePerDay: Number(product.pricePerDay || 0),
+                quantity: 1,
+              },
+            ],
           };
-        }
-
-        return {
-          ...area,
-          items: [
-            ...items,
-            {
-              productId: product.id,
-              name: product.name,
-              pricePerDay: Number(product.pricePerDay || 0),
-              quantity: 1,
-            },
-          ],
-        };
+        }),
       }),
-    }));
+      "商品已同步"
+    );
   }
 
   function changeItemQuantity(areaId, productId, change) {
     if (!currentOrder) return;
 
-    updateOrderPlan(currentOrder.id, (plan) => ({
-      ...plan,
-      areas: safeAreas(plan).map((area) => {
-        if (area.id !== areaId) return area;
+    updateOrderPlan(
+      currentOrder.id,
+      (plan) => ({
+        ...plan,
+        areas: safeAreas(plan).map((area) => {
+          if (area.id !== areaId) return area;
 
-        return {
-          ...area,
-          items: safeItems(area)
-            .map((item) =>
-              item.productId === productId
-                ? { ...item, quantity: Math.max(0, Number(item.quantity || 0) + change) }
-                : item
-            )
-            .filter((item) => Number(item.quantity || 0) > 0),
-        };
+          return {
+            ...area,
+            items: safeItems(area)
+              .map((item) =>
+                item.productId === productId
+                  ? { ...item, quantity: Math.max(0, Number(item.quantity || 0) + change) }
+                  : item
+              )
+              .filter((item) => Number(item.quantity || 0) > 0),
+          };
+        }),
       }),
-    }));
+      "数量已同步"
+    );
   }
 
   function removeItemFromArea(areaId, productId) {
     if (!currentOrder) return;
 
-    updateOrderPlan(currentOrder.id, (plan) => ({
-      ...plan,
-      areas: safeAreas(plan).map((area) => {
-        if (area.id !== areaId) return area;
+    updateOrderPlan(
+      currentOrder.id,
+      (plan) => ({
+        ...plan,
+        areas: safeAreas(plan).map((area) => {
+          if (area.id !== areaId) return area;
 
-        return {
-          ...area,
-          items: safeItems(area).filter((item) => item.productId !== productId),
-        };
+          return {
+            ...area,
+            items: safeItems(area).filter((item) => item.productId !== productId),
+          };
+        }),
       }),
-    }));
+      "商品删除已同步"
+    );
   }
 
   function clearCurrentAreaItems() {
     if (!currentOrder || !currentAreaId) return;
 
-    updateOrderPlan(currentOrder.id, (plan) => ({
-      ...plan,
-      areas: safeAreas(plan).map((area) =>
-        area.id === currentAreaId ? { ...area, items: [] } : area
-      ),
-    }));
+    updateOrderPlan(
+      currentOrder.id,
+      (plan) => ({
+        ...plan,
+        areas: safeAreas(plan).map((area) =>
+          area.id === currentAreaId ? { ...area, items: [] } : area
+        ),
+      }),
+      "当前区域已清空"
+    );
   }
 
   function updateCurrentPlanField(field, value) {
     if (!currentOrder) return;
 
-    updateOrderPlan(currentOrder.id, (plan) => ({
-      ...plan,
-      [field]: value,
-    }));
+    updateOrderPlan(
+      currentOrder.id,
+      (plan) => ({
+        ...plan,
+        [field]: value,
+      }),
+      "方案设置已同步"
+    );
   }
 
   function submitPlan() {
     if (!currentOrder || !currentPlan) return;
 
-    updateOrder(currentOrder.id, (order) => {
-      const next = {
-        ...order,
-        status: "待商户确认",
-        planStatus: "待商户确认",
-        merchantConfirmStatus: "待确认",
-        submittedAt: nowText(),
-        customerConfirmStatus: "待确认",
-        plan: {
-          ...order.plan,
-          submittedAt: nowText(),
+    updateOrder(
+      currentOrder.id,
+      (order) => {
+        const next = {
+          ...order,
           status: "待商户确认",
-        },
-      };
+          planStatus: "待商户确认",
+          merchantConfirmStatus: "待确认",
+          submittedAt: nowText(),
+          customerConfirmStatus: "待确认",
+          plan: {
+            ...order.plan,
+            submittedAt: nowText(),
+            status: "待商户确认",
+          },
+        };
 
-      return addTimeline(next, "员工提交方案，等待商户确认");
-    });
+        return addTimeline(next, "员工提交方案，等待商户确认");
+      },
+      "方案已提交到云端"
+    );
 
     setShowSubmitSheet(false);
     setCurrentPage("orders");
@@ -689,73 +860,89 @@ function App() {
   }
 
   function merchantConfirmPlan(orderId) {
-    updateOrder(orderId, (order) => {
-      const next = {
-        ...order,
-        status: "方案已确认",
-        planStatus: "方案已确认",
-        merchantConfirmStatus: "已确认",
-        merchantConfirmedAt: nowText(),
-        plan: order.plan
-          ? {
-              ...order.plan,
-              status: "方案已确认",
-              merchantConfirmedAt: nowText(),
-            }
-          : order.plan,
-      };
+    updateOrder(
+      orderId,
+      (order) => {
+        const next = {
+          ...order,
+          status: "方案已确认",
+          planStatus: "方案已确认",
+          merchantConfirmStatus: "已确认",
+          merchantConfirmedAt: nowText(),
+          plan: order.plan
+            ? {
+                ...order.plan,
+                status: "方案已确认",
+                merchantConfirmedAt: nowText(),
+              }
+            : order.plan,
+        };
 
-      return addTimeline(next, "商户确认方案");
-    });
+        return addTimeline(next, "商户确认方案");
+      },
+      "商户确认已同步"
+    );
 
-    alert("已确认方案，员工端可以开始执行。");
+    alert("已确认方案，员工端刷新后可以开始执行。");
   }
 
   function merchantRequestRevision(orderId) {
     const reason = window.prompt("请输入要求修改的原因，例如：价格偏高 / 植物数量太少 / 区域需要调整");
     if (reason === null) return;
 
-    updateOrder(orderId, (order) => {
-      const next = {
-        ...order,
-        status: "配置中",
-        planStatus: "配置中",
-        merchantConfirmStatus: "要求修改",
-        revisionReason: reason || "商户要求修改方案",
-      };
+    updateOrder(
+      orderId,
+      (order) => {
+        const next = {
+          ...order,
+          status: "配置中",
+          planStatus: "配置中",
+          merchantConfirmStatus: "要求修改",
+          revisionReason: reason || "商户要求修改方案",
+        };
 
-      return addTimeline(next, `商户要求修改方案：${reason || "未填写原因"}`);
-    });
+        return addTimeline(next, `商户要求修改方案：${reason || "未填写原因"}`);
+      },
+      "修改要求已同步"
+    );
 
     alert("已退回员工端修改。");
   }
 
   function markPlanSentToCustomer(orderId) {
-    updateOrder(orderId, (order) => {
-      const next = {
-        ...order,
-        planLinkStatus: "已发送",
-        customerConfirmStatus: "待确认",
-      };
+    updateOrder(
+      orderId,
+      (order) => {
+        const next = {
+          ...order,
+          planLinkStatus: "已发送",
+          customerConfirmStatus: "待确认",
+        };
 
-      return addTimeline(next, "商户标记方案已转发客户");
-    });
+        return addTimeline(next, "商户标记方案已转发客户");
+      },
+      "转发客户状态已同步"
+    );
 
     alert("已标记为已转发客户。");
   }
 
   function startExecution(orderId) {
-    updateOrder(orderId, (order) => {
-      const next = {
-        ...order,
-        status: "执行中",
-        planStatus: "执行中",
-        executionStatus: "已出发",
-        deliveryStatus: "前往中",
-      };
+    updateOrder(
+      orderId,
+      (order) => {
+        const next = {
+          ...order,
+          status: "执行中",
+          planStatus: "执行中",
+          executionStatus: "已出发",
+          deliveryStatus: "前往中",
+        };
 
-      return addTimeline(next, "员工开始执行服务");
-    });
+        return addTimeline(next, "员工开始执行服务");
+      },
+      "执行状态已同步"
+    );
 
     setActiveStaffTab("进行中");
   }
@@ -769,29 +956,31 @@ function App() {
       return;
     }
 
-    if (!window.confirm(`确认将「${target.customerName}」标记为已完成吗？`)) {
-      return;
-    }
+    if (!window.confirm(`确认将「${target.customerName}」标记为已完成吗？`)) return;
 
-    updateOrder(orderId, (order) => {
-      const next = {
-        ...order,
-        status: "已完成",
-        planStatus: "已完成",
-        deliveryStatus: "已到达",
-        executionStatus: "已完成服务",
-        completedAt: nowText(),
-        plan: order.plan
-          ? {
-              ...order.plan,
-              status: "已完成",
-              completedAt: nowText(),
-            }
-          : order.plan,
-      };
+    updateOrder(
+      orderId,
+      (order) => {
+        const next = {
+          ...order,
+          status: "已完成",
+          planStatus: "已完成",
+          deliveryStatus: "已到达",
+          executionStatus: "已完成服务",
+          completedAt: nowText(),
+          plan: order.plan
+            ? {
+                ...order.plan,
+                status: "已完成",
+                completedAt: nowText(),
+              }
+            : order.plan,
+        };
 
-      return addTimeline(next, "员工标记订单已完成");
-    });
+        return addTimeline(next, "员工标记订单已完成");
+      },
+      "订单完成已同步"
+    );
 
     setActiveStaffTab("已完成");
   }
@@ -814,7 +1003,7 @@ function App() {
 
     const time = nowText();
 
-    const newOrder = {
+    const newOrder = ensureOrderDefaults({
       id: Date.now(),
       customerName: newOrderForm.customerName.trim(),
       contactName: newOrderForm.contactName.trim() || "待确认",
@@ -840,9 +1029,10 @@ function App() {
       revisionReason: "",
       timeline: [{ time, action: "商户创建并派发订单" }],
       plan: null,
-    };
+    });
 
     setOrders((prevOrders) => [newOrder, ...prevOrders]);
+    syncOneOrder(newOrder, "新订单已写入云端");
 
     setNewOrderForm({
       customerName: "",
@@ -870,14 +1060,18 @@ function App() {
 
     copyText(`${window.location.origin}?planId=${order.plan.id}`, "客户方案链接已复制");
 
-    updateOrder(order.id, (old) => {
-      const next = {
-        ...old,
-        planLinkStatus: "已复制",
-      };
+    updateOrder(
+      order.id,
+      (old) => {
+        const next = {
+          ...old,
+          planLinkStatus: "已复制",
+        };
 
-      return addTimeline(next, "复制客户方案链接");
-    });
+        return addTimeline(next, "复制客户方案链接");
+      },
+      "方案链接状态已同步"
+    );
   }
 
   function exportOrderData(order) {
@@ -941,24 +1135,27 @@ ${areaText || "暂无区域"}
         <div className="plan-summary-top">
           <div>
             <p>数据来源</p>
-            <strong>{DATA_SOURCE_TEXT}</strong>
+            <strong>Supabase 云端</strong>
           </div>
           <div>
             <p>同步状态</p>
-            <strong>{SYNC_STATUS_TEXT}</strong>
+            <strong>{syncState}</strong>
           </div>
         </div>
 
         {!compact && (
           <>
             <div className="empty-card">
-              <p>云同步准备中</p>
+              <p>云同步已开启</p>
               <span>{syncMessage}</span>
             </div>
 
             <div className="actions">
-              <button className="ghost-button" onClick={refreshOrdersFromLocal}>
+              <button className="ghost-button" onClick={refreshOrdersFromCloud}>
                 刷新订单
+              </button>
+              <button className="ghost-button" onClick={uploadLocalOrdersToCloud}>
+                上传本地到云端
               </button>
             </div>
           </>
@@ -1169,8 +1366,11 @@ ${areaText || "暂无区域"}
                 options={EXECUTION_STATUS}
                 value={order.executionStatus || "待联系"}
                 onChange={(value) =>
-                  updateOrder(order.id, (old) =>
-                    addTimeline({ ...old, executionStatus: value }, `执行状态更新为：${value}`)
+                  updateOrder(
+                    order.id,
+                    (old) =>
+                      addTimeline({ ...old, executionStatus: value }, `执行状态更新为：${value}`),
+                    "执行状态已同步"
                   )
                 }
               />
@@ -1180,8 +1380,11 @@ ${areaText || "暂无区域"}
                 options={DELIVERY_STATUS}
                 value={order.deliveryStatus || "未出发"}
                 onChange={(value) =>
-                  updateOrder(order.id, (old) =>
-                    addTimeline({ ...old, deliveryStatus: value }, `配送状态更新为：${value}`)
+                  updateOrder(
+                    order.id,
+                    (old) =>
+                      addTimeline({ ...old, deliveryStatus: value }, `配送状态更新为：${value}`),
+                    "配送状态已同步"
                   )
                 }
               />
@@ -1191,8 +1394,11 @@ ${areaText || "暂无区域"}
                 options={CUSTOMER_CONFIRM_STATUS}
                 value={order.customerConfirmStatus || "待确认"}
                 onChange={(value) =>
-                  updateOrder(order.id, (old) =>
-                    addTimeline({ ...old, customerConfirmStatus: value }, `客户确认状态更新为：${value}`)
+                  updateOrder(
+                    order.id,
+                    (old) =>
+                      addTimeline({ ...old, customerConfirmStatus: value }, `客户确认状态更新为：${value}`),
+                    "客户确认已同步"
                   )
                 }
               />
@@ -1202,8 +1408,11 @@ ${areaText || "暂无区域"}
                 options={PLAN_LINK_STATUS}
                 value={order.planLinkStatus || "未生成"}
                 onChange={(value) =>
-                  updateOrder(order.id, (old) =>
-                    addTimeline({ ...old, planLinkStatus: value }, `方案链接状态更新为：${value}`)
+                  updateOrder(
+                    order.id,
+                    (old) =>
+                      addTimeline({ ...old, planLinkStatus: value }, `方案链接状态更新为：${value}`),
+                    "方案链接已同步"
                   )
                 }
               />
@@ -1283,7 +1492,7 @@ ${areaText || "暂无区域"}
               <input
                 className="area-input"
                 value={order.fieldNote || ""}
-                onChange={(e) => updateOrder(order.id, { fieldNote: e.target.value })}
+                onChange={(e) => updateOrder(order.id, { fieldNote: e.target.value }, "现场备注已同步")}
                 placeholder="例如：客户前台空间较窄，建议用中小型植物"
               />
             </div>
@@ -1293,7 +1502,7 @@ ${areaText || "暂无区域"}
               <input
                 className="area-input"
                 value={order.internalNote || ""}
-                onChange={(e) => updateOrder(order.id, { internalNote: e.target.value })}
+                onChange={(e) => updateOrder(order.id, { internalNote: e.target.value }, "内部备注已同步")}
                 placeholder="例如：后续可推荐季度养护套餐"
               />
             </div>
@@ -1322,7 +1531,7 @@ ${areaText || "暂无区域"}
         <div className="app">
           <section className="empty-card">
             <p>没有找到这个方案</p>
-            <span>当前版本的客户方案链接基于本机浏览器数据，后续接数据库后可跨设备查看。</span>
+            <span>请先在同一浏览器刷新云端订单，或等待后续客户端独立页面。</span>
           </section>
         </div>
       );
@@ -1392,7 +1601,7 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
-            <p className="eyebrow">Staff Workbench · v2.3</p>
+            <p className="eyebrow">Staff Workbench · v2.4</p>
             <h1>{currentOrder.customerName}</h1>
           </div>
         </header>
@@ -1728,7 +1937,7 @@ ${areaText || "暂无区域"}
           <button className="submit-sheet-button" onClick={() => exportOrderData(currentOrder)}>导出当前订单数据</button>
 
           <button className="ghost-button danger" onClick={() => {
-            updateOrderPlan(currentOrder.id, (plan) => ({ ...plan, areas: [] }));
+            updateOrderPlan(currentOrder.id, (plan) => ({ ...plan, areas: [] }), "全部区域已清空");
             setShowMoreSheet(false);
           }}>
             清空全部区域
@@ -1751,7 +1960,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-block">
             <div className="empty-card">
               <p>提交后会进入“待确认”</p>
-              <span>商户确认后，员工端才会出现执行入口。</span>
+              <span>商户确认后，员工端刷新订单即可看到执行入口。</span>
             </div>
 
             <div className="confirm-row"><span>项目 / 客户</span><strong>{currentOrder.customerName}</strong></div>
@@ -1821,7 +2030,7 @@ ${areaText || "暂无区域"}
             <section className="plan-summary-card">
               <div className="empty-card">
                 <p>有方案等待确认</p>
-                <span>确认后员工才能开始执行；也可以要求员工修改。</span>
+                <span>确认后员工刷新订单即可开始执行；也可以要求员工修改。</span>
               </div>
 
               <div className="actions">
@@ -1922,7 +2131,7 @@ ${areaText || "暂无区域"}
     return (
       <div className="app">
         <header className="app-header">
-          <div><p className="eyebrow">Merchant Console · v2.3</p><h1>商户管理端</h1></div>
+          <div><p className="eyebrow">Merchant Console · v2.4</p><h1>商户管理端</h1></div>
           <button className="role-button" onClick={() => switchRole("staff")}>切到员工端</button>
         </header>
 
@@ -1987,7 +2196,7 @@ ${areaText || "暂无区域"}
 
               <main className="order-list">
                 {merchantOrders.length === 0 ? (
-                  <div className="empty-card"><p>当前状态下暂无订单</p><span>可以切换其他状态查看</span></div>
+                  <div className="empty-card"><p>当前状态下暂无订单</p><span>可以切换其他状态查看，或点击“刷新订单”。</span></div>
                 ) : (
                   merchantOrders.map((order) => (
                     <CoreOrderCard key={order.id} order={order} mode="merchant" />
@@ -2072,7 +2281,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v2.3</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v2.4</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
@@ -2165,7 +2374,7 @@ ${areaText || "暂无区域"}
   return (
     <div className="app">
       <header className="app-header">
-        <div><p className="eyebrow">Staff Mobile · v2.3</p><h1>员工接单端</h1></div>
+        <div><p className="eyebrow">Staff Mobile · v2.4</p><h1>员工接单端</h1></div>
         <button className="role-button" onClick={() => switchRole("merchant")}>商户测试</button>
       </header>
 
@@ -2181,7 +2390,7 @@ ${areaText || "暂无区域"}
 
       <main className="order-list">
         {filteredStaffOrders.length === 0 ? (
-          <div className="empty-card"><p>暂无{activeStaffTab}订单</p><span>切换其他状态看看</span></div>
+          <div className="empty-card"><p>暂无{activeStaffTab}订单</p><span>可以点击“刷新订单”从云端读取。</span></div>
         ) : (
           filteredStaffOrders.map((order) => (
             <CoreOrderCard key={order.id} order={order} mode="staff" />
