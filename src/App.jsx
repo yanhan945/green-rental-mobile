@@ -1,17 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
-const STORAGE_KEY = "green-rental-mobile-v21";
+const STORAGE_KEY = "green-rental-mobile-v22";
 
-const ORDER_STATUS = [
-  "待接单",
-  "配置中",
-  "待商户确认",
-  "方案已确认",
-  "执行中",
-  "已完成",
-];
-
+const STAFF_TABS = ["待接单", "进行中", "待确认", "已完成"];
+const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "已完成"];
 const MERCHANT_STATUS_TABS = ["全部", ...ORDER_STATUS];
 
 const ORDER_SOURCES = ["商户派单", "客户预约", "电话登记", "线下登记"];
@@ -131,6 +124,7 @@ const initialOrders = [
     etaText: "待定位",
     fieldNote: "",
     internalNote: "",
+    revisionReason: "",
     timeline: [{ time: "2026-05-24 21:30", action: "商户创建订单" }],
     plan: null,
   },
@@ -157,6 +151,7 @@ const initialOrders = [
     etaText: "待定位",
     fieldNote: "",
     internalNote: "",
+    revisionReason: "",
     timeline: [{ time: "2026-05-24 19:10", action: "客户预约生成订单" }],
     plan: null,
   },
@@ -218,6 +213,7 @@ function getAreaDailyRent(area) {
 
 function getPlanStats(plan) {
   const areas = safeAreas(plan);
+
   const areaCount = areas.length;
   const productCount = areas.reduce((sum, area) => sum + getAreaProductCount(area), 0);
   const dailyRent = areas.reduce((sum, area) => sum + getAreaDailyRent(area), 0);
@@ -273,15 +269,24 @@ function ensureOrderDefaults(order) {
     source: order.source || "商户派单",
     fieldNote: order.fieldNote || "",
     internalNote: order.internalNote || "",
+    revisionReason: order.revisionReason || "",
     timeline: Array.isArray(order.timeline) ? order.timeline : [],
     plan: order.plan || null,
     ...order,
   };
 }
 
+function getStaffStatuses(tab) {
+  if (tab === "待接单") return ["待接单"];
+  if (tab === "进行中") return ["配置中", "方案已确认", "执行中"];
+  if (tab === "待确认") return ["待商户确认"];
+  if (tab === "已完成") return ["已完成"];
+  return ["待接单"];
+}
+
 function App() {
   const [activeRole, setActiveRole] = useState("staff");
-  const [activeStatus, setActiveStatus] = useState("待接单");
+  const [activeStaffTab, setActiveStaffTab] = useState("待接单");
   const [merchantTab, setMerchantTab] = useState("订单总览");
   const [merchantStatusFilter, setMerchantStatusFilter] = useState("全部");
 
@@ -315,6 +320,8 @@ function App() {
   const [showCreateOrderSheet, setShowCreateOrderSheet] = useState(false);
   const [isCreateOrderInputFocused, setIsCreateOrderInputFocused] = useState(false);
 
+  const [showDetailBlock, setShowDetailBlock] = useState(false);
+
   const [newOrderForm, setNewOrderForm] = useState({
     customerName: "",
     contactName: "",
@@ -333,7 +340,10 @@ function App() {
   const currentArea = planAreas.find((area) => area.id === currentAreaId) || null;
   const currentStats = getPlanStats(currentPlan);
 
-  const filteredStaffOrders = orders.filter((order) => order.status === activeStatus);
+  const filteredStaffOrders = useMemo(() => {
+    const statuses = getStaffStatuses(activeStaffTab);
+    return orders.filter((order) => statuses.includes(order.status));
+  }, [orders, activeStaffTab]);
 
   const merchantOrders = useMemo(() => {
     if (merchantStatusFilter === "全部") return orders;
@@ -422,6 +432,7 @@ function App() {
     setShowSubmitSheet(false);
     setShowCreateOrderSheet(false);
     setIsCreateOrderInputFocused(false);
+    setShowDetailBlock(false);
   }
 
   function switchRole(role) {
@@ -544,7 +555,7 @@ function App() {
     setCurrentPage("plan");
     setSelectedOrder(null);
     setPlanType("租赁方案");
-    setActiveStatus("配置中");
+    setActiveStaffTab("进行中");
   }
 
   function openPlanForOrder(order) {
@@ -554,6 +565,7 @@ function App() {
 
     setCurrentOrderId(order.id);
     setCurrentPage("plan");
+    setShowDetailBlock(false);
   }
 
   function addArea() {
@@ -705,7 +717,7 @@ function App() {
 
     setShowSubmitSheet(false);
     setCurrentPage("orders");
-    setActiveStatus("待商户确认");
+    setActiveStaffTab("待确认");
   }
 
   function merchantConfirmPlan(orderId) {
@@ -777,7 +789,7 @@ function App() {
       return addTimeline(next, "员工开始执行服务");
     });
 
-    setActiveStatus("执行中");
+    setActiveStaffTab("进行中");
   }
 
   function completeOrderByStaff(orderId) {
@@ -813,7 +825,7 @@ function App() {
       return addTimeline(next, "员工标记订单已完成");
     });
 
-    setActiveStatus("已完成");
+    setActiveStaffTab("已完成");
   }
 
   function createMerchantOrder() {
@@ -857,6 +869,7 @@ function App() {
       source: newOrderForm.source || "商户派单",
       fieldNote: "",
       internalNote: "",
+      revisionReason: "",
       timeline: [{ time, action: "商户创建并派发订单" }],
       plan: null,
     };
@@ -911,11 +924,297 @@ function App() {
 
   function getOrderHint(order) {
     if (order.status === "待商户确认") return "员工已提交方案，等待商户确认。";
-    if (order.status === "方案已确认") return "商户已确认方案，员工可以开始执行。";
+    if (order.status === "方案已确认") return "商户已确认方案，可以开始执行。";
     if (order.status === "配置中" && order.merchantConfirmStatus === "要求修改") {
       return `商户要求修改：${order.revisionReason || "请调整方案"}`;
     }
     return "";
+  }
+
+  function buildPlanText(order) {
+    const plan = order?.plan;
+    const stats = getPlanStats(plan);
+
+    const areaText = safeAreas(plan)
+      .map((area) => {
+        const items = safeItems(area)
+          .map((item) => `- ${item.name} × ${item.quantity}（¥${item.pricePerDay}/天）`)
+          .join("\n");
+
+        return `【${area.name}】\n${items || "- 暂无商品"}`;
+      })
+      .join("\n\n");
+
+    return `绿植租赁方案
+项目 / 客户：${order?.customerName || "-"}
+联系人：${order?.contactName || "-"}
+电话：${order?.phone || "-"}
+项目面积：${order?.areaSize || "-"}
+进场时间：${order?.expectedDate || "-"}
+客户地址：${order?.address || "-"}
+订单状态：${order?.status || "-"}
+商户确认：${order?.merchantConfirmStatus || "-"}
+客户确认：${order?.customerConfirmStatus || "-"}
+
+方案明细：
+${areaText || "暂无区域"}
+
+日租金：¥${money(stats.dailyRent)}
+租期：${plan?.leaseMonths || 12}月
+系统总租金：¥${money(stats.systemTotalRent)}
+最终报价：¥${money(stats.finalRent)}
+支付方式：${plan?.paymentMethod || "月付"}
+押金：${plan?.needDeposit ? "需要" : "不需要"}`;
+  }
+
+  function StatusPill({ children }) {
+    return <span className="area-size">{children}</span>;
+  }
+
+  function CoreOrderCard({ order, mode = "staff" }) {
+    const stats = getPlanStats(order.plan);
+    const hint = getOrderHint(order);
+
+    return (
+      <article className="order-card">
+        <div className="order-card-header">
+          <div>
+            <h2>{order.customerName}</h2>
+            <p>{order.status}</p>
+          </div>
+          <StatusPill>{order.areaSize}</StatusPill>
+        </div>
+
+        <div className="tag-list">
+          {(Array.isArray(order.tags) ? order.tags : []).map((tag) => (
+            <span key={tag}>{tag}</span>
+          ))}
+        </div>
+
+        <div className="info-row">
+          <span>联系人</span>
+          <strong>
+            {order.contactName || "-"} {order.phone ? `｜${order.phone}` : ""}
+          </strong>
+        </div>
+
+        <div className="info-row">
+          <span>地址</span>
+          <strong>{order.address}</strong>
+        </div>
+
+        {order.plan && (
+          <div className="info-row">
+            <span>报价</span>
+            <strong>¥ {money(stats.finalRent)}</strong>
+          </div>
+        )}
+
+        {hint && (
+          <div className="empty-card">
+            <p>流程提醒</p>
+            <span>{hint}</span>
+          </div>
+        )}
+
+        <div className="actions">
+          <button className="ghost-button" onClick={() => callPhone(order.phone)}>
+            电话
+          </button>
+          <button className="ghost-button" onClick={() => openRouteNavigation(order.address)}>
+            导航
+          </button>
+          <button className="ghost-button" onClick={() => copyText(order.address, "地址已复制")}>
+            复制地址
+          </button>
+
+          {mode === "merchant" && (
+            <button
+              className="primary-button"
+              onClick={() => {
+                setSelectedOrderDetail(order);
+                setMerchantViewingOrder(null);
+              }}
+            >
+              详情
+            </button>
+          )}
+
+          {mode === "staff" && order.status === "待接单" && (
+            <button className="primary-button" onClick={() => setSelectedOrder(order)}>
+              接单
+            </button>
+          )}
+
+          {mode === "staff" && order.status === "配置中" && (
+            <button className="primary-button" onClick={() => openPlanForOrder(order)}>
+              编辑方案
+            </button>
+          )}
+
+          {mode === "staff" && order.status === "待商户确认" && (
+            <button className="primary-button" onClick={() => openPlanForOrder(order)}>
+              查看方案
+            </button>
+          )}
+
+          {mode === "staff" && order.status === "方案已确认" && (
+            <button className="submit-plan-button" onClick={() => openPlanForOrder(order)}>
+              开始执行
+            </button>
+          )}
+
+          {mode === "staff" && order.status === "执行中" && (
+            <>
+              <button className="primary-button" onClick={() => openPlanForOrder(order)}>
+                查看方案
+              </button>
+              <button className="submit-plan-button" onClick={() => completeOrderByStaff(order.id)}>
+                完成
+              </button>
+            </>
+          )}
+
+          {mode === "staff" && order.status === "已完成" && (
+            <button className="primary-button" onClick={() => openPlanForOrder(order)}>
+              查看
+            </button>
+          )}
+        </div>
+      </article>
+    );
+  }
+
+  function StatusSummaryCard({ order, editable = false }) {
+    return (
+      <section className="plan-summary-card">
+        <div className="plan-summary-top">
+          <div>
+            <p>订单状态</p>
+            <strong>{order.status}</strong>
+          </div>
+          <div>
+            <p>商户确认</p>
+            <strong>{order.merchantConfirmStatus || "未提交"}</strong>
+          </div>
+        </div>
+
+        <div className="plan-summary-top">
+          <div>
+            <p>执行状态</p>
+            <strong>{order.executionStatus || "待联系"}</strong>
+          </div>
+          <div>
+            <p>配送状态</p>
+            <strong>{order.deliveryStatus || "未出发"}</strong>
+          </div>
+        </div>
+
+        {getOrderHint(order) && (
+          <div className="empty-card">
+            <p>流程提醒</p>
+            <span>{getOrderHint(order)}</span>
+          </div>
+        )}
+
+        {editable && (
+          <div className="actions mini-actions">
+            <button className="ghost-button" onClick={() => locateStaff(order.id)}>
+              定位
+            </button>
+            <button className="ghost-button" onClick={() => openRouteNavigation(order.address)}>
+              导航
+            </button>
+            <button className="ghost-button" onClick={() => copyText(order.address, "地址已复制")}>
+              地址
+            </button>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  function ExtraDetails({ order, editable = false }) {
+    return (
+      <>
+        <section className="plan-summary-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">More</p>
+              <h2>更多信息</h2>
+            </div>
+          </div>
+
+          <div className="plan-info-line">
+            <span>客户确认</span>
+            <strong>{order.customerConfirmStatus || "待确认"}</strong>
+          </div>
+          <div className="plan-info-line">
+            <span>方案链接</span>
+            <strong>{order.planLinkStatus || "未生成"}</strong>
+          </div>
+          <div className="plan-info-line">
+            <span>预计时间</span>
+            <strong>{order.etaText || "待定位"}</strong>
+          </div>
+          <div className="plan-info-line">
+            <span>员工定位</span>
+            <strong>{order.staffLocation?.locatedAt || "未定位"}</strong>
+          </div>
+
+          {editable && (
+            <>
+              <StatusControlGroup
+                title="执行状态"
+                options={EXECUTION_STATUS}
+                value={order.executionStatus || "待联系"}
+                onChange={(value) =>
+                  updateOrder(order.id, (old) =>
+                    addTimeline({ ...old, executionStatus: value }, `执行状态更新为：${value}`)
+                  )
+                }
+              />
+
+              <StatusControlGroup
+                title="配送状态"
+                options={DELIVERY_STATUS}
+                value={order.deliveryStatus || "未出发"}
+                onChange={(value) =>
+                  updateOrder(order.id, (old) =>
+                    addTimeline({ ...old, deliveryStatus: value }, `配送状态更新为：${value}`)
+                  )
+                }
+              />
+
+              <StatusControlGroup
+                title="客户确认"
+                options={CUSTOMER_CONFIRM_STATUS}
+                value={order.customerConfirmStatus || "待确认"}
+                onChange={(value) =>
+                  updateOrder(order.id, (old) =>
+                    addTimeline({ ...old, customerConfirmStatus: value }, `客户确认状态更新为：${value}`)
+                  )
+                }
+              />
+
+              <StatusControlGroup
+                title="方案链接"
+                options={PLAN_LINK_STATUS}
+                value={order.planLinkStatus || "未生成"}
+                onChange={(value) =>
+                  updateOrder(order.id, (old) =>
+                    addTimeline({ ...old, planLinkStatus: value }, `方案链接状态更新为：${value}`)
+                  )
+                }
+              />
+            </>
+          )}
+        </section>
+
+        <NotesCard order={order} editable={editable} />
+        <TimelineCard order={order} />
+      </>
+    );
   }
 
   function StatusControlGroup({ title, options, value, onChange }) {
@@ -962,102 +1261,6 @@ function App() {
               </div>
             ))}
           </div>
-        )}
-      </section>
-    );
-  }
-
-  function StatusCard({ order, editable = false }) {
-    const hint = getOrderHint(order);
-
-    return (
-      <section className="plan-summary-card">
-        <div className="plan-summary-top">
-          <div>
-            <p>订单状态</p>
-            <strong>{order.status}</strong>
-          </div>
-          <div>
-            <p>商户确认</p>
-            <strong>{order.merchantConfirmStatus || "未提交"}</strong>
-          </div>
-        </div>
-
-        <div className="plan-summary-top">
-          <div>
-            <p>执行状态</p>
-            <strong>{order.executionStatus || "待联系"}</strong>
-          </div>
-          <div>
-            <p>配送状态</p>
-            <strong>{order.deliveryStatus || "未出发"}</strong>
-          </div>
-        </div>
-
-        <div className="plan-summary-top">
-          <div>
-            <p>客户确认</p>
-            <strong>{order.customerConfirmStatus || "待确认"}</strong>
-          </div>
-          <div>
-            <p>方案链接</p>
-            <strong>{order.planLinkStatus || "未生成"}</strong>
-          </div>
-        </div>
-
-        <div className="plan-info-line">
-          <span>预计时间</span>
-          <strong>{order.etaText || "待定位"}</strong>
-        </div>
-
-        <div className="plan-info-line">
-          <span>员工定位</span>
-          <strong>{order.staffLocation?.locatedAt || "未定位"}</strong>
-        </div>
-
-        {hint && (
-          <div className="empty-card">
-            <p>流程提醒</p>
-            <span>{hint}</span>
-          </div>
-        )}
-
-        {editable && (
-          <>
-            <StatusControlGroup
-              title="执行状态"
-              options={EXECUTION_STATUS}
-              value={order.executionStatus || "待联系"}
-              onChange={(value) =>
-                updateOrder(order.id, (old) =>
-                  addTimeline({ ...old, executionStatus: value }, `执行状态更新为：${value}`)
-                )
-              }
-            />
-
-            <StatusControlGroup
-              title="配送状态"
-              options={DELIVERY_STATUS}
-              value={order.deliveryStatus || "未出发"}
-              onChange={(value) =>
-                updateOrder(order.id, (old) =>
-                  addTimeline({ ...old, deliveryStatus: value }, `配送状态更新为：${value}`)
-                )
-              }
-            />
-
-            <div className="actions mini-actions">
-              <button className="ghost-button" onClick={() => locateStaff(order.id)}>
-                定位当前位置
-              </button>
-              <button className="ghost-button" onClick={() => openRouteNavigation(order.address)}>
-                路线导航
-              </button>
-              <button className="ghost-button" onClick={() => copyText(order.address, "地址已复制")}>
-                复制地址
-              </button>
-            </div>
-          </>
         )}
       </section>
     );
@@ -1136,7 +1339,7 @@ function App() {
           </div>
         </header>
 
-        <StatusCard order={customerViewOrder} />
+        <StatusSummaryCard order={customerViewOrder} />
 
         <section className="price-card price-detail-card">
           <div><span>日租金</span><strong>¥ {money(stats.dailyRent)}</strong></div>
@@ -1188,32 +1391,28 @@ function App() {
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
-            <p className="eyebrow">Plan Editor · v2.1</p>
+            <p className="eyebrow">Staff Workbench · v2.2</p>
             <h1>{currentOrder.customerName}</h1>
           </div>
         </header>
 
         <section className="plan-summary-card">
           <div className="plan-summary-top">
-            <div><p>方案类型</p><strong>{currentPlan.planType}</strong></div>
-            <div><p>项目面积</p><strong>{currentOrder.areaSize}</strong></div>
+            <div><p>状态</p><strong>{currentOrder.status}</strong></div>
+            <div><p>面积</p><strong>{currentOrder.areaSize}</strong></div>
           </div>
 
-          <div className="plan-info-line"><span>联系人</span><strong>{currentOrder.contactName || "-"}</strong></div>
-          <div className="plan-info-line"><span>联系电话</span><strong>{currentOrder.phone || "-"}</strong></div>
-          <div className="plan-info-line"><span>进场时间</span><strong>{currentOrder.expectedDate}</strong></div>
-          <div className="plan-info-line"><span>客户地址</span><strong>{currentOrder.address}</strong></div>
+          <div className="plan-info-line"><span>联系人</span><strong>{currentOrder.contactName || "-"} {currentOrder.phone ? `｜${currentOrder.phone}` : ""}</strong></div>
+          <div className="plan-info-line"><span>地址</span><strong>{currentOrder.address}</strong></div>
 
           <div className="actions mini-actions">
-            <button className="ghost-button" onClick={() => callPhone(currentOrder.phone)}>拨打电话</button>
-            <button className="ghost-button" onClick={() => copyText(currentOrder.address, "地址已复制")}>复制地址</button>
-            <button className="ghost-button" onClick={() => openMapSearch(currentOrder.address)}>搜索地址</button>
-            <button className="ghost-button" onClick={() => openRouteNavigation(currentOrder.address)}>路线导航</button>
+            <button className="ghost-button" onClick={() => callPhone(currentOrder.phone)}>电话</button>
+            <button className="ghost-button" onClick={() => openRouteNavigation(currentOrder.address)}>导航</button>
+            <button className="ghost-button" onClick={() => copyText(currentOrder.address, "地址已复制")}>地址</button>
           </div>
         </section>
 
-        <StatusCard order={currentOrder} editable />
-        <NotesCard order={currentOrder} editable />
+        <StatusSummaryCard order={currentOrder} editable />
 
         {currentOrder.status === "方案已确认" && (
           <section className="plan-summary-card">
@@ -1238,6 +1437,15 @@ function App() {
             </button>
           </section>
         )}
+
+        <section className="price-card price-detail-card">
+          <div><span>日租金</span><strong>¥ {money(currentStats.dailyRent)}</strong></div>
+          <div><span>租期</span><strong>{currentPlan.leaseMonths || 12}月</strong></div>
+          <div><span>系统总租金</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
+          <div><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
+          <div><span>支付方式</span><strong>{currentPlan.paymentMethod || "月付"}</strong></div>
+          <div><span>押金</span><strong>{currentPlan.needDeposit ? "需要" : "不需要"}</strong></div>
+        </section>
 
         <section className="area-section">
           <div className="section-title-row">
@@ -1293,21 +1501,18 @@ function App() {
           )}
         </section>
 
-        <section className="price-card price-detail-card">
-          <div><span>目前方案日租金</span><strong>¥ {money(currentStats.dailyRent)}</strong></div>
-          <div><span>租期</span><strong>{currentPlan.leaseMonths || 12}月</strong></div>
-          <div><span>系统预计总租金</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
-          <div><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
-          <div><span>支付方式</span><strong>{currentPlan.paymentMethod || "月付"}</strong></div>
-          <div><span>押金</span><strong>{currentPlan.needDeposit ? "需要" : "不需要"}</strong></div>
+        <section className="plan-summary-card">
+          <button className="ghost-button" onClick={() => setShowDetailBlock(!showDetailBlock)}>
+            {showDetailBlock ? "收起更多信息" : "展开更多信息"}
+          </button>
         </section>
 
-        <TimelineCard order={currentOrder} />
+        {showDetailBlock && <ExtraDetails order={currentOrder} editable />}
 
         <nav className="bottom-actions">
           <button onClick={() => setShowMoreSheet(true)}>更多</button>
           <button onClick={() => setShowPriceSheet(true)}>改价</button>
-          <button onClick={() => setShowPaymentSheet(true)}>租期与支付</button>
+          <button onClick={() => setShowPaymentSheet(true)}>租期支付</button>
           <button className="submit-plan-button" onClick={() => setShowSubmitSheet(true)}>
             提交方案
           </button>
@@ -1515,7 +1720,7 @@ function App() {
           <button className="submit-sheet-button" onClick={() => copyText(buildPlanText(currentOrder), "方案摘要已复制")}>复制方案摘要</button>
           <button className="submit-sheet-button" onClick={() => copyCustomerPlanLink(currentOrder)}>复制客户方案链接</button>
           <button className="submit-sheet-button" onClick={() => markPlanSentToCustomer(currentOrder.id)}>标记已转发客户</button>
-          <button className="submit-sheet-button" onClick={() => openRouteNavigation(currentOrder.address)}>打开客户地址导航</button>
+          <button className="submit-sheet-button" onClick={() => openRouteNavigation(currentOrder.address)}>打开导航</button>
           <button className="submit-sheet-button" onClick={() => locateStaff(currentOrder.id)}>定位当前位置</button>
           <button className="submit-sheet-button" onClick={() => exportOrderData(currentOrder)}>导出当前订单数据</button>
 
@@ -1530,42 +1735,6 @@ function App() {
     );
   }
 
-  function buildPlanText(order) {
-    const plan = order?.plan;
-    const stats = getPlanStats(plan);
-
-    const areaText = safeAreas(plan)
-      .map((area) => {
-        const items = safeItems(area)
-          .map((item) => `- ${item.name} × ${item.quantity}（¥${item.pricePerDay}/天）`)
-          .join("\n");
-
-        return `【${area.name}】\n${items || "- 暂无商品"}`;
-      })
-      .join("\n\n");
-
-    return `绿植租赁方案
-项目 / 客户：${order?.customerName || "-"}
-联系人：${order?.contactName || "-"}
-电话：${order?.phone || "-"}
-项目面积：${order?.areaSize || "-"}
-进场时间：${order?.expectedDate || "-"}
-客户地址：${order?.address || "-"}
-订单状态：${order?.status || "-"}
-商户确认：${order?.merchantConfirmStatus || "-"}
-客户确认：${order?.customerConfirmStatus || "-"}
-
-方案明细：
-${areaText || "暂无区域"}
-
-日租金：¥${money(stats.dailyRent)}
-租期：${plan?.leaseMonths || 12}月
-系统总租金：¥${money(stats.systemTotalRent)}
-最终报价：¥${money(stats.finalRent)}
-支付方式：${plan?.paymentMethod || "月付"}
-押金：${plan?.needDeposit ? "需要" : "不需要"}`;
-  }
-
   function renderSubmitSheet() {
     return (
       <div className="sheet-mask" onClick={() => setShowSubmitSheet(false)}>
@@ -1577,10 +1746,9 @@ ${areaText || "暂无区域"}
           </div>
 
           <div className="sheet-block">
-            <p className="sheet-label">提交后流程</p>
             <div className="empty-card">
-              <p>方案会进入“待商户确认”</p>
-              <span>商户确认后，员工端才会出现执行和完成订单入口。</span>
+              <p>提交后会进入“待确认”</p>
+              <span>商户确认后，员工端才会出现执行入口。</span>
             </div>
 
             <div className="confirm-row"><span>项目 / 客户</span><strong>{currentOrder.customerName}</strong></div>
@@ -1665,9 +1833,8 @@ ${areaText || "暂无区域"}
             </section>
           )}
 
-          <StatusCard order={selectedOrderDetail} />
-          <NotesCard order={selectedOrderDetail} />
-          <TimelineCard order={selectedOrderDetail} />
+          <StatusSummaryCard order={selectedOrderDetail} />
+          <ExtraDetails order={selectedOrderDetail} />
         </div>
       );
     }
@@ -1682,7 +1849,7 @@ ${areaText || "暂无区域"}
             <div><p className="eyebrow">Plan Detail</p><h1>{merchantViewingOrder.customerName}</h1></div>
           </header>
 
-          <StatusCard order={merchantViewingOrder} />
+          <StatusSummaryCard order={merchantViewingOrder} />
 
           {merchantViewingOrder.status === "待商户确认" && (
             <section className="plan-summary-card">
@@ -1708,7 +1875,7 @@ ${areaText || "暂无区域"}
           <section className="price-card price-detail-card">
             <div><span>日租金</span><strong>¥ {money(stats.dailyRent)}</strong></div>
             <div><span>租期</span><strong>{merchantViewingOrder.plan?.leaseMonths || 12}月</strong></div>
-            <div><span>系统预计总租金</span><strong>¥ {money(stats.systemTotalRent)}</strong></div>
+            <div><span>系统总租金</span><strong>¥ {money(stats.systemTotalRent)}</strong></div>
             <div><span>最终报价</span><strong>¥ {money(stats.finalRent)}</strong></div>
             <div><span>支付方式</span><strong>{merchantViewingOrder.plan?.paymentMethod || "月付"}</strong></div>
             <div><span>押金</span><strong>{merchantViewingOrder.plan?.needDeposit ? "需要" : "不需要"}</strong></div>
@@ -1741,8 +1908,7 @@ ${areaText || "暂无区域"}
             )}
           </section>
 
-          <NotesCard order={merchantViewingOrder} />
-          <TimelineCard order={merchantViewingOrder} />
+          <ExtraDetails order={merchantViewingOrder} />
         </div>
       );
     }
@@ -1750,7 +1916,7 @@ ${areaText || "暂无区域"}
     return (
       <div className="app">
         <header className="app-header">
-          <div><p className="eyebrow">Merchant Console · v2.1</p><h1>商户管理端</h1></div>
+          <div><p className="eyebrow">Merchant Console · v2.2</p><h1>商户管理端</h1></div>
           <button className="role-button" onClick={() => switchRole("staff")}>切到员工端</button>
         </header>
 
@@ -1786,8 +1952,8 @@ ${areaText || "暂无区域"}
             <div><p>配置中</p><strong>{statusCounts["配置中"] || 0} 单</strong></div>
           </div>
           <div className="plan-summary-top">
-            <div><p>待商户确认</p><strong>{statusCounts["待商户确认"] || 0} 单</strong></div>
-            <div><p>方案已确认</p><strong>{statusCounts["方案已确认"] || 0} 单</strong></div>
+            <div><p>待确认</p><strong>{statusCounts["待商户确认"] || 0} 单</strong></div>
+            <div><p>已确认</p><strong>{statusCounts["方案已确认"] || 0} 单</strong></div>
           </div>
           <div className="plan-summary-top">
             <div><p>执行中</p><strong>{statusCounts["执行中"] || 0} 单</strong></div>
@@ -1821,39 +1987,9 @@ ${areaText || "暂无区域"}
                 {merchantOrders.length === 0 ? (
                   <div className="empty-card"><p>当前状态下暂无订单</p><span>可以切换其他状态查看</span></div>
                 ) : (
-                  merchantOrders.map((order) => {
-                    const stats = getPlanStats(order.plan);
-
-                    return (
-                      <article className="order-card" key={order.id}>
-                        <div className="order-card-header">
-                          <div><h2>{order.customerName}</h2><p>{order.status}</p></div>
-                          <span className="area-size">{order.areaSize}</span>
-                        </div>
-
-                        <div className="tag-list">
-                          {(Array.isArray(order.tags) ? order.tags : []).map((tag) => <span key={tag}>{tag}</span>)}
-                        </div>
-
-                        <div className="info-row"><span>联系人</span><strong>{order.contactName || "-"}</strong></div>
-                        <div className="info-row"><span>联系电话</span><strong>{order.phone || "-"}</strong></div>
-                        <div className="info-row"><span>商户确认</span><strong>{order.merchantConfirmStatus || "未提交"}</strong></div>
-                        <div className="info-row"><span>客户确认</span><strong>{order.customerConfirmStatus || "待确认"}</strong></div>
-                        <div className="info-row"><span>客户地址</span><strong>{order.address}</strong></div>
-
-                        {order.plan && (
-                          <div className="info-row"><span>当前报价</span><strong>¥ {money(stats.finalRent)}</strong></div>
-                        )}
-
-                        <div className="actions">
-                          <button className="ghost-button" onClick={() => callPhone(order.phone)}>拨打电话</button>
-                          <button className="ghost-button" onClick={() => copyText(order.address, "地址已复制")}>复制地址</button>
-                          <button className="ghost-button" onClick={() => openRouteNavigation(order.address)}>路线导航</button>
-                          <button className="primary-button" onClick={() => { setSelectedOrderDetail(order); setMerchantViewingOrder(null); }}>查看订单详情</button>
-                        </div>
-                      </article>
-                    );
-                  })
+                  merchantOrders.map((order) => (
+                    <CoreOrderCard key={order.id} order={order} mode="merchant" />
+                  ))
                 )}
               </main>
             </section>
@@ -1870,26 +2006,9 @@ ${areaText || "暂无区域"}
               <div className="empty-card"><p>暂时还没有员工提交方案</p></div>
             ) : (
               <div className="order-list">
-                {submittedOrders.map((order) => {
-                  const stats = getPlanStats(order.plan);
-
-                  return (
-                    <article className="order-card" key={order.id}>
-                      <div className="order-card-header">
-                        <div><h2>{order.customerName}</h2><p>{order.status}</p></div>
-                        <span className="area-size">¥ {money(stats.finalRent)}</span>
-                      </div>
-
-                      <div className="info-row"><span>商户确认</span><strong>{order.merchantConfirmStatus || "未提交"}</strong></div>
-                      <div className="info-row"><span>商品数量</span><strong>{stats.productCount} 件</strong></div>
-                      <div className="info-row"><span>提交时间</span><strong>{order.submittedAt || "-"}</strong></div>
-
-                      <div className="actions">
-                        <button className="primary-button" onClick={() => { setMerchantViewingOrder(order); setSelectedOrderDetail(null); }}>查看方案</button>
-                      </div>
-                    </article>
-                  );
-                })}
+                {submittedOrders.map((order) => (
+                  <CoreOrderCard key={order.id} order={order} mode="merchant" />
+                ))}
               </div>
             )}
           </section>
@@ -1951,7 +2070,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v2.1</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v2.2</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
@@ -2044,86 +2163,24 @@ ${areaText || "暂无区域"}
   return (
     <div className="app">
       <header className="app-header">
-        <div><p className="eyebrow">Green Rental · v2.1</p><h1>绿植租赁接单系统</h1></div>
-        <button className="role-button" onClick={() => switchRole("merchant")}>切到商户端</button>
+        <div><p className="eyebrow">Staff Mobile · v2.2</p><h1>员工接单端</h1></div>
+        <button className="role-button" onClick={() => switchRole("merchant")}>商户测试</button>
       </header>
 
       <section className="tabs">
-        {ORDER_STATUS.map((status) => (
-          <button key={status} className={activeStatus === status ? "tab active" : "tab"} onClick={() => setActiveStatus(status)}>
-            {status}
+        {STAFF_TABS.map((tab) => (
+          <button key={tab} className={activeStaffTab === tab ? "tab active" : "tab"} onClick={() => setActiveStaffTab(tab)}>
+            {tab}
           </button>
         ))}
       </section>
 
       <main className="order-list">
         {filteredStaffOrders.length === 0 ? (
-          <div className="empty-card"><p>暂无{activeStatus}订单</p><span>切换其他状态看看</span></div>
+          <div className="empty-card"><p>暂无{activeStaffTab}订单</p><span>切换其他状态看看</span></div>
         ) : (
           filteredStaffOrders.map((order) => (
-            <article className="order-card" key={order.id}>
-              <div className="order-card-header">
-                <div><h2>{order.customerName}</h2><p>{order.status}</p></div>
-                <span className="area-size">{order.areaSize}</span>
-              </div>
-
-              <div className="tag-list">
-                {(Array.isArray(order.tags) ? order.tags : []).map((tag) => <span key={tag}>{tag}</span>)}
-              </div>
-
-              <div className="info-row"><span>联系人</span><strong>{order.contactName || "-"}</strong></div>
-              <div className="info-row"><span>联系电话</span><strong>{order.phone || "-"}</strong></div>
-              <div className="info-row"><span>商户确认</span><strong>{order.merchantConfirmStatus || "未提交"}</strong></div>
-              <div className="info-row"><span>客户确认</span><strong>{order.customerConfirmStatus || "待确认"}</strong></div>
-              <div className="info-row"><span>客户地址</span><strong>{order.address}</strong></div>
-
-              {getOrderHint(order) && (
-                <div className="empty-card">
-                  <p>流程提醒</p>
-                  <span>{getOrderHint(order)}</span>
-                </div>
-              )}
-
-              <p className="description">{order.description}</p>
-              <p className="dispatch-time">派单时间：{order.dispatchTime}</p>
-
-              <div className="actions">
-                <button className="ghost-button" onClick={() => callPhone(order.phone)}>拨打电话</button>
-                <button className="ghost-button" onClick={() => openRouteNavigation(order.address)}>路线导航</button>
-                <button className="ghost-button" onClick={() => locateStaff(order.id)}>定位</button>
-                <button className="ghost-button" onClick={() => copyText(order.address, "地址已复制")}>复制地址</button>
-
-                {order.status === "待接单" && (
-                  <>
-                    <button className="ghost-button danger">拒绝接单</button>
-                    <button className="primary-button" onClick={() => setSelectedOrder(order)}>确认接单</button>
-                  </>
-                )}
-
-                {order.status === "配置中" && (
-                  <button className="primary-button" onClick={() => openPlanForOrder(order)}>继续编辑方案</button>
-                )}
-
-                {order.status === "待商户确认" && (
-                  <button className="primary-button" onClick={() => openPlanForOrder(order)}>查看已提交方案</button>
-                )}
-
-                {order.status === "方案已确认" && (
-                  <button className="submit-plan-button" onClick={() => openPlanForOrder(order)}>开始执行</button>
-                )}
-
-                {order.status === "执行中" && (
-                  <>
-                    <button className="primary-button" onClick={() => openPlanForOrder(order)}>查看方案</button>
-                    <button className="submit-plan-button" onClick={() => completeOrderByStaff(order.id)}>完成订单</button>
-                  </>
-                )}
-
-                {order.status === "已完成" && (
-                  <button className="primary-button" onClick={() => openPlanForOrder(order)}>查看方案</button>
-                )}
-              </div>
-            </article>
+            <CoreOrderCard key={order.id} order={order} mode="staff" />
           ))
         )}
       </main>
