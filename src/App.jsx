@@ -7,6 +7,8 @@ const ORDERS_API = `${SUPABASE_URL}/rest/v1/orders`;
 
 const STORAGE_KEY = "green-rental-mobile-v24";
 const PRODUCT_STORAGE_KEY = "green-rental-products-v29";
+const CUSTOMER_STORAGE_KEY = "green-rental-customers-v31";
+const PRODUCT_CLOUD_ID = 999999001;
 
 const STAFF_TABS = ["待接单", "做方案", "执行中", "已完成"];
 const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "待商户归档", "已完成"];
@@ -216,6 +218,72 @@ function isImageUrl(value) {
   return /^https?:\/\//i.test(String(value || "").trim());
 }
 
+
+function normalizeCustomers(data) {
+  const list = Array.isArray(data) ? data : [];
+  return list
+    .filter((customer) => customer && customer.name)
+    .map((customer) => ({
+      id: customer.id || `customer-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      name: customer.name || "未命名客户",
+      contactName: customer.contactName || "",
+      phone: customer.phone || "",
+      address: customer.address || "",
+      areaSize: customer.areaSize || "",
+      note: customer.note || "",
+      tagsText: customer.tagsText || "办公室,长期租赁",
+      createdAt: customer.createdAt || nowText(),
+      updatedAt: customer.updatedAt || nowText(),
+    }));
+}
+
+function loadCustomersFromLocalStore() {
+  try {
+    const raw = localStorage.getItem(CUSTOMER_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return normalizeCustomers(parsed?.customers);
+  } catch (error) {
+    console.error("读取本地客户库失败：", error);
+    return [];
+  }
+}
+
+function persistCustomersToLocalStore(customers) {
+  try {
+    localStorage.setItem(
+      CUSTOMER_STORAGE_KEY,
+      JSON.stringify({ source: "localStorage", savedAt: nowText(), customers })
+    );
+  } catch (error) {
+    console.error("保存本地客户库失败：", error);
+  }
+}
+
+function mergeCustomers(currentCustomers, orders) {
+  const map = new Map(normalizeCustomers(currentCustomers).map((customer) => [customer.id, customer]));
+
+  orders.forEach((order) => {
+    if (!order?.customerName) return;
+    const stableKey = order.customerId || `auto-${order.phone || order.customerName}-${order.address || ""}`;
+    const existed = map.get(stableKey);
+    map.set(stableKey, {
+      id: stableKey,
+      name: order.customerName,
+      contactName: order.contactName || existed?.contactName || "",
+      phone: order.phone || existed?.phone || "",
+      address: order.address || existed?.address || "",
+      areaSize: order.areaSize || existed?.areaSize || "",
+      note: existed?.note || "",
+      tagsText: Array.isArray(order.tags) ? order.tags.join(",") : existed?.tagsText || "办公室,长期租赁",
+      createdAt: existed?.createdAt || order.dispatchTime || nowText(),
+      updatedAt: nowText(),
+    });
+  });
+
+  return Array.from(map.values());
+}
+
 async function fetchOrdersFromCloud() {
   const response = await fetch(`${ORDERS_API}?select=id,data,updated_at&order=updated_at.desc`, {
     method: "GET",
@@ -228,7 +296,41 @@ async function fetchOrdersFromCloud() {
   }
 
   const rows = await response.json();
-  return normalizeOrders(rows.map((row) => row.data));
+  return normalizeOrders(rows.map((row) => row.data).filter((item) => item?.type !== "product_library"));
+}
+
+
+async function fetchProductsFromCloud() {
+  const response = await fetch(`${ORDERS_API}?id=eq.${PRODUCT_CLOUD_ID}&select=id,data,updated_at`, {
+    method: "GET",
+    headers: cloudHeaders(),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`读取云端商品库失败：${response.status} ${text}`);
+  }
+
+  const rows = await response.json();
+  const cloudProducts = rows?.[0]?.data?.products;
+  return Array.isArray(cloudProducts) ? normalizeProducts(cloudProducts) : [];
+}
+
+async function upsertProductsToCloud(products) {
+  const response = await fetch(`${ORDERS_API}?on_conflict=id`, {
+    method: "POST",
+    headers: cloudHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify({
+      id: PRODUCT_CLOUD_ID,
+      data: { type: "product_library", products, updatedAt: nowText() },
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`同步商品库失败：${response.status} ${text}`);
+  }
 }
 
 async function upsertOrderToCloud(order) {
@@ -362,6 +464,7 @@ function App() {
 
   const [orders, setOrders] = useState(() => loadOrdersFromLocalStore());
   const [merchantProducts, setMerchantProducts] = useState(() => loadProductsFromLocalStore());
+  const [merchantCustomers, setMerchantCustomers] = useState(() => loadCustomersFromLocalStore());
 
   const [currentPage, setCurrentPage] = useState("orders");
   const [currentOrderId, setCurrentOrderId] = useState(null);
@@ -386,8 +489,12 @@ function App() {
   const [showSubmitSheet, setShowSubmitSheet] = useState(false);
   const [showCreateOrderSheet, setShowCreateOrderSheet] = useState(false);
   const [showCreateProductSheet, setShowCreateProductSheet] = useState(false);
+  const [showCreateCustomerSheet, setShowCreateCustomerSheet] = useState(false);
+  const [editingProductId, setEditingProductId] = useState(null);
+  const [editingCustomerId, setEditingCustomerId] = useState(null);
   const [productSearchText, setProductSearchText] = useState("");
   const [productCategoryFilter, setProductCategoryFilter] = useState("全部");
+  const [customerSearchText, setCustomerSearchText] = useState("");
   const [isCreateOrderInputFocused, setIsCreateOrderInputFocused] = useState(false);
 
   const [showDetailBlock, setShowDetailBlock] = useState(false);
@@ -402,6 +509,16 @@ function App() {
     description: "",
     tagsText: "办公室,长期租赁",
     source: "商户派单",
+  });
+
+  const [newCustomerForm, setNewCustomerForm] = useState({
+    name: "",
+    contactName: "",
+    phone: "",
+    address: "",
+    areaSize: "",
+    note: "",
+    tagsText: "办公室,长期租赁",
   });
 
 
@@ -483,8 +600,23 @@ function App() {
     const matchSubCategory = activeSubCategory === "全部规格" || product.subCategory === activeSubCategory;
     const text = [product.name, product.category, product.subCategory, product.description, product.note].filter(Boolean).join(" ");
 
-    return visible && matchCategory && matchSubCategory && (keyword === "" || text.includes(keyword));
+    if (!visible) return false;
+    if (keyword) return text.includes(keyword);
+    return matchCategory && matchSubCategory;
   });
+
+  const allCustomers = useMemo(() => mergeCustomers(merchantCustomers, orders), [merchantCustomers, orders]);
+
+  const filteredCustomers = useMemo(() => {
+    const keyword = customerSearchText.trim();
+    if (!keyword) return allCustomers;
+    return allCustomers.filter((customer) =>
+      [customer.name, customer.contactName, customer.phone, customer.address, customer.note, customer.tagsText]
+        .filter(Boolean)
+        .join(" ")
+        .includes(keyword)
+    );
+  }, [allCustomers, customerSearchText]);
 
   const customerPlanId = new URLSearchParams(window.location.search).get("planId");
   const customerViewOrder = orders.find((order) => order.plan?.id === customerPlanId) || null;
@@ -496,6 +628,10 @@ function App() {
   useEffect(() => {
     persistProductsToLocalStore(merchantProducts);
   }, [merchantProducts]);
+
+  useEffect(() => {
+    persistCustomersToLocalStore(merchantCustomers);
+  }, [merchantCustomers]);
 
   useEffect(() => {
     if (currentPage === "plan" && !currentOrder) setCurrentPage("orders");
@@ -521,6 +657,26 @@ function App() {
         setSyncState("同步失败");
         setSyncMessage(error.message || "写入云端失败，本地数据已保留。");
       });
+  }
+
+  function syncProductsLibrary(nextProducts, message = "商品库已同步") {
+    persistProductsToLocalStore(nextProducts);
+    upsertProductsToCloud(nextProducts)
+      .then(() => {
+        setSyncState("已同步");
+        setSyncMessage(`${message}：${nowText()}`);
+      })
+      .catch((error) => {
+        console.error(error);
+        setSyncState("商品库同步失败");
+        setSyncMessage(error.message || "商品库写入云端失败，本地数据已保留。");
+      });
+  }
+
+  function updateProducts(nextProducts, message = "商品库已同步") {
+    const normalized = normalizeProducts(nextProducts);
+    setMerchantProducts(normalized);
+    window.setTimeout(() => syncProductsLibrary(normalized, message), 0);
   }
 
   function updateOrder(orderId, updater, cloudMessage = "订单已同步") {
@@ -553,7 +709,14 @@ function App() {
     setSyncMessage("正在从 Supabase 读取订单...");
 
     try {
-      const cloudOrders = await fetchOrdersFromCloud();
+      const [cloudOrders, cloudProducts] = await Promise.all([
+        fetchOrdersFromCloud(),
+        fetchProductsFromCloud().catch(() => []),
+      ]);
+
+      if (cloudProducts.length > 0) {
+        setMerchantProducts(cloudProducts);
+      }
 
       if (cloudOrders.length === 0) {
         setSyncState("云端为空");
@@ -562,8 +725,9 @@ function App() {
       }
 
       replaceAllOrders(cloudOrders);
+      setMerchantCustomers((prev) => mergeCustomers(prev, cloudOrders));
       setSyncState("已同步");
-      setSyncMessage(`已从云端刷新订单：${nowText()}`);
+      setSyncMessage(`已从云端刷新订单和商品库：${nowText()}`);
     } catch (error) {
       console.error(error);
       setSyncState("同步失败");
@@ -654,6 +818,9 @@ function App() {
     setShowSubmitSheet(false);
     setShowCreateOrderSheet(false);
     setShowCreateProductSheet(false);
+    setShowCreateCustomerSheet(false);
+    setEditingProductId(null);
+    setEditingCustomerId(null);
     setIsCreateOrderInputFocused(false);
     setShowDetailBlock(false);
   }
@@ -1209,6 +1376,7 @@ function App() {
     });
 
     setOrders((prevOrders) => [newOrder, ...prevOrders]);
+    setMerchantCustomers((prev) => mergeCustomers(prev, [newOrder]));
     syncOneOrder(newOrder, "新订单已写入云端");
 
     setNewOrderForm({
@@ -1231,6 +1399,7 @@ function App() {
   }
 
   function resetNewProductForm() {
+    setEditingProductId(null);
     setNewProductForm({
       name: "",
       category: "室内绿植",
@@ -1258,8 +1427,8 @@ function App() {
       return;
     }
 
-    const newProduct = {
-      id: Date.now(),
+    const productPayload = {
+      id: editingProductId || Date.now(),
       name,
       category: newProductForm.category || "室内绿植",
       subCategory: newProductForm.subCategory || "大型植物",
@@ -1270,23 +1439,119 @@ function App() {
       stock: newProductForm.stock || "充足",
       note: newProductForm.note.trim(),
       status: newProductForm.status || "已上架",
-      createdAt: nowText(),
+      createdAt: newProductForm.createdAt || nowText(),
+      updatedAt: nowText(),
     };
 
-    setMerchantProducts((prev) => [newProduct, ...prev]);
+    const nextProducts = editingProductId
+      ? merchantProducts.map((product) => (product.id === editingProductId ? productPayload : product))
+      : [productPayload, ...merchantProducts];
+
+    updateProducts(nextProducts, editingProductId ? "商品修改已同步" : "新商品已同步");
     resetNewProductForm();
     setShowCreateProductSheet(false);
     setMerchantTab("商品库");
   }
 
+  function openEditProduct(product) {
+    setEditingProductId(product.id);
+    setNewProductForm({
+      name: product.name || "",
+      category: product.category || "室内绿植",
+      subCategory: product.subCategory || "大型植物",
+      description: product.description || "",
+      pricePerDay: String(product.pricePerDay || ""),
+      imageUrl: product.imageUrl || "",
+      image: product.image || "🪴",
+      stock: product.stock || "充足",
+      note: product.note || "",
+      status: product.status || "已上架",
+      createdAt: product.createdAt || nowText(),
+    });
+    setShowCreateProductSheet(true);
+  }
+
   function toggleProductStatus(productId) {
-    setMerchantProducts((prev) =>
-      prev.map((product) =>
-        product.id === productId
-          ? { ...product, status: product.status === "已上架" || product.status === "上架" ? "未上架" : "已上架" }
-          : product
-      )
+    const nextProducts = merchantProducts.map((product) =>
+      product.id === productId
+        ? { ...product, status: product.status === "已上架" || product.status === "上架" ? "未上架" : "已上架", updatedAt: nowText() }
+        : product
     );
+    updateProducts(nextProducts, "商品上下架状态已同步");
+  }
+
+  function resetNewCustomerForm() {
+    setEditingCustomerId(null);
+    setNewCustomerForm({
+      name: "",
+      contactName: "",
+      phone: "",
+      address: "",
+      areaSize: "",
+      note: "",
+      tagsText: "办公室,长期租赁",
+    });
+  }
+
+  function saveCustomer() {
+    const name = newCustomerForm.name.trim();
+    if (!name) {
+      alert("请填写客户名称");
+      return;
+    }
+
+    const payload = {
+      id: editingCustomerId || `customer-${Date.now()}`,
+      name,
+      contactName: newCustomerForm.contactName.trim(),
+      phone: newCustomerForm.phone.trim(),
+      address: newCustomerForm.address.trim(),
+      areaSize: newCustomerForm.areaSize.trim(),
+      note: newCustomerForm.note.trim(),
+      tagsText: newCustomerForm.tagsText.trim() || "办公室,长期租赁",
+      createdAt: newCustomerForm.createdAt || nowText(),
+      updatedAt: nowText(),
+    };
+
+    setMerchantCustomers((prev) => {
+      const next = editingCustomerId
+        ? prev.map((customer) => (customer.id === editingCustomerId ? payload : customer))
+        : [payload, ...prev];
+      persistCustomersToLocalStore(next);
+      return next;
+    });
+
+    resetNewCustomerForm();
+    setShowCreateCustomerSheet(false);
+    setMerchantTab("客户库");
+  }
+
+  function openEditCustomer(customer) {
+    setEditingCustomerId(customer.id);
+    setNewCustomerForm({
+      name: customer.name || "",
+      contactName: customer.contactName || "",
+      phone: customer.phone || "",
+      address: customer.address || "",
+      areaSize: customer.areaSize || "",
+      note: customer.note || "",
+      tagsText: customer.tagsText || "办公室,长期租赁",
+      createdAt: customer.createdAt || nowText(),
+    });
+    setShowCreateCustomerSheet(true);
+  }
+
+  function fillOrderFromCustomer(customer) {
+    setNewOrderForm((form) => ({
+      ...form,
+      customerName: customer.name || form.customerName,
+      contactName: customer.contactName || form.contactName,
+      phone: customer.phone || form.phone,
+      address: customer.address || form.address,
+      areaSize: customer.areaSize || form.areaSize,
+      tagsText: customer.tagsText || form.tagsText,
+    }));
+    setShowCreateOrderSheet(true);
   }
 
   function copyCustomerPlanLink(order) {
@@ -1851,7 +2116,7 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
-            <p className="eyebrow">Staff Workbench · v3.0</p>
+            <p className="eyebrow">Staff Workbench · v3.1</p>
             <h1>{currentOrder.customerName}</h1>
           </div>
         </header>
@@ -2110,7 +2375,7 @@ ${areaText || "暂无区域"}
             已选 {getAreaProductCount(currentArea)} 件｜日租金 ¥ {money(getAreaDailyRent(currentArea))}｜完成选品
           </button>
 
-          <button className="ghost-button" onClick={clearCurrentAreaItems}>清空当前区域商品</button>
+          <button className="ghost-button danger" style={{ borderRadius: 18, padding: "14px 18px", marginTop: 10 }} onClick={clearCurrentAreaItems}>清空当前区域商品</button>
         </section>
       </div>
     );
@@ -2417,7 +2682,7 @@ ${areaText || "暂无区域"}
       },
     };
 
-    const navItems = ["工作台", "订单管理", "执行监测", "商品库", "设置"];
+    const navItems = ["工作台", "订单管理", "执行监测", "商品库", "客户库", "设置"];
     const todoOrders = [...pendingMerchantConfirmOrders, ...pendingArchiveOrders];
     const displayOrders = merchantOrders;
     const filteredMerchantProducts = merchantProducts.filter((product) => {
@@ -2500,7 +2765,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.shell}>
           <div style={desktopStyles.topbar}>
             <div>
-              <p className="eyebrow">Review Desk · v3.0</p>
+              <p className="eyebrow">Review Desk · v3.1</p>
               <h1>{order.customerName}</h1>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -2583,7 +2848,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.layout}>
           <aside style={desktopStyles.sidebar}>
             <div style={desktopStyles.brand}>
-              <p className="eyebrow">Merchant Admin · v3.0</p>
+              <p className="eyebrow">Merchant Admin · v3.1</p>
               <h2 style={{ margin: 0 }}>绿植租赁后台</h2>
               <span style={{ color: "#738278", fontSize: 13 }}>公司端 / 商户端</span>
             </div>
@@ -2745,6 +3010,7 @@ ${areaText || "暂无区域"}
                           <div className="product-bottom">
                             <strong>¥ {product.pricePerDay}/天</strong>
                             <button onClick={() => toggleProductStatus(product.id)}>{product.status === "已上架" || product.status === "上架" ? "已上架" : "未上架"}</button>
+                            <button onClick={() => openEditProduct(product)}>编辑</button>
                           </div>
                         </div>
                       </article>
@@ -2759,6 +3025,61 @@ ${areaText || "暂无区域"}
                   )}
                 </section>
               </>
+            )}
+
+            {merchantTab === "客户库" && (
+              <section style={desktopStyles.panel}>
+                <div className="section-title-row">
+                  <div><p className="eyebrow">Customer Library</p><h2>客户库</h2></div>
+                  <button style={desktopStyles.actionButton} onClick={() => { resetNewCustomerForm(); setShowCreateCustomerSheet(true); }}>新增客户</button>
+                </div>
+
+                <input
+                  className="area-input"
+                  value={customerSearchText}
+                  onChange={(e) => setCustomerSearchText(e.target.value)}
+                  placeholder="搜索客户名称、联系人、电话、地址、备注"
+                  style={{ marginBottom: 14 }}
+                />
+
+                <div className="empty-card" style={{ marginBottom: 14 }}>
+                  <p>客户库已开始沉淀业务资产</p>
+                  <span>创建订单会自动沉淀客户；也可以提前新增客户，再从客户库直接派单。</span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+                  {filteredCustomers.map((customer) => {
+                    const customerOrders = orders.filter((order) =>
+                      order.customerId === customer.id ||
+                      order.customerName === customer.name ||
+                      (customer.phone && order.phone === customer.phone)
+                    );
+                    const latestOrder = customerOrders[0];
+                    return (
+                      <article className="order-card" key={customer.id}>
+                        <div className="order-card-header">
+                          <div><h2>{customer.name}</h2><p>{customer.contactName || "联系人待补充"}{customer.phone ? `｜${customer.phone}` : ""}</p></div>
+                          <StatusPill>{customerOrders.length} 单</StatusPill>
+                        </div>
+                        <div className="info-row"><span>地址</span><strong>{customer.address || "-"}</strong></div>
+                        <div className="info-row"><span>最近订单</span><strong>{latestOrder ? `${latestOrder.status}｜${latestOrder.customerName}` : "暂无订单"}</strong></div>
+                        <div className="info-row"><span>备注</span><strong>{customer.note || "-"}</strong></div>
+                        <div className="actions">
+                          <button className="primary-button" onClick={() => fillOrderFromCustomer(customer)}>给他派单</button>
+                          <button className="ghost-button" onClick={() => openEditCustomer(customer)}>编辑</button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                {filteredCustomers.length === 0 && (
+                  <div className="empty-card" style={{ marginTop: 14 }}>
+                    <p>没有找到客户</p>
+                    <span>可以新增客户，或者创建订单后自动沉淀。</span>
+                  </div>
+                )}
+              </section>
             )}
 
             {merchantTab === "设置" && (
@@ -2783,8 +3104,66 @@ ${areaText || "暂无区域"}
 
             {showCreateOrderSheet && renderCreateOrderSheet()}
             {showCreateProductSheet && renderCreateProductSheet()}
+            {showCreateCustomerSheet && renderCreateCustomerSheet()}
           </main>
         </div>
+      </div>
+    );
+  }
+
+  function renderCreateCustomerSheet() {
+    const overlayStyle = {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(15, 39, 26, 0.36)",
+      zIndex: 80,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    };
+
+    const panelStyle = {
+      width: "min(820px, calc(100vw - 48px))",
+      maxHeight: "88vh",
+      overflowY: "auto",
+      background: "rgba(255,255,255,0.98)",
+      borderRadius: 28,
+      padding: 24,
+      boxShadow: "0 28px 80px rgba(20, 54, 34, 0.22)",
+    };
+
+    return (
+      <div style={overlayStyle} onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>
+        <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
+          <div className="section-title-row">
+            <div><p className="eyebrow">Customer Editor · v3.1</p><h2>{editingCustomerId ? "编辑客户" : "新增客户"}</h2></div>
+            <button className="close-button" onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>×</button>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <section className="plan-summary-card" style={{ margin: 0 }}>
+              <div className="sheet-block"><p className="sheet-label">客户 / 项目名称</p><input className="area-input" value={newCustomerForm.name} onChange={(e) => setNewCustomerForm((form) => ({ ...form, name: e.target.value }))} placeholder="例如：南通万达 A3 写字楼" /></div>
+              <div className="sheet-block"><p className="sheet-label">联系人</p><input className="area-input" value={newCustomerForm.contactName} onChange={(e) => setNewCustomerForm((form) => ({ ...form, contactName: e.target.value }))} placeholder="例如：王经理" /></div>
+              <div className="sheet-block"><p className="sheet-label">联系电话</p><input className="area-input" value={newCustomerForm.phone} onChange={(e) => setNewCustomerForm((form) => ({ ...form, phone: e.target.value }))} placeholder="例如：13800001111" /></div>
+            </section>
+
+            <section className="plan-summary-card" style={{ margin: 0 }}>
+              <div className="sheet-block"><p className="sheet-label">客户地址</p><input className="area-input" value={newCustomerForm.address} onChange={(e) => setNewCustomerForm((form) => ({ ...form, address: e.target.value }))} placeholder="例如：港闸区万达 A3" /></div>
+              <div className="sheet-block"><p className="sheet-label">项目面积</p><input className="area-input" value={newCustomerForm.areaSize} onChange={(e) => setNewCustomerForm((form) => ({ ...form, areaSize: e.target.value }))} placeholder="例如：300㎡" /></div>
+              <div className="sheet-block"><p className="sheet-label">默认标签</p><input className="area-input" value={newCustomerForm.tagsText} onChange={(e) => setNewCustomerForm((form) => ({ ...form, tagsText: e.target.value }))} placeholder="办公室,长期租赁" /></div>
+            </section>
+          </div>
+
+          <section className="plan-summary-card" style={{ marginTop: 16 }}>
+            <div className="sheet-block"><p className="sheet-label">客户备注</p><input className="area-input" value={newCustomerForm.note} onChange={(e) => setNewCustomerForm((form) => ({ ...form, note: e.target.value }))} placeholder="例如：老板喜欢大气一点的植物，报价可走年付" /></div>
+          </section>
+
+          <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 16 }}>
+            <button className="ghost-button" onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>取消</button>
+            <button className="submit-plan-button" onClick={saveCustomer}>{editingCustomerId ? "保存修改" : "保存客户"}</button>
+          </div>
+        </section>
       </div>
     );
   }
@@ -2823,8 +3202,8 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => setShowCreateProductSheet(false)}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">New Product · v3.0</p><h2>新增商品</h2></div>
-            <button className="close-button" onClick={() => setShowCreateProductSheet(false)}>×</button>
+            <div><p className="eyebrow">Product Editor · v3.1</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
+            <button className="close-button" onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}>×</button>
           </div>
 
           <div style={gridStyle}>
@@ -2895,8 +3274,8 @@ ${areaText || "暂无区域"}
           </section>
 
           <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
-            <button className="ghost-button" onClick={() => setShowCreateProductSheet(false)}>取消</button>
-            <button className="submit-plan-button" onClick={createMerchantProduct}>保存商品</button>
+            <button className="ghost-button" onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}>取消</button>
+            <button className="submit-plan-button" onClick={createMerchantProduct}>{editingProductId ? "保存修改" : "保存商品"}</button>
           </div>
         </section>
       </div>
@@ -2936,7 +3315,7 @@ ${areaText || "暂无区域"}
         >
           <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
             <div className="section-title-row">
-              <div><p className="eyebrow">New Order · v3.0</p><h2>创建新订单</h2></div>
+              <div><p className="eyebrow">New Order · v3.1</p><h2>创建新订单</h2></div>
               <button
                 className="close-button"
                 onClick={() => {
@@ -2981,8 +3360,37 @@ ${areaText || "暂无区域"}
               background: "rgba(239, 247, 241, 0.92)",
               border: "1px solid rgba(34, 116, 67, 0.12)"
             }}>
-              <button className="ghost-button" style={{ minWidth: 110 }} onClick={() => setShowCreateOrderSheet(false)}>取消</button>
-              <button className="submit-plan-button" style={{ minWidth: 180, margin: 0 }} onClick={createMerchantOrder}>创建并派发订单</button>
+              <button
+                style={{
+                  minWidth: 128,
+                  border: 0,
+                  borderRadius: 18,
+                  padding: "14px 22px",
+                  background: "#eef7ef",
+                  color: "#214b35",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+                onClick={() => setShowCreateOrderSheet(false)}
+              >
+                取消
+              </button>
+              <button
+                style={{
+                  minWidth: 210,
+                  border: 0,
+                  borderRadius: 18,
+                  padding: "14px 24px",
+                  background: "#217642",
+                  color: "#fff",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                  boxShadow: "0 14px 28px rgba(33, 118, 66, 0.22)",
+                }}
+                onClick={createMerchantOrder}
+              >
+                创建并派发订单
+              </button>
             </div>
           </section>
         </div>
@@ -3039,7 +3447,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v3.0</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v3.1</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
@@ -3132,7 +3540,7 @@ ${areaText || "暂无区域"}
   return (
     <div className="app">
       <header className="app-header">
-        <div><p className="eyebrow">Staff Mobile · v3.0</p><h1>员工接单端</h1></div>
+        <div><p className="eyebrow">Staff Mobile · v3.1</p><h1>员工接单端</h1></div>
         <button className="role-button" onClick={() => switchRole("merchant")}>商户测试</button>
       </header>
 
