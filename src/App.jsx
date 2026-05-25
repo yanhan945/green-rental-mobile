@@ -1729,6 +1729,168 @@ ${areaText || "暂无区域"}
     const stats = getPlanStats(order.plan);
     const hint = getOrderHint(order);
 
+    if (mode === "staff") {
+      const isPending = order.status === "待接单";
+      const canBuild = ["配置中", "待商户确认"].includes(order.status);
+      const canExecute = ["方案已确认", "执行中"].includes(order.status);
+      const videoBlue = "#2f6fb3";
+      const statusTone = isPending ? "#eaf3ff" : canBuild ? "#e9f6f1" : "#f1f4f8";
+      const statusColor = isPending ? videoBlue : canBuild ? "#2b8c68" : "#4d6075";
+
+      return (
+        <article style={{
+          background: "#fff",
+          border: "1px solid #e6ebf2",
+          borderRadius: 14,
+          padding: 14,
+          marginBottom: 12,
+          boxShadow: "0 6px 18px rgba(31, 58, 88, 0.06)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+            <span style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minWidth: 72,
+              padding: "5px 10px",
+              borderRadius: 6,
+              background: statusTone,
+              color: statusColor,
+              fontWeight: 800,
+              fontSize: 13,
+            }}>
+              {order.status}
+            </span>
+            <strong style={{ color: "#26384d", fontSize: 13 }}>#{String(order.id).slice(-8)}</strong>
+          </div>
+
+          <h2 style={{ margin: "0 0 10px", color: "#172538", fontSize: 18, lineHeight: 1.25 }}>{order.customerName}</h2>
+
+          <div style={{ display: "grid", gridTemplateColumns: "88px 1fr", rowGap: 8, columnGap: 10, fontSize: 14, lineHeight: 1.45 }}>
+            <span style={{ color: "#7b899a" }}>任务地址</span><strong style={{ color: "#223247", textAlign: "right" }}>{order.address || "-"}</strong>
+            <span style={{ color: "#7b899a" }}>联系人</span><strong style={{ color: "#223247", textAlign: "right" }}>{order.contactName || "-"}{order.phone ? `｜${order.phone}` : ""}</strong>
+            <span style={{ color: "#7b899a" }}>预约时间</span><strong style={{ color: "#223247", textAlign: "right" }}>{order.expectedDate || "待确认"}</strong>
+            <span style={{ color: "#7b899a" }}>场景名称</span><strong style={{ color: "#223247", textAlign: "right" }}>{Array.isArray(order.tags) ? order.tags.join(" / ") : "办公室"}</strong>
+            <span style={{ color: "#7b899a" }}>当前报价</span><strong style={{ color: "#223247", textAlign: "right" }}>¥ {money(stats.finalRent)}</strong>
+          </div>
+
+          {hint && <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10, background: "#f6f8fb", color: "#637083", fontSize: 13 }}>{hint}</div>}
+
+          <div style={{ borderTop: "1px solid #edf1f5", marginTop: 14, paddingTop: 12 }}>
+            {isPending && (
+              <button
+                style={{ width: "100%", border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 14px", fontSize: 16 }}
+                onClick={() => setSelectedOrder(order)}
+              >
+                接单
+              </button>
+            )}
+
+            {!isPending && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <button
+                  style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "12px 10px", fontSize: 15 }}
+                  onClick={() => openRouteNavigation(order.address)}
+                >
+                  导航
+                </button>
+                <button
+                  style={{ border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "12px 10px", fontSize: 15 }}
+                  onClick={() => {
+                    if (canExecute && order.status === "执行中") {
+                      setCurrentOrderId(order.id);
+                      setCurrentPage("completeUpload");
+                      return;
+                    }
+                    openPlanForOrder(order);
+                  }}
+                >
+                  {order.status === "执行中" ? "完成任务" : canBuild ? "场景详情" : "查看详情"}
+                </button>
+              </div>
+            )}
+          </div>
+        </article>
+      );
+    }
+
+    return (
+      <article className="order-card">
+        <div className="order-card-header">
+          <div>
+            <h2>{order.customerName}</h2>
+            <p>{order.status}</p>
+          </div>
+          <StatusPill>{order.areaSize}</StatusPill>
+        </div>
+
+        <div className="tag-list">
+          {(Array.isArray(order.tags) ? order.tags : []).map((tag) => (
+            <span key={tag}>{tag}</span>
+          ))}
+        </div>
+
+        <div className="info-row">
+          <span>联系人</span>
+          <strong>
+            {order.contactName || "-"} {order.phone ? `｜${order.phone}` : ""}
+          </strong>
+        </div>
+
+        <div className="info-row">
+          <span>地址</span>
+          <strong>{order.address}</strong>
+        </div>
+
+        {order.plan && (
+          <div className="info-row">
+            <span>报价</span>
+            <strong>¥ {money(stats.finalRent)}</strong>
+          </div>
+        )}
+
+        {hint && (
+          <div className="empty-card">
+            <p>流程提醒</p>
+            <span>{hint}</span>
+          </div>
+        )}
+
+        <div className="actions">
+          <button className="ghost-button" onClick={() => callPhone(order.phone)}>电话</button>
+          <button className="ghost-button" onClick={() => openRouteNavigation(order.address)}>导航</button>
+          <button className="ghost-button" onClick={() => copyText(order.address, "地址已复制")}>地址</button>
+
+          {mode === "merchant" && (
+            <button
+              className="primary-button"
+              onClick={() => {
+                if (order.plan && ["待商户确认", "待商户归档", "方案已确认", "执行中", "已完成"].includes(order.status)) {
+                  openMerchantPlanWorkbench(order);
+                  return;
+                }
+
+                setSelectedOrderDetail(order);
+                setMerchantViewingOrder(null);
+              }}
+            >
+              {order.status === "待商户确认"
+                ? "查看方案"
+                : order.status === "待商户归档"
+                  ? "去归档"
+                  : order.plan
+                    ? "看方案"
+                    : "详情"}
+            </button>
+          )}
+        </div>
+      </article>
+    );
+  }
+) {
+    const stats = getPlanStats(order.plan);
+    const hint = getOrderHint(order);
+
     return (
       <article className="order-card">
         <div className="order-card-header">
@@ -2158,7 +2320,7 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("plan")}>←</button>
           <div>
-            <p className="eyebrow">Task Complete · v3.3</p>
+            <p className="eyebrow">Task Complete · v3.4</p>
             <h1>任务完成</h1>
           </div>
         </header>
@@ -2271,156 +2433,178 @@ ${areaText || "暂无区域"}
   function renderPlanPage() {
     if (!currentOrder || !currentPlan) return null;
 
+    const videoBlue = "#2f6fb3";
+    const selectedRows = planAreas.flatMap((area) =>
+      safeItems(area).map((item) => ({ ...item, areaId: area.id, areaName: area.name }))
+    );
+
+    const pageStyle = {
+      minHeight: "100vh",
+      background: "#f4f6f9",
+      color: "#182536",
+      paddingBottom: "calc(96px + env(safe-area-inset-bottom))",
+    };
+    const navStyle = {
+      position: "sticky",
+      top: 0,
+      zIndex: 20,
+      height: 54,
+      display: "grid",
+      gridTemplateColumns: "48px 1fr 48px",
+      alignItems: "center",
+      background: "rgba(255,255,255,.98)",
+      borderBottom: "1px solid #e8edf3",
+      padding: "0 12px",
+      boxShadow: "0 6px 18px rgba(31,58,88,.04)",
+    };
+    const cardStyle = {
+      background: "#fff",
+      border: "1px solid #e4eaf2",
+      borderRadius: 14,
+      margin: "12px 12px 0",
+      padding: 14,
+      boxShadow: "0 8px 22px rgba(31,58,88,.05)",
+    };
+    const labelStyle = { color: "#7b899a", fontSize: 13 };
+    const strongStyle = { color: "#1b2d42", fontWeight: 800, fontSize: 14 };
+    const tabStyle = (active) => ({
+      border: 0,
+      background: "transparent",
+      color: active ? videoBlue : "#526274",
+      fontWeight: 900,
+      padding: "13px 0 11px",
+      borderBottom: active ? `3px solid ${videoBlue}` : "3px solid transparent",
+      fontSize: 15,
+    });
+
     return (
-      <div className="app">
-        <header className="plan-header">
-          <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
-          <div>
-            <p className="eyebrow">Staff Workbench · v3.3</p>
-            <h1>{currentPage === "plan" ? "建方案" : currentOrder.customerName}</h1>
-          </div>
+      <div style={pageStyle}>
+        <header style={navStyle}>
+          <button style={{ border: 0, background: "transparent", fontSize: 22, color: "#24364b" }} onClick={() => setCurrentPage("orders")}>‹</button>
+          <strong style={{ textAlign: "center", fontSize: 17, color: "#182536" }}>建方案</strong>
+          <span />
         </header>
 
-        <section className="plan-summary-card" style={{ padding: 18 }}>
-          <div className="plan-summary-top">
-            <div><p>当前任务</p><strong>{currentOrder.status === "配置中" ? "配置方案" : currentOrder.status}</strong></div>
-            <div><p>已配区域</p><strong>{planAreas.length} 个</strong></div>
+        <section style={cardStyle}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 10 }}>
+            <div>
+              <span style={{ ...labelStyle, display: "block", marginBottom: 4 }}>当前任务</span>
+              <strong style={{ fontSize: 18, color: "#182536" }}>{currentOrder.customerName}</strong>
+            </div>
+            <span style={{ borderRadius: 6, background: "#eaf3ff", color: videoBlue, padding: "6px 10px", fontWeight: 900 }}>{currentOrder.status}</span>
           </div>
-          <div className="empty-card" style={{ marginTop: 12, textAlign: "left" }}>
-            <p>{currentOrder.customerName}｜{currentOrder.areaSize}</p>
-            <span>{currentOrder.contactName || "待确认"}{currentOrder.phone ? `｜${currentOrder.phone}` : ""}｜{currentOrder.address}</span>
+          <div style={{ display: "grid", gridTemplateColumns: "78px 1fr", gap: "8px 10px", borderTop: "1px solid #edf1f5", paddingTop: 10 }}>
+            <span style={labelStyle}>任务地址</span><strong style={{ ...strongStyle, textAlign: "right" }}>{currentOrder.address || "-"}</strong>
+            <span style={labelStyle}>联系人</span><strong style={{ ...strongStyle, textAlign: "right" }}>{currentOrder.contactName || "-"}{currentOrder.phone ? `｜${currentOrder.phone}` : ""}</strong>
+            <span style={labelStyle}>预约时间</span><strong style={{ ...strongStyle, textAlign: "right" }}>{currentOrder.expectedDate || "待确认"}</strong>
           </div>
-          <div className="actions mini-actions">
-            <button className="ghost-button" onClick={() => callPhone(currentOrder.phone)}>电话</button>
-            <button className="ghost-button" onClick={() => openRouteNavigation(currentOrder.address)}>导航</button>
-            <button className="ghost-button" onClick={() => copyText(currentOrder.address, "地址已复制")}>地址</button>
-          </div>
-        </section>
-
-        <section className="plan-summary-card" style={{ padding: 16 }}>
-          <div className="plan-summary-top">
-            <div><p>第一步</p><strong>区域</strong></div>
-            <div><p>第二步</p><strong>植物</strong></div>
-            <div><p>第三步</p><strong>报价</strong></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 12 }}>
+            <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "11px 8px" }} onClick={() => callPhone(currentOrder.phone)}>电话</button>
+            <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "11px 8px" }} onClick={() => openRouteNavigation(currentOrder.address)}>导航</button>
+            <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "11px 8px" }} onClick={() => copyText(currentOrder.address, "地址已复制")}>地址</button>
           </div>
         </section>
 
         {currentOrder.status === "方案已确认" && (
-          <section className="plan-summary-card">
-            <div className="empty-card">
-              <p>商户已确认方案</p>
-              <span>现在可以开始执行服务。</span>
-            </div>
-            <button className="submit-sheet-button" onClick={() => startExecution(currentOrder.id)}>
-              开始执行服务
-            </button>
+          <section style={cardStyle}>
+            <strong style={{ color: "#182536" }}>商户已确认方案</strong>
+            <p style={{ margin: "8px 0 12px", color: "#6b7788" }}>现在可以开始执行服务。</p>
+            <button style={{ width: "100%", border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 14px" }} onClick={() => startExecution(currentOrder.id)}>开始执行服务</button>
           </section>
         )}
 
         {currentOrder.status === "执行中" && (
-          <section className="plan-summary-card">
-            <div className="empty-card">
-              <p>订单执行中</p>
-              <span>服务完成后可以标记订单完成。</span>
-            </div>
-            <button className="submit-sheet-button" onClick={() => setCurrentPage("completeUpload")}>
-              完成任务并上传照片
-            </button>
+          <section style={cardStyle}>
+            <strong style={{ color: "#182536" }}>任务执行中</strong>
+            <p style={{ margin: "8px 0 12px", color: "#6b7788" }}>完成摆放后上传现场照片并提交。</p>
+            <button style={{ width: "100%", border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 14px" }} onClick={() => setCurrentPage("completeUpload")}>完成任务并上传照片</button>
           </section>
         )}
 
-        {currentOrder.status === "待商户归档" && (
-          <section className="plan-summary-card">
-            <div className="empty-card">
-              <p>订单已完成，等待商户归档</p>
-              <span>商户端确认归档后，这单才会进入正式已完成。</span>
-            </div>
-          </section>
-        )}
-
-        <section className="area-section">
-          <div className="section-title-row">
-            <div>
-              <p className="eyebrow">区域</p>
-              <h2>配置区域与植物</h2>
-            </div>
-            <button className="add-area-button" onClick={() => setShowAreaSheet(true)}>添加区域</button>
+        <section style={cardStyle}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid #e7edf4", marginBottom: 12 }}>
+            <button style={tabStyle(true)}>植物</button>
+            <button style={tabStyle(false)} onClick={() => alert("花盆库已经预留，后续补充数据。")}>花盆</button>
+            <button style={tabStyle(false)} onClick={() => alert("资材库已经预留，后续补充数据。")}>资材</button>
           </div>
 
-          {planAreas.length === 0 ? (
-            <div className="empty-card">
-              <p>先选一个区域，马上开始配植物</p>
-              <span>选完区域会自动打开植物库，不需要再找入口。</span>
-              <div className="quick-area-list" style={{ marginTop: 12 }}>
-                {["前台", "办公室", "会议室", "走廊", "门口"].map((name) => (
-                  <button key={name} onClick={() => addAreaWithName(name)}>{name}</button>
-                ))}
-              </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+            <div>
+              <strong style={{ color: "#182536", fontSize: 16 }}>场景物料表</strong>
+              <p style={{ margin: "4px 0 0", color: "#7b899a", fontSize: 13 }}>按区域选择植物，数量可直接修改。</p>
             </div>
-          ) : (
-            <div className="area-list">
-              {planAreas.map((area) => (
-                <article className="area-card" key={area.id}>
-                  <div>
-                    <h3>{area.name}</h3>
-                    <p>
-                      已选商品：{getAreaProductCount(area)} 件｜区域日租金：¥{" "}
-                      {money(getAreaDailyRent(area))}
-                    </p>
+            <button style={{ border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "10px 13px" }} onClick={() => setShowAreaSheet(true)}>+ 场景</button>
+          </div>
 
-                    {safeItems(area).length > 0 && (
-                      <div className="selected-product-list">
-                        {safeItems(area).map((item) => (
-                          <div className="selected-product-row" key={item.productId}>
-                            <div>
-                              <strong>{item.name}</strong>
-                              <span>¥ {item.pricePerDay}/天 × {item.quantity}</span>
-                            </div>
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 8 }}>
+            {planAreas.map((area) => (
+              <button key={area.id} style={{ flex: "0 0 auto", border: "1px solid #d8e1ec", borderRadius: 8, padding: "8px 10px", background: currentAreaId === area.id ? "#eaf3ff" : "#fff", color: currentAreaId === area.id ? videoBlue : "#526274", fontWeight: 800 }} onClick={() => openProductSheet(area)}>
+                {area.name} · {getAreaProductCount(area)}件
+              </button>
+            ))}
+            {planAreas.length === 0 && ["前台", "办公室", "会议室", "走廊", "门口"].map((name) => (
+              <button key={name} style={{ flex: "0 0 auto", border: "1px solid #d8e1ec", borderRadius: 8, padding: "8px 10px", background: "#fff", color: "#526274", fontWeight: 800 }} onClick={() => addAreaWithName(name)}>{name}</button>
+            ))}
+          </div>
 
-                            <div className="quantity-controls">
-                              <button onClick={() => changeItemQuantity(area.id, item.productId, -1)}>-</button>
-                              <b>{item.quantity}</b>
-                              <button onClick={() => changeItemQuantity(area.id, item.productId, 1)}>+</button>
-                            </div>
-
-                            <button className="remove-item-button" onClick={() => removeItemFromArea(area.id, item.productId)}>删除</button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <button onClick={() => openProductSheet(area)}>{safeItems(area).length ? "继续加植物" : "选择植物"}</button>
-                </article>
-              ))}
-            </div>
-          )}
+          <div style={{ overflowX: "auto", border: "1px solid #e7edf4", borderRadius: 10 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 620, fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "#f6f8fb", color: "#607085" }}>
+                  <th style={{ padding: 10, textAlign: "left" }}>名称</th>
+                  <th style={{ padding: 10, textAlign: "center" }}>图片</th>
+                  <th style={{ padding: 10, textAlign: "right" }}>价格</th>
+                  <th style={{ padding: 10, textAlign: "center" }}>状态</th>
+                  <th style={{ padding: 10, textAlign: "center" }}>数量</th>
+                  <th style={{ padding: 10, textAlign: "center" }}>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedRows.length === 0 ? (
+                  <tr><td colSpan="6" style={{ padding: 22, textAlign: "center", color: "#8a96a8" }}>暂无物料。先添加场景，再选择植物。</td></tr>
+                ) : selectedRows.map((item) => {
+                  const product = allProducts.find((p) => p.id === item.productId) || item;
+                  const image = getProductImage(product);
+                  return (
+                    <tr key={`${item.areaId}-${item.productId}`} style={{ borderTop: "1px solid #edf1f5" }}>
+                      <td style={{ padding: 10 }}><strong style={{ color: "#223247" }}>{item.name}</strong><br/><span style={{ color: "#8a96a8" }}>{item.areaName}</span></td>
+                      <td style={{ padding: 10, textAlign: "center" }}><span style={{ width: 42, height: 42, borderRadius: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#f2f5f8", overflow: "hidden" }}>{isImageUrl(image) ? <img src={image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : image}</span></td>
+                      <td style={{ padding: 10, textAlign: "right", fontWeight: 800 }}>¥ {item.pricePerDay}/天</td>
+                      <td style={{ padding: 10, textAlign: "center" }}><span style={{ borderRadius: 6, background: "#e9f6f1", color: "#2b8c68", padding: "4px 8px", fontWeight: 800 }}>有货</span></td>
+                      <td style={{ padding: 10, textAlign: "center" }}><input inputMode="numeric" type="number" value={item.quantity} min="1" style={{ width: 56, height: 34, border: "1px solid #d8e1ec", borderRadius: 8, textAlign: "center", fontWeight: 800 }} onChange={(e) => {
+                        const nextQty = Math.max(1, Number(e.target.value || 1));
+                        updateOrderPlan(currentOrder.id, (plan) => ({
+                          ...plan,
+                          areas: safeAreas(plan).map((area) => area.id === item.areaId ? {
+                            ...area,
+                            items: safeItems(area).map((old) => old.productId === item.productId ? { ...old, quantity: nextQty } : old)
+                          } : area),
+                        }), "数量已同步");
+                      }} /></td>
+                      <td style={{ padding: 10, textAlign: "center" }}><button style={{ border: 0, background: "#fff1f0", color: "#b44a3e", borderRadius: 8, padding: "7px 9px", fontWeight: 800 }} onClick={() => removeItemFromArea(item.areaId, item.productId)}>删除</button></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </section>
 
-        <section className="price-card price-detail-card">
-          <div><span>日租金</span><strong>¥ {money(currentStats.dailyRent)}</strong></div>
-          <div><span>租期</span><strong>{currentPlan.leaseMonths || 12}月</strong></div>
-          <div><span>系统总租金</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
-          <div><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
-          <div><span>支付方式</span><strong>{currentPlan.paymentMethod || "月付"}</strong></div>
-          <div><span>押金</span><strong>{currentPlan.needDeposit ? "需要" : "不需要"}</strong></div>
+        <section style={cardStyle}>
+          <strong style={{ display: "block", marginBottom: 10, color: "#182536", fontSize: 16 }}>定价与分享</strong>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+            <div style={{ background: "#f6f8fb", borderRadius: 10, padding: 12 }}><span style={labelStyle}>日租金</span><strong style={{ display: "block", marginTop: 4, fontSize: 20 }}>¥ {money(currentStats.dailyRent)}</strong></div>
+            <div style={{ background: "#f6f8fb", borderRadius: 10, padding: 12 }}><span style={labelStyle}>租期</span><strong style={{ display: "block", marginTop: 4, fontSize: 20 }}>{currentPlan.leaseMonths || 12}月</strong></div>
+          </div>
+          <label style={{ display: "grid", gridTemplateColumns: "96px 1fr", alignItems: "center", gap: 10, border: "1px solid #d8e1ec", borderRadius: 10, padding: "10px 12px" }}>
+            <span style={{ color: "#647286", fontWeight: 800 }}>销售定价</span>
+            <input className="area-input" type="number" value={currentPlan.customFinalRent || ""} onChange={(e) => updateCurrentPlanField("customFinalRent", e.target.value)} placeholder={`默认 ¥${money(currentStats.systemTotalRent)}`} style={{ border: 0, background: "transparent", padding: 0, textAlign: "right" }} />
+          </label>
         </section>
 
-        <section className="plan-summary-card">
-          <button className="ghost-button" onClick={() => setShowDetailBlock(!showDetailBlock)}>
-            {showDetailBlock ? "收起更多信息" : "展开更多信息"}
-          </button>
-        </section>
-
-        {showDetailBlock && <ExtraDetails order={currentOrder} editable />}
-
-        <nav className="bottom-actions">
-          <button onClick={() => setShowMoreSheet(true)}>更多</button>
-          <button onClick={() => setShowPriceSheet(true)}>改价</button>
-          <button onClick={() => setShowPaymentSheet(true)}>租期支付</button>
-          <button className="submit-plan-button" onClick={() => setShowSubmitSheet(true)}>
-            提交方案
-          </button>
+        <nav style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 50, background: "rgba(255,255,255,.98)", borderTop: "1px solid #e4eaf2", padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", display: "grid", gridTemplateColumns: "0.85fr 1.15fr", gap: 10 }}>
+          <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "13px 10px" }} onClick={() => copyCustomerPlanLink(currentOrder)}>生成客户查看链接</button>
+          <button style={{ border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 10px", boxShadow: "0 8px 18px rgba(47,111,179,.22)" }} onClick={() => setShowSubmitSheet(true)}>提交方案</button>
         </nav>
 
         {showAreaSheet && renderAreaSheet()}
@@ -2432,6 +2616,7 @@ ${areaText || "暂无区域"}
       </div>
     );
   }
+
 
   function renderAreaSheet() {
     return (
@@ -2461,146 +2646,115 @@ ${areaText || "暂无区域"}
   }
 
   function renderProductSheet() {
+    const videoBlue = "#2f6fb3";
     const sheetStyle = {
       height: "92vh",
       maxHeight: "92vh",
       overflow: "hidden",
       display: "flex",
       flexDirection: "column",
-      paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
+      background: "#fff",
+      borderRadius: "18px 18px 0 0",
+      paddingBottom: "env(safe-area-inset-bottom)",
     };
-
     const topStyle = {
       flexShrink: 0,
-      position: "relative",
-      zIndex: 6,
-      background: "rgba(255,255,255,0.98)",
-      borderRadius: "0 0 24px 24px",
-      paddingBottom: 10,
-      boxShadow: "0 10px 22px rgba(24, 70, 44, 0.06)",
+      background: "#fff",
+      borderBottom: "1px solid #e7edf4",
+      padding: "10px 14px 8px",
     };
-
+    const searchWrapStyle = {
+      background: videoBlue,
+      borderRadius: 10,
+      padding: 8,
+      margin: "10px 0",
+    };
     const productMainStyle = {
       flex: 1,
       minHeight: 0,
-      overflow: "hidden",
       display: "grid",
-      gridTemplateColumns: "96px minmax(0, 1fr)",
-      gap: 10,
-      paddingTop: 10,
+      gridTemplateColumns: "92px minmax(0, 1fr)",
+      overflow: "hidden",
+      background: "#f5f7fa",
     };
-
-    const productListStyle = {
-      overflowY: "auto",
-      minHeight: 0,
-      paddingRight: 4,
-      paddingBottom: 150,
-    };
-
-    const clearButtonStyle = {
-      border: "1px solid rgba(178, 68, 55, 0.22)",
-      borderRadius: 999,
-      padding: "14px 22px",
-      margin: "12px auto 0",
-      width: "fit-content",
-      display: "block",
-      background: "#fff3f0",
-      color: "#a5493e",
-      fontWeight: 900,
-      boxShadow: "0 10px 22px rgba(115, 45, 38, 0.08)",
+    const rowButtonStyle = {
+      width: "100%",
+      border: 0,
+      borderBottom: "1px solid #e8edf3",
+      background: "transparent",
+      color: "#526274",
+      fontWeight: 800,
+      padding: "15px 8px",
+      textAlign: "center",
+      fontSize: 14,
     };
 
     return (
       <div className="sheet-mask" onClick={() => setShowProductSheet(false)}>
-        <section className="bottom-sheet" style={sheetStyle} onClick={(event) => event.stopPropagation()}>
-          <div className="sheet-handle" />
+        <section style={sheetStyle} onClick={(event) => event.stopPropagation()}>
+          <div style={{ width: 48, height: 5, borderRadius: 99, background: "#d8e1ea", margin: "10px auto 2px", flexShrink: 0 }} />
           <div style={topStyle}>
-            <div className="sheet-header">
-              <div><p className="eyebrow">Product Library</p><h2>{currentArea?.name || "当前区域"}选品</h2></div>
-              <button className="close-button" onClick={() => setShowProductSheet(false)}>×</button>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <div>
+                <p style={{ margin: 0, color: "#8a96a8", fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 900 }}>Item Selector</p>
+                <h2 style={{ margin: "4px 0 0", color: "#182536", fontSize: 22 }}>{currentArea?.name || "当前场景"}物料选择</h2>
+              </div>
+              <button style={{ width: 38, height: 38, borderRadius: 10, border: 0, background: "#eef2f6", color: "#526274", fontSize: 24, fontWeight: 800 }} onClick={() => setShowProductSheet(false)}>×</button>
             </div>
-
-            <div className="rent-preview">
-              <span>当前区域</span>
-              <strong>已选 {getAreaProductCount(currentArea)} 件｜日租金 ¥ {money(getAreaDailyRent(currentArea))}</strong>
+            <div style={searchWrapStyle}>
+              <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="搜索物料名称 / 规格 / 场景" style={{ width: "100%", height: 42, border: 0, borderRadius: 8, background: "#fff", padding: "0 12px", fontSize: 15, outline: "none" }} />
             </div>
-
-            <div className="category-tabs" style={{ marginBottom: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid #e7edf4" }}>
               {['植物', '花盆', '资材'].map((name) => (
-                <button key={name} className={name === '植物' ? 'active' : ''} onClick={() => name !== '植物' && alert(`${name}库已经预留，后续补充数据。`)}>
-                  {name}
-                </button>
+                <button key={name} style={{ border: 0, background: "transparent", padding: "11px 0", color: name === '植物' ? videoBlue : "#526274", fontWeight: 900, borderBottom: name === '植物' ? `3px solid ${videoBlue}` : "3px solid transparent" }} onClick={() => name !== '植物' && alert(`${name}库已经预留，后续补充数据。`)}>{name}</button>
               ))}
             </div>
-
-            <div className="sheet-block" style={{ marginBottom: 8 }}>
-              <input className="area-input" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="搜索植物名称 / 寓意 / 场景" />
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 8 }}>
+              {["全部商品", ...productCategories].map((category) => (
+                <button key={category} style={{ flex: "0 0 auto", border: 0, borderRadius: 8, padding: "8px 12px", background: activeCategory === category ? videoBlue : "#eef2f6", color: activeCategory === category ? "#fff" : "#526274", fontWeight: 900 }} onClick={() => { setActiveCategory(category); setActiveSubCategory(category === "全部商品" ? "全部规格" : "大型植物"); }}>{category}</button>
+              ))}
             </div>
-
-            <div className="category-tabs">
-            {["全部商品", ...productCategories].map((category) => (
-              <button
-                key={category}
-                className={activeCategory === category ? "active" : ""}
-                onClick={() => {
-                  setActiveCategory(category);
-                  setActiveSubCategory(category === "全部商品" ? "全部规格" : "大型植物");
-                }}
-              >
-                {category}
-              </button>
-            ))}
           </div>
 
-          </div>
-
-          <main className="product-layout" style={productMainStyle}>
-            <aside className="sub-category-list" style={{ overflowY: "auto", minHeight: 0, paddingBottom: 112 }}>
-              {(["全部规格", ...subCategories]).map((subCategory) => (
-                <button key={subCategory} className={activeSubCategory === subCategory ? "active" : ""} onClick={() => setActiveSubCategory(subCategory)}>
-                  {subCategory}
-                </button>
+          <main style={productMainStyle}>
+            <aside style={{ overflowY: "auto", background: "#fff", borderRight: "1px solid #e7edf4", paddingBottom: 86 }}>
+              {["全部规格", ...subCategories].map((subCategory) => (
+                <button key={subCategory} style={{ ...rowButtonStyle, background: activeSubCategory === subCategory ? "#eaf3ff" : "transparent", color: activeSubCategory === subCategory ? videoBlue : "#526274", borderLeft: activeSubCategory === subCategory ? `4px solid ${videoBlue}` : "4px solid transparent" }} onClick={() => setActiveSubCategory(subCategory)}>{subCategory}</button>
               ))}
             </aside>
-
-            <section className="product-list" style={productListStyle}>
+            <section style={{ overflowY: "auto", minHeight: 0, padding: "10px 10px 96px" }}>
               {filteredProducts.length === 0 ? (
-                <div className="empty-product-card"><p>暂无商品</p><span>可以切到“全部商品”，或搜索刚新增的商品名称。</span></div>
-              ) : (
-                filteredProducts.map((product) => {
-                  const selected = safeItems(currentArea).find((item) => item.productId === product.id);
-                  const selectedQuantity = selected ? Number(selected.quantity || 0) : 0;
-
-                  return (
-                    <article className="product-card" key={product.id} style={{ minHeight: 118, padding: 12, gap: 12 }}>
-                      <div className="product-image" style={{ width: 76, height: 76, flexShrink: 0 }}>{isImageUrl(getProductImage(product)) ? <img src={getProductImage(product)} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 16 }} /> : getProductImage(product)}</div>
-                      <div className="product-info">
-                        <h3>{product.name}</h3>
-                        <p>{product.description}</p>
-                        <div className="product-bottom">
-                          <strong>¥ {product.pricePerDay}/天</strong>
-                          <button onClick={() => addProductToArea(product)}>
-                            {selectedQuantity > 0 ? `已选 ${selectedQuantity} 件` : "加入方案"}
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })
-              )}
+                <div style={{ background: "#fff", border: "1px solid #e4eaf2", borderRadius: 12, padding: 18, color: "#7b899a", textAlign: "center" }}><strong style={{ color: "#223247" }}>暂无物料</strong><br/>可以切到“全部商品”，或搜索刚新增的商品名称。</div>
+              ) : filteredProducts.map((product) => {
+                const selected = safeItems(currentArea).find((item) => item.productId === product.id);
+                const selectedQuantity = selected ? Number(selected.quantity || 0) : 0;
+                const image = getProductImage(product);
+                return (
+                  <button key={product.id} onClick={() => addProductToArea(product)} style={{ width: "100%", display: "grid", gridTemplateColumns: "54px 1fr auto", gap: 10, alignItems: "center", background: "#fff", border: "1px solid #e4eaf2", borderRadius: 12, padding: 10, marginBottom: 10, textAlign: "left", boxShadow: "0 4px 12px rgba(31,58,88,.04)" }}>
+                    <span style={{ width: 54, height: 54, borderRadius: 8, background: "#f2f5f8", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", fontSize: 24 }}>{isImageUrl(image) ? <img src={image} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : image}</span>
+                    <span style={{ minWidth: 0 }}>
+                      <strong style={{ display: "block", color: "#182536", fontSize: 15, marginBottom: 4 }}>{product.name}</strong>
+                      <small style={{ display: "block", color: "#7b899a", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{product.description}</small>
+                      <b style={{ display: "block", color: videoBlue, marginTop: 5 }}>¥ {product.pricePerDay}/天</b>
+                    </span>
+                    <span style={{ borderRadius: 8, background: selectedQuantity > 0 ? "#e9f6f1" : videoBlue, color: selectedQuantity > 0 ? "#2b8c68" : "#fff", padding: "8px 9px", fontWeight: 900, fontSize: 12, whiteSpace: "nowrap" }}>{selectedQuantity > 0 ? `已选${selectedQuantity}` : "添加"}</span>
+                  </button>
+                );
+              })}
             </section>
           </main>
 
-          <div style={{ position: "sticky", bottom: 0, zIndex: 10, background: "linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.96) 22%, #fff 100%)", padding: "18px 0 4px" }}>
-            <button className="submit-sheet-button" onClick={() => setShowProductSheet(false)}>
+          <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 60, background: "rgba(255,255,255,.98)", borderTop: "1px solid #e4eaf2", padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+            <button style={{ border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 12px", fontSize: 16 }} onClick={() => setShowProductSheet(false)}>
               已选 {getAreaProductCount(currentArea)} 件｜日租金 ¥ {money(getAreaDailyRent(currentArea))}｜完成选品
             </button>
-            <button style={clearButtonStyle} onClick={clearCurrentAreaItems}>清空当前区域商品</button>
+            <button style={{ border: "1px solid #f0c7c2", borderRadius: 10, background: "#fff7f6", color: "#b44a3e", fontWeight: 800, padding: "10px 12px" }} onClick={clearCurrentAreaItems}>清空当前场景物料</button>
           </div>
         </section>
       </div>
     );
   }
+
 
   function renderPaymentSheet() {
     const optionStyle = (selected) =>
@@ -2986,7 +3140,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.shell}>
           <div style={desktopStyles.topbar}>
             <div>
-              <p className="eyebrow">Review Desk · v3.3</p>
+              <p className="eyebrow">Review Desk · v3.4</p>
               <h1>{order.customerName}</h1>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -3069,7 +3223,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.layout}>
           <aside style={desktopStyles.sidebar}>
             <div style={desktopStyles.brand}>
-              <p className="eyebrow">Merchant Admin · v3.3</p>
+              <p className="eyebrow">Merchant Admin · v3.4</p>
               <h2 style={{ margin: 0 }}>绿植租赁后台</h2>
               <span style={{ color: "#738278", fontSize: 13 }}>公司端 / 商户端</span>
             </div>
@@ -3369,7 +3523,7 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">Customer Editor · v3.3</p><h2>{editingCustomerId ? "编辑客户" : "新增客户"}</h2></div>
+            <div><p className="eyebrow">Customer Editor · v3.4</p><h2>{editingCustomerId ? "编辑客户" : "新增客户"}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>×</button>
           </div>
 
@@ -3434,7 +3588,7 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => setShowCreateProductSheet(false)}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">Product Editor · v3.3</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
+            <div><p className="eyebrow">Product Editor · v3.4</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}>×</button>
           </div>
 
@@ -3563,7 +3717,7 @@ ${areaText || "暂无区域"}
         >
           <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
             <div className="section-title-row">
-              <div><p className="eyebrow">New Order · v3.3</p><h2>创建新订单</h2></div>
+              <div><p className="eyebrow">New Order · v3.4</p><h2>创建新订单</h2></div>
               <button
                 className="close-button"
                 onClick={() => {
@@ -3695,7 +3849,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v3.3</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v3.4</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
@@ -3796,25 +3950,35 @@ ${areaText || "暂无区域"}
   if (activeRole === "merchant") return renderMerchantPage();
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <div><p className="eyebrow">Staff Mobile · v3.3</p><h1>员工接单端</h1></div>
-        <button className="role-button" onClick={() => switchRole("merchant")}>商户测试</button>
+    <div style={{ minHeight: "100vh", background: "#f4f6f9", color: "#182536", paddingBottom: "24px" }}>
+      <header style={{ position: "sticky", top: 0, zIndex: 20, height: 54, display: "grid", gridTemplateColumns: "72px 1fr 72px", alignItems: "center", background: "#fff", borderBottom: "1px solid #e8edf3", padding: "0 12px" }}>
+        <span />
+        <strong style={{ textAlign: "center", fontSize: 17 }}>任务列表</strong>
+        <button style={{ border: 0, background: "#eef2f6", color: "#2f6fb3", borderRadius: 8, padding: "8px 10px", fontWeight: 900 }} onClick={() => switchRole("merchant")}>商户</button>
       </header>
 
-      <SyncInfoCard />
+      <section style={{ margin: "12px", background: "#fff", border: "1px solid #e4eaf2", borderRadius: 14, padding: 12, boxShadow: "0 6px 18px rgba(31,58,88,.05)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <div>
+            <p style={{ margin: 0, color: "#7b899a", fontSize: 12, fontWeight: 900, letterSpacing: 1 }}>STAFF TASKS · V3.4</p>
+            <h1 style={{ margin: "5px 0 0", color: "#182536", fontSize: 22 }}>员工任务台</h1>
+          </div>
+          <button style={{ border: 0, borderRadius: 10, background: "#2f6fb3", color: "#fff", fontWeight: 900, padding: "11px 13px" }} onClick={refreshOrdersFromCloud}>日期/刷新</button>
+        </div>
+        <p style={{ margin: "10px 0 0", color: "#7b899a", fontSize: 13 }}>{syncMessage}｜{autoSyncState}</p>
+      </section>
 
-      <section className="tabs">
+      <section style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, padding: "0 12px 12px" }}>
         {STAFF_TABS.map((tab) => (
-          <button key={tab} className={activeStaffTab === tab ? "tab active" : "tab"} onClick={() => setActiveStaffTab(tab)}>
+          <button key={tab} style={{ border: "1px solid #e4eaf2", borderRadius: 10, padding: "10px 4px", background: activeStaffTab === tab ? "#2f6fb3" : "#fff", color: activeStaffTab === tab ? "#fff" : "#526274", fontWeight: 900 }} onClick={() => setActiveStaffTab(tab)}>
             {tab}
           </button>
         ))}
       </section>
 
-      <main className="order-list">
+      <main style={{ padding: "0 12px" }}>
         {filteredStaffOrders.length === 0 ? (
-          <div className="empty-card"><p>暂无{activeStaffTab}订单</p><span>可以点击“刷新订单”从云端读取。</span></div>
+          <div style={{ background: "#fff", border: "1px solid #e4eaf2", borderRadius: 14, padding: 24, textAlign: "center", color: "#7b899a" }}><strong style={{ color: "#223247" }}>暂无{activeStaffTab}任务</strong><br/>订单变化会自动同步，也可以点击刷新。</div>
         ) : (
           filteredStaffOrders.map((order) => (
             <CoreOrderCard key={order.id} order={order} mode="staff" />
