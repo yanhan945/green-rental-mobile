@@ -303,6 +303,7 @@ function App() {
   const [activeStaffTab, setActiveStaffTab] = useState("待接单");
   const [merchantTab, setMerchantTab] = useState("订单总览");
   const [merchantStatusFilter, setMerchantStatusFilter] = useState("全部");
+  const [merchantSearchText, setMerchantSearchText] = useState("");
   const [syncMessage, setSyncMessage] = useState("当前已连接 Supabase。点击刷新订单即可读取云端数据。");
   const [syncState, setSyncState] = useState("云端待刷新");
 
@@ -358,9 +359,31 @@ function App() {
   }, [orders, activeStaffTab]);
 
   const merchantOrders = useMemo(() => {
-    if (merchantStatusFilter === "全部") return orders;
-    return orders.filter((order) => order.status === merchantStatusFilter);
-  }, [orders, merchantStatusFilter]);
+    const keyword = merchantSearchText.trim();
+    const baseOrders =
+      merchantStatusFilter === "全部"
+        ? orders
+        : orders.filter((order) => order.status === merchantStatusFilter);
+
+    if (!keyword) return baseOrders;
+
+    return baseOrders.filter((order) => {
+      const text = [
+        order.customerName,
+        order.contactName,
+        order.phone,
+        order.address,
+        order.areaSize,
+        order.status,
+        order.source,
+        ...(Array.isArray(order.tags) ? order.tags : []),
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      return text.includes(keyword);
+    });
+  }, [orders, merchantStatusFilter, merchantSearchText]);
 
   const pendingMerchantConfirmOrders = useMemo(() => {
     return orders.filter((order) => order.status === "待商户确认");
@@ -484,31 +507,29 @@ function App() {
   }
 
   function handleViewPendingMerchantConfirm() {
+    const firstOrder = pendingMerchantConfirmOrders[0];
+    if (firstOrder) {
+      openMerchantPlanWorkbench(firstOrder);
+      setSyncMessage("已打开待确认方案，请先核对方案明细再确认。");
+      return;
+    }
+
     setMerchantTab("订单总览");
     setMerchantStatusFilter("待商户确认");
-
-    window.setTimeout(() => {
-      merchantListRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 100);
-
-    setSyncMessage("已切换到“待商户确认”列表。");
+    setSyncMessage("暂无待确认方案。");
   }
 
   function handleViewPendingArchive() {
+    const firstOrder = pendingArchiveOrders[0];
+    if (firstOrder) {
+      openMerchantPlanWorkbench(firstOrder);
+      setSyncMessage("已打开待归档订单，请核对完成信息后归档。");
+      return;
+    }
+
     setMerchantTab("订单总览");
     setMerchantStatusFilter("待商户归档");
-
-    window.setTimeout(() => {
-      merchantListRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 100);
-
-    setSyncMessage("已切换到“待商户归档”列表。");
+    setSyncMessage("暂无待归档订单。");
   }
 
   function updateOrderPlan(orderId, planUpdater, cloudMessage = "方案已同步") {
@@ -554,6 +575,23 @@ function App() {
     setShowCreateOrderSheet(false);
     setIsCreateOrderInputFocused(false);
     setShowDetailBlock(false);
+  }
+
+  function openMerchantPlanWorkbench(order) {
+    setMerchantViewingOrder(order);
+    setSelectedOrderDetail(null);
+    setMerchantTab("订单总览");
+    setMerchantStatusFilter(order.status || "全部");
+    window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
+  }
+
+  function backToMerchantHome(message) {
+    setSelectedOrderDetail(null);
+    setMerchantViewingOrder(null);
+    setMerchantTab("订单总览");
+    setMerchantStatusFilter("全部");
+    window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
+    if (message) setSyncMessage(message);
   }
 
   function switchRole(role) {
@@ -901,6 +939,7 @@ function App() {
       "商户确认已同步"
     );
 
+    backToMerchantHome("方案已确认，已返回商户首页。");
     alert("已确认方案，员工端刷新后可以开始执行。");
   }
 
@@ -924,6 +963,7 @@ function App() {
       "修改要求已同步"
     );
 
+    backToMerchantHome("已要求员工修改方案，已返回商户首页。");
     alert("已退回员工端修改。");
   }
 
@@ -1002,6 +1042,7 @@ function App() {
     );
 
     setActiveStaffTab("已完成");
+    setCurrentPage("orders");
   }
 
   function merchantArchiveOrder(orderId) {
@@ -1028,6 +1069,7 @@ function App() {
       "订单归档已同步"
     );
 
+    backToMerchantHome("订单已确认归档，已返回商户首页。");
     alert("已确认归档，订单正式完成。");
   }
 
@@ -1277,11 +1319,22 @@ ${areaText || "暂无区域"}
             <button
               className="primary-button"
               onClick={() => {
+                if (order.plan && ["待商户确认", "待商户归档", "方案已确认", "执行中", "已完成"].includes(order.status)) {
+                  openMerchantPlanWorkbench(order);
+                  return;
+                }
+
                 setSelectedOrderDetail(order);
                 setMerchantViewingOrder(null);
               }}
             >
-              详情
+              {order.status === "待商户确认"
+                ? "查看方案"
+                : order.status === "待商户归档"
+                  ? "去归档"
+                  : order.plan
+                    ? "看方案"
+                    : "详情"}
             </button>
           )}
 
@@ -1649,7 +1702,7 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
-            <p className="eyebrow">Staff Workbench · v2.5</p>
+            <p className="eyebrow">Staff Workbench · v2.6</p>
             <h1>{currentOrder.customerName}</h1>
           </div>
         </header>
@@ -1707,15 +1760,6 @@ ${areaText || "暂无区域"}
           </section>
         )}
 
-        <section className="price-card price-detail-card">
-          <div><span>日租金</span><strong>¥ {money(currentStats.dailyRent)}</strong></div>
-          <div><span>租期</span><strong>{currentPlan.leaseMonths || 12}月</strong></div>
-          <div><span>系统总租金</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
-          <div><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
-          <div><span>支付方式</span><strong>{currentPlan.paymentMethod || "月付"}</strong></div>
-          <div><span>押金</span><strong>{currentPlan.needDeposit ? "需要" : "不需要"}</strong></div>
-        </section>
-
         <section className="area-section">
           <div className="section-title-row">
             <div>
@@ -1768,6 +1812,15 @@ ${areaText || "暂无区域"}
               ))}
             </div>
           )}
+        </section>
+
+        <section className="price-card price-detail-card">
+          <div><span>日租金</span><strong>¥ {money(currentStats.dailyRent)}</strong></div>
+          <div><span>租期</span><strong>{currentPlan.leaseMonths || 12}月</strong></div>
+          <div><span>系统总租金</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
+          <div><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
+          <div><span>支付方式</span><strong>{currentPlan.paymentMethod || "月付"}</strong></div>
+          <div><span>押金</span><strong>{currentPlan.needDeposit ? "需要" : "不需要"}</strong></div>
         </section>
 
         <section className="plan-summary-card">
@@ -1899,6 +1952,17 @@ ${areaText || "暂无区域"}
   }
 
   function renderPaymentSheet() {
+    const optionStyle = (selected) =>
+      selected
+        ? {
+            background: "#1f7a3f",
+            color: "#fff",
+            borderColor: "#1f7a3f",
+            fontWeight: 800,
+            boxShadow: "0 10px 24px rgba(31, 122, 63, 0.22)",
+          }
+        : {};
+
     return (
       <div className="sheet-mask" onClick={() => setShowPaymentSheet(false)}>
         <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
@@ -1908,32 +1972,57 @@ ${areaText || "暂无区域"}
             <button className="close-button" onClick={() => setShowPaymentSheet(false)}>×</button>
           </div>
 
+          <div className="empty-card">
+            <p>当前选择：{currentPlan.leaseMonths || 12} 月｜{currentPlan.paymentMethod || "月付"}｜押金{currentPlan.needDeposit ? "需要" : "不需要"}</p>
+            <span>点选后会立即保存，绿色按钮就是当前生效选项。</span>
+          </div>
+
           <div className="sheet-block">
             <p className="sheet-label">选择租期</p>
             <div className="option-grid">
-              {[6, 12, 24, 36].map((m) => (
-                <button key={m} className={Number(currentPlan.leaseMonths || 12) === m ? "selected" : ""} onClick={() => updateCurrentPlanField("leaseMonths", m)}>
-                  {m} 月
-                </button>
-              ))}
+              {[6, 12, 24, 36].map((m) => {
+                const selected = Number(currentPlan.leaseMonths || 12) === m;
+                return (
+                  <button
+                    key={m}
+                    className={selected ? "selected" : ""}
+                    style={optionStyle(selected)}
+                    onClick={() => updateCurrentPlanField("leaseMonths", m)}
+                  >
+                    {selected ? `✓ ${m} 月` : `${m} 月`}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <div className="sheet-block">
             <p className="sheet-label">支付方式</p>
             <div className="option-grid payment-grid">
-              {["月付", "季付", "半年付", "年付"].map((method) => (
-                <button key={method} className={currentPlan.paymentMethod === method ? "selected" : ""} onClick={() => updateCurrentPlanField("paymentMethod", method)}>
-                  {method}
-                </button>
-              ))}
+              {["月付", "季付", "半年付", "年付"].map((method) => {
+                const selected = currentPlan.paymentMethod === method;
+                return (
+                  <button
+                    key={method}
+                    className={selected ? "selected" : ""}
+                    style={optionStyle(selected)}
+                    onClick={() => updateCurrentPlanField("paymentMethod", method)}
+                  >
+                    {selected ? `✓ ${method}` : method}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <div className="deposit-row">
             <div><strong>是否需要押金</strong><span>真实业务里可根据客户情况调整</span></div>
-            <button className={currentPlan.needDeposit ? "switch-button active" : "switch-button"} onClick={() => updateCurrentPlanField("needDeposit", !currentPlan.needDeposit)}>
-              {currentPlan.needDeposit ? "需要" : "不需要"}
+            <button
+              className={currentPlan.needDeposit ? "switch-button active" : "switch-button"}
+              style={optionStyle(Boolean(currentPlan.needDeposit))}
+              onClick={() => updateCurrentPlanField("needDeposit", !currentPlan.needDeposit)}
+            >
+              {currentPlan.needDeposit ? "✓ 需要" : "不需要"}
             </button>
           </div>
 
@@ -2083,35 +2172,26 @@ ${areaText || "暂无区域"}
             </div>
           </section>
 
-          {selectedOrderDetail.status === "待商户确认" && (
+          {selectedOrderDetail.status === "待商户确认" && selectedOrderDetail.plan && (
             <section className="plan-summary-card">
               <div className="empty-card">
                 <p>有方案等待确认</p>
-                <span>确认后员工刷新订单即可开始执行；也可以要求员工修改。</span>
+                <span>请先进入完整方案页，核对区域、植物、数量和报价后再确认。</span>
               </div>
-
-              <div className="actions">
-                <button className="submit-sheet-button" onClick={() => merchantConfirmPlan(selectedOrderDetail.id)}>
-                  确认方案
-                </button>
-                <button className="ghost-button danger" onClick={() => merchantRequestRevision(selectedOrderDetail.id)}>
-                  要求修改
-                </button>
-                <button className="ghost-button" onClick={() => markPlanSentToCustomer(selectedOrderDetail.id)}>
-                  标记已转发客户
-                </button>
-              </div>
+              <button className="submit-sheet-button" onClick={() => openMerchantPlanWorkbench(selectedOrderDetail)}>
+                查看完整方案
+              </button>
             </section>
           )}
 
-          {selectedOrderDetail.status === "待商户归档" && (
+          {selectedOrderDetail.status === "待商户归档" && selectedOrderDetail.plan && (
             <section className="plan-summary-card">
               <div className="empty-card">
                 <p>订单已完成，待商户归档</p>
-                <span>员工已完成服务。确认后订单会进入正式已完成。</span>
+                <span>请进入完整订单页核对完成信息后归档。</span>
               </div>
-              <button className="submit-sheet-button" onClick={() => merchantArchiveOrder(selectedOrderDetail.id)}>
-                确认归档
+              <button className="submit-sheet-button" onClick={() => openMerchantPlanWorkbench(selectedOrderDetail)}>
+                查看并归档
               </button>
             </section>
           )}
@@ -2124,22 +2204,94 @@ ${areaText || "暂无区域"}
 
     if (merchantViewingOrder) {
       const stats = getPlanStats(merchantViewingOrder.plan);
+      const isWaitingConfirm = merchantViewingOrder.status === "待商户确认";
+      const isWaitingArchive = merchantViewingOrder.status === "待商户归档";
 
       return (
         <div className="app">
           <header className="plan-header">
-            <button className="back-button" onClick={() => setMerchantViewingOrder(null)}>←</button>
-            <div><p className="eyebrow">Plan Detail</p><h1>{merchantViewingOrder.customerName}</h1></div>
+            <button className="back-button" onClick={() => backToMerchantHome()}>←</button>
+            <div>
+              <p className="eyebrow">Plan Review</p>
+              <h1>{merchantViewingOrder.customerName}</h1>
+            </div>
           </header>
 
           <SyncInfoCard compact />
-          <StatusSummaryCard order={merchantViewingOrder} />
 
-          {merchantViewingOrder.status === "待商户确认" && (
+          {(isWaitingConfirm || isWaitingArchive) && (
             <section className="plan-summary-card">
               <div className="empty-card">
-                <p>请确认员工提交的方案</p>
-                <span>确认后员工可以执行服务；要求修改后订单会回到配置中。</span>
+                <p>{isWaitingConfirm ? "请先核对完整方案，再确认" : "请核对完成信息，再归档"}</p>
+                <span>本页已经包含客户信息、区域植物、数量、租期和报价，不需要再跳其他页面。</span>
+              </div>
+            </section>
+          )}
+
+          <section className="plan-summary-card">
+            <div className="plan-summary-top">
+              <div><p>订单状态</p><strong>{merchantViewingOrder.status}</strong></div>
+              <div><p>项目面积</p><strong>{merchantViewingOrder.areaSize}</strong></div>
+            </div>
+
+            <div className="plan-info-line"><span>联系人</span><strong>{merchantViewingOrder.contactName || "-"} {merchantViewingOrder.phone ? `｜${merchantViewingOrder.phone}` : ""}</strong></div>
+            <div className="plan-info-line"><span>客户地址</span><strong>{merchantViewingOrder.address}</strong></div>
+            <div className="plan-info-line"><span>订单来源</span><strong>{merchantViewingOrder.source || "商户派单"}</strong></div>
+
+            <div className="actions mini-actions">
+              <button className="ghost-button" onClick={() => callPhone(merchantViewingOrder.phone)}>电话</button>
+              <button className="ghost-button" onClick={() => copyText(merchantViewingOrder.address, "地址已复制")}>地址</button>
+              <button className="ghost-button" onClick={() => openRouteNavigation(merchantViewingOrder.address)}>导航</button>
+            </div>
+          </section>
+
+          <section className="area-section">
+            <div className="section-title-row">
+              <div><p className="eyebrow">Areas</p><h2>方案明细</h2></div>
+            </div>
+
+            {safeAreas(merchantViewingOrder.plan).length === 0 ? (
+              <div className="empty-card"><p>这个方案还没有区域明细</p><span>可以要求员工补充后再确认。</span></div>
+            ) : (
+              <div className="area-list">
+                {safeAreas(merchantViewingOrder.plan).map((area) => (
+                  <article className="area-card" key={area.id}>
+                    <div>
+                      <h3>{area.name}</h3>
+                      <p>已选商品：{getAreaProductCount(area)} 件｜区域日租金：¥ {money(getAreaDailyRent(area))}</p>
+
+                      {safeItems(area).length === 0 ? (
+                        <div className="empty-card"><p>这个区域还没有商品</p></div>
+                      ) : (
+                        <div className="selected-product-list">
+                          {safeItems(area).map((item) => (
+                            <div className="selected-product-row" key={item.productId}>
+                              <div><strong>{item.name}</strong><span>¥ {item.pricePerDay}/天 × {item.quantity}</span></div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="price-card price-detail-card">
+            <div><span>日租金</span><strong>¥ {money(stats.dailyRent)}</strong></div>
+            <div><span>租期</span><strong>{merchantViewingOrder.plan?.leaseMonths || 12}月</strong></div>
+            <div><span>系统总租金</span><strong>¥ {money(stats.systemTotalRent)}</strong></div>
+            <div><span>最终报价</span><strong>¥ {money(stats.finalRent)}</strong></div>
+            <div><span>支付方式</span><strong>{merchantViewingOrder.plan?.paymentMethod || "月付"}</strong></div>
+            <div><span>押金</span><strong>{merchantViewingOrder.plan?.needDeposit ? "需要" : "不需要"}</strong></div>
+          </section>
+
+          {isWaitingConfirm && (
+            <section className="plan-summary-card">
+              <div className="empty-card">
+                <p>方案确认</p>
+                <span>确认后员工端刷新订单即可开始执行；发现问题就要求员工修改。</span>
               </div>
 
               <div className="actions">
@@ -2156,7 +2308,7 @@ ${areaText || "暂无区域"}
             </section>
           )}
 
-          {merchantViewingOrder.status === "待商户归档" && (
+          {isWaitingArchive && (
             <section className="plan-summary-card">
               <div className="empty-card">
                 <p>订单已完成，待商户归档</p>
@@ -2168,42 +2320,6 @@ ${areaText || "暂无区域"}
             </section>
           )}
 
-          <section className="price-card price-detail-card">
-            <div><span>日租金</span><strong>¥ {money(stats.dailyRent)}</strong></div>
-            <div><span>租期</span><strong>{merchantViewingOrder.plan?.leaseMonths || 12}月</strong></div>
-            <div><span>系统总租金</span><strong>¥ {money(stats.systemTotalRent)}</strong></div>
-            <div><span>最终报价</span><strong>¥ {money(stats.finalRent)}</strong></div>
-            <div><span>支付方式</span><strong>{merchantViewingOrder.plan?.paymentMethod || "月付"}</strong></div>
-            <div><span>押金</span><strong>{merchantViewingOrder.plan?.needDeposit ? "需要" : "不需要"}</strong></div>
-          </section>
-
-          <section className="area-section">
-            <div className="section-title-row">
-              <div><p className="eyebrow">Areas</p><h2>方案明细</h2></div>
-            </div>
-
-            {safeAreas(merchantViewingOrder.plan).length === 0 ? (
-              <div className="empty-card"><p>这个方案还没有区域明细</p></div>
-            ) : (
-              <div className="area-list">
-                {safeAreas(merchantViewingOrder.plan).map((area) => (
-                  <article className="area-card" key={area.id}>
-                    <div>
-                      <h3>{area.name}</h3>
-                      <p>已选商品：{getAreaProductCount(area)} 件｜区域日租金：¥ {money(getAreaDailyRent(area))}</p>
-
-                      {safeItems(area).map((item) => (
-                        <div className="selected-product-row" key={item.productId}>
-                          <div><strong>{item.name}</strong><span>¥ {item.pricePerDay}/天 × {item.quantity}</span></div>
-                        </div>
-                      ))}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-
           <ExtraDetails order={merchantViewingOrder} />
         </div>
       );
@@ -2212,7 +2328,7 @@ ${areaText || "暂无区域"}
     return (
       <div className="app">
         <header className="app-header">
-          <div><p className="eyebrow">Merchant Console · v2.5</p><h1>商户管理端</h1></div>
+          <div><p className="eyebrow">Merchant Console · v2.6</p><h1>商户管理端</h1></div>
           <button className="role-button" onClick={() => switchRole("staff")}>切到员工端</button>
         </header>
 
@@ -2222,10 +2338,10 @@ ${areaText || "暂无区域"}
           <section className="plan-summary-card">
             <div className="empty-card">
               <p>有 {pendingMerchantConfirmOrders.length} 个方案待确认</p>
-              <span>请进入订单详情查看并确认方案。</span>
+              <span>点这里直接打开第一个完整方案，不需要再去列表里找。</span>
             </div>
             <button className="submit-sheet-button" onClick={handleViewPendingMerchantConfirm}>
-              查看待确认方案
+              直接处理方案
             </button>
           </section>
         )}
@@ -2234,10 +2350,10 @@ ${areaText || "暂无区域"}
           <section className="plan-summary-card">
             <div className="empty-card">
               <p>有 {pendingArchiveOrders.length} 个订单已完成，待归档</p>
-              <span>员工已标记完成，请查看订单后确认归档。</span>
+              <span>点这里直接打开第一个待归档订单。</span>
             </div>
             <button className="submit-sheet-button" onClick={handleViewPendingArchive}>
-              查看待归档订单
+              直接处理归档
             </button>
           </section>
         )}
@@ -2284,6 +2400,22 @@ ${areaText || "暂无区域"}
                   {status}
                 </button>
               ))}
+            </section>
+
+            <section className="plan-summary-card">
+              <div className="section-title-row">
+                <div><p className="eyebrow">Order Library</p><h2>订单库搜索</h2></div>
+              </div>
+              <input
+                className="area-input"
+                value={merchantSearchText}
+                onChange={(e) => setMerchantSearchText(e.target.value)}
+                placeholder="搜客户、联系人、电话、地址、标签"
+              />
+              <div className="empty-card">
+                <p>当前筛选：{merchantStatusFilter}｜{merchantOrders.length} 单</p>
+                <span>这里先做商户后台的轻量订单库，后续再扩展导出和正式电脑端布局。</span>
+              </div>
             </section>
 
             <section className="area-section" ref={merchantListRef}>
