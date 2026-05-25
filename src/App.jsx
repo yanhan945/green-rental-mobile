@@ -191,6 +191,7 @@ function App() {
     tagsText: "办公室,长期租赁",
     source: "商户派单",
   });
+    const [isCreateOrderInputFocused, setIsCreateOrderInputFocused] = useState(false);
 
   const currentOrder = orders.find((order) => order.id === currentOrderId) || null;
   const currentPlan = currentOrder?.plan || null;
@@ -1315,11 +1316,13 @@ ${areaText || "暂无区域"}
     );
   }
 
-  function renderCreateOrderSheet() {
+    function renderCreateOrderSheet() {
     const sheetStyle = {
       maxHeight: "86vh",
       overflowY: "auto",
-      paddingBottom: "calc(120px + env(safe-area-inset-bottom))",
+      paddingBottom: isCreateOrderInputFocused
+        ? "calc(40px + env(safe-area-inset-bottom))"
+        : "calc(120px + env(safe-area-inset-bottom))",
     };
 
     const stickyStyle = {
@@ -1329,42 +1332,116 @@ ${areaText || "暂无区域"}
       paddingTop: 12,
       paddingBottom: "env(safe-area-inset-bottom)",
       zIndex: 5,
+      display: isCreateOrderInputFocused ? "none" : "block",
     };
 
     const compactBlockStyle = {
       marginBottom: 10,
     };
 
+    const inputFocusProps = {
+      onFocus: () => setIsCreateOrderInputFocused(true),
+      onBlur: () => {
+        window.setTimeout(() => {
+          setIsCreateOrderInputFocused(false);
+        }, 120);
+      },
+    };
+
     return (
-      <div className="sheet-mask" onClick={() => setShowCreateOrderSheet(false)}>
-        <section className="bottom-sheet" style={sheetStyle} onClick={(event) => event.stopPropagation()}>
+      <div
+        className="sheet-mask"
+        onClick={() => {
+          setShowCreateOrderSheet(false);
+          setIsCreateOrderInputFocused(false);
+        }}
+      >
+        <section
+          className="bottom-sheet"
+          style={sheetStyle}
+          onClick={(event) => event.stopPropagation()}
+        >
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v1.1</p><h2>创建新订单</h2></div>
-            <button className="close-button" onClick={() => setShowCreateOrderSheet(false)}>×</button>
+            <div>
+              <p className="eyebrow">New Order · v1.2</p>
+              <h2>创建新订单</h2>
+            </div>
+            <button
+              className="close-button"
+              onClick={() => {
+                setShowCreateOrderSheet(false);
+                setIsCreateOrderInputFocused(false);
+              }}
+            >
+              ×
+            </button>
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">客户名称</p>
-            <input className="area-input" value={newOrderForm.customerName} onChange={(e) => setNewOrderForm((form) => ({ ...form, customerName: e.target.value }))} placeholder="例如：西湖写字楼客户" />
+            <input
+              className="area-input"
+              {...inputFocusProps}
+              value={newOrderForm.customerName}
+              onChange={(e) =>
+                setNewOrderForm((form) => ({
+                  ...form,
+                  customerName: e.target.value,
+                }))
+              }
+              placeholder="例如：西湖写字楼客户"
+            />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">联系人</p>
-            <input className="area-input" value={newOrderForm.contactName} onChange={(e) => setNewOrderForm((form) => ({ ...form, contactName: e.target.value }))} placeholder="例如：王经理" />
+            <input
+              className="area-input"
+              {...inputFocusProps}
+              value={newOrderForm.contactName}
+              onChange={(e) =>
+                setNewOrderForm((form) => ({
+                  ...form,
+                  contactName: e.target.value,
+                }))
+              }
+              placeholder="例如：王经理"
+            />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">联系电话</p>
-            <input className="area-input" inputMode="tel" value={newOrderForm.phone} onChange={(e) => setNewOrderForm((form) => ({ ...form, phone: e.target.value }))} placeholder="例如：13800001111" />
+            <input
+              className="area-input"
+              inputMode="tel"
+              {...inputFocusProps}
+              value={newOrderForm.phone}
+              onChange={(e) =>
+                setNewOrderForm((form) => ({
+                  ...form,
+                  phone: e.target.value,
+                }))
+              }
+              placeholder="例如：13800001111"
+            />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">订单来源</p>
             <div className="option-grid">
               {ORDER_SOURCES.map((source) => (
-                <button key={source} className={newOrderForm.source === source ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, source }))}>
+                <button
+                  key={source}
+                  className={newOrderForm.source === source ? "selected" : ""}
+                  onClick={() =>
+                    setNewOrderForm((form) => ({
+                      ...form,
+                      source,
+                    }))
+                  }
+                >
                   {source}
                 </button>
               ))}
@@ -1373,31 +1450,99 @@ ${areaText || "暂无区域"}
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">项目面积</p>
-            <input className="area-input" value={newOrderForm.areaSize} onChange={(e) => setNewOrderForm((form) => ({ ...form, areaSize: e.target.value }))} placeholder="例如：260㎡" />
+            <input
+              className="area-input"
+              {...inputFocusProps}
+              value={newOrderForm.areaSize}
+              onChange={(e) =>
+                setNewOrderForm((form) => ({
+                  ...form,
+                  areaSize: e.target.value,
+                }))
+              }
+              placeholder="例如：260㎡"
+            />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">期望进场时间</p>
-            <input className="area-input" value={newOrderForm.expectedDate} onChange={(e) => setNewOrderForm((form) => ({ ...form, expectedDate: e.target.value }))} placeholder="例如：2026-06-08" />
+            <input
+              className="area-input"
+              {...inputFocusProps}
+              value={newOrderForm.expectedDate}
+              onChange={(e) =>
+                setNewOrderForm((form) => ({
+                  ...form,
+                  expectedDate: e.target.value,
+                }))
+              }
+              placeholder="例如：2026-06-08"
+            />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">客户地址</p>
-            <input className="area-input" value={newOrderForm.address} onChange={(e) => setNewOrderForm((form) => ({ ...form, address: e.target.value }))} placeholder="例如：杭州市西湖区文三路" />
+            <input
+              className="area-input"
+              {...inputFocusProps}
+              value={newOrderForm.address}
+              onChange={(e) =>
+                setNewOrderForm((form) => ({
+                  ...form,
+                  address: e.target.value,
+                }))
+              }
+              placeholder="例如：杭州市西湖区文三路"
+            />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">需求描述</p>
-            <input className="area-input" value={newOrderForm.description} onChange={(e) => setNewOrderForm((form) => ({ ...form, description: e.target.value }))} placeholder="例如：前台和会议室需要绿植配置" />
+            <input
+              className="area-input"
+              {...inputFocusProps}
+              value={newOrderForm.description}
+              onChange={(e) =>
+                setNewOrderForm((form) => ({
+                  ...form,
+                  description: e.target.value,
+                }))
+              }
+              placeholder="例如：前台和会议室需要绿植配置"
+            />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">标签，用英文逗号分隔</p>
-            <input className="area-input" value={newOrderForm.tagsText} onChange={(e) => setNewOrderForm((form) => ({ ...form, tagsText: e.target.value }))} placeholder="例如：办公室,长期租赁" />
+            <input
+              className="area-input"
+              {...inputFocusProps}
+              value={newOrderForm.tagsText}
+              onChange={(e) =>
+                setNewOrderForm((form) => ({
+                  ...form,
+                  tagsText: e.target.value,
+                }))
+              }
+              placeholder="例如：办公室,长期租赁"
+            />
           </div>
 
+          {isCreateOrderInputFocused && (
+            <div className="empty-card">
+              <p>填写完成后收起键盘</p>
+              <span>收起键盘后会显示“创建并派发订单”按钮。</span>
+            </div>
+          )}
+
           <div style={stickyStyle}>
-            <button className="submit-sheet-button" onClick={createMerchantOrder}>
+            <button
+              className="submit-sheet-button"
+              onClick={() => {
+                setIsCreateOrderInputFocused(false);
+                createMerchantOrder();
+              }}
+            >
               创建并派发订单
             </button>
           </div>
