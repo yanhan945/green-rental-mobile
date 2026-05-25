@@ -399,6 +399,12 @@ function App() {
     );
   }, [orders]);
 
+  const monitoredOrders = useMemo(() => {
+    return orders.filter((order) =>
+      ["方案已确认", "执行中", "待商户归档"].includes(order.status)
+    );
+  }, [orders]);
+
   const filteredProducts = products.filter((product) => {
     const keyword = searchText.trim();
     return (
@@ -735,9 +741,11 @@ function App() {
     setShowDetailBlock(false);
   }
 
-  function addArea() {
-    const name = areaName.trim();
+  function addAreaWithName(inputName) {
+    const name = String(inputName || "").trim();
     if (!currentOrder || !name) return;
+
+    const newAreaId = `area-${Date.now()}`;
 
     updateOrderPlan(
       currentOrder.id,
@@ -746,7 +754,7 @@ function App() {
         areas: [
           ...safeAreas(plan),
           {
-            id: `area-${Date.now()}`,
+            id: newAreaId,
             name,
             items: [],
           },
@@ -759,6 +767,15 @@ function App() {
 
     setAreaName("");
     setShowAreaSheet(false);
+    setCurrentAreaId(newAreaId);
+    setActiveCategory("室内绿植");
+    setActiveSubCategory("大型植物");
+    setSearchText("");
+    window.setTimeout(() => setShowProductSheet(true), 80);
+  }
+
+  function addArea() {
+    addAreaWithName(areaName);
   }
 
   function openProductSheet(area) {
@@ -939,8 +956,7 @@ function App() {
       "商户确认已同步"
     );
 
-    backToMerchantHome("方案已确认，已返回商户首页。");
-    alert("已确认方案，员工端刷新后可以开始执行。");
+    backToMerchantHome("方案已确认，已返回商户首页。员工端刷新后可以开始执行。");
   }
 
   function merchantRequestRevision(orderId) {
@@ -964,7 +980,6 @@ function App() {
     );
 
     backToMerchantHome("已要求员工修改方案，已返回商户首页。");
-    alert("已退回员工端修改。");
   }
 
   function markPlanSentToCustomer(orderId) {
@@ -1069,8 +1084,7 @@ function App() {
       "订单归档已同步"
     );
 
-    backToMerchantHome("订单已确认归档，已返回商户首页。");
-    alert("已确认归档，订单正式完成。");
+    backToMerchantHome("订单已确认归档，已返回商户首页。订单已正式完成。");
   }
 
   function createMerchantOrder() {
@@ -1702,30 +1716,24 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
-            <p className="eyebrow">Staff Workbench · v2.6</p>
+            <p className="eyebrow">Staff Workbench · v2.7</p>
             <h1>{currentOrder.customerName}</h1>
           </div>
         </header>
 
-        <SyncInfoCard compact />
-
         <section className="plan-summary-card">
           <div className="plan-summary-top">
-            <div><p>状态</p><strong>{currentOrder.status}</strong></div>
-            <div><p>面积</p><strong>{currentOrder.areaSize}</strong></div>
+            <div><p>当前步骤</p><strong>{currentOrder.status}</strong></div>
+            <div><p>已配区域</p><strong>{planAreas.length} 个</strong></div>
           </div>
-
+          <div className="plan-info-line"><span>客户</span><strong>{currentOrder.customerName}｜{currentOrder.areaSize}</strong></div>
           <div className="plan-info-line"><span>联系人</span><strong>{currentOrder.contactName || "-"} {currentOrder.phone ? `｜${currentOrder.phone}` : ""}</strong></div>
-          <div className="plan-info-line"><span>地址</span><strong>{currentOrder.address}</strong></div>
-
           <div className="actions mini-actions">
             <button className="ghost-button" onClick={() => callPhone(currentOrder.phone)}>电话</button>
             <button className="ghost-button" onClick={() => openRouteNavigation(currentOrder.address)}>导航</button>
             <button className="ghost-button" onClick={() => copyText(currentOrder.address, "地址已复制")}>地址</button>
           </div>
         </section>
-
-        <StatusSummaryCard order={currentOrder} editable />
 
         {currentOrder.status === "方案已确认" && (
           <section className="plan-summary-card">
@@ -1771,8 +1779,13 @@ ${areaText || "暂无区域"}
 
           {planAreas.length === 0 ? (
             <div className="empty-card">
-              <p>还没有添加区域</p>
-              <span>如：前台、办公室、会议室、走廊、门口</span>
+              <p>先添加一个区域开始配置</p>
+              <span>现场员工不需要先看报价，先把前台、办公室、会议室这些区域配起来。</span>
+              <div className="quick-area-list" style={{ marginTop: 12 }}>
+                {["前台", "办公室", "会议室", "走廊", "门口"].map((name) => (
+                  <button key={name} onClick={() => addAreaWithName(name)}>{name}</button>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="area-list">
@@ -1807,7 +1820,7 @@ ${areaText || "暂无区域"}
                     )}
                   </div>
 
-                  <button onClick={() => openProductSheet(area)}>选择商品</button>
+                  <button onClick={() => openProductSheet(area)}>{safeItems(area).length ? "继续加植物" : "选择植物"}</button>
                 </article>
               ))}
             </div>
@@ -1867,7 +1880,7 @@ ${areaText || "暂无区域"}
 
           <div className="quick-area-list">
             {["前台", "办公室", "会议室", "走廊", "门口"].map((name) => (
-              <button key={name} onClick={() => setAreaName(name)}>{name}</button>
+              <button key={name} onClick={() => addAreaWithName(name)}>{name}</button>
             ))}
           </div>
 
@@ -2328,7 +2341,7 @@ ${areaText || "暂无区域"}
     return (
       <div className="app">
         <header className="app-header">
-          <div><p className="eyebrow">Merchant Console · v2.6</p><h1>商户管理端</h1></div>
+          <div><p className="eyebrow">Merchant Console · v2.7</p><h1>商户管理端</h1></div>
           <button className="role-button" onClick={() => switchRole("staff")}>切到员工端</button>
         </header>
 
@@ -2359,7 +2372,7 @@ ${areaText || "暂无区域"}
         )}
 
         <section className="tabs">
-          {["订单总览", "已提交方案"].map((tab) => (
+          {["订单总览", "执行监测", "已提交方案"].map((tab) => (
             <button key={tab} className={merchantTab === tab ? "tab active" : "tab"} onClick={() => setMerchantTab(tab)}>
               {tab}
             </button>
@@ -2436,6 +2449,49 @@ ${areaText || "暂无区域"}
           </>
         )}
 
+        {merchantTab === "执行监测" && (
+          <section className="area-section">
+            <div className="section-title-row">
+              <div><p className="eyebrow">Execution Monitor</p><h2>员工执行监测</h2></div>
+            </div>
+
+            <section className="plan-summary-card">
+              <div className="plan-summary-top">
+                <div><p>可执行</p><strong>{statusCounts["方案已确认"] || 0} 单</strong></div>
+                <div><p>执行中</p><strong>{statusCounts["执行中"] || 0} 单</strong></div>
+              </div>
+              <div className="plan-summary-top">
+                <div><p>待归档</p><strong>{statusCounts["待商户归档"] || 0} 单</strong></div>
+                <div><p>已完成</p><strong>{statusCounts["已完成"] || 0} 单</strong></div>
+              </div>
+            </section>
+
+            {monitoredOrders.length === 0 ? (
+              <div className="empty-card"><p>暂无正在执行或待归档订单</p><span>员工开始执行后，这里会变成老板的过程监测区。</span></div>
+            ) : (
+              <div className="order-list">
+                {monitoredOrders.map((order) => (
+                  <article className="order-card" key={order.id}>
+                    <div className="order-card-header">
+                      <div><h2>{order.customerName}</h2><p>{order.status}</p></div>
+                      <StatusPill>{order.areaSize}</StatusPill>
+                    </div>
+                    <div className="info-row"><span>执行状态</span><strong>{order.executionStatus || "待联系"}</strong></div>
+                    <div className="info-row"><span>配送状态</span><strong>{order.deliveryStatus || "未出发"}</strong></div>
+                    <div className="info-row"><span>员工定位</span><strong>{order.staffLocation?.locatedAt || "未定位"}</strong></div>
+                    <div className="info-row"><span>完成时间</span><strong>{order.completedAt || "未完成"}</strong></div>
+                    <div className="actions">
+                      <button className="ghost-button" onClick={() => callPhone(order.phone)}>电话</button>
+                      <button className="ghost-button" onClick={() => openRouteNavigation(order.address)}>导航</button>
+                      <button className="primary-button" onClick={() => openMerchantPlanWorkbench(order)}>查看进度</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         {merchantTab === "已提交方案" && (
           <section className="area-section">
             <div className="section-title-row">
@@ -2510,7 +2566,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v2.4</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v2.7</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
