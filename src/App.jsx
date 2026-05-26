@@ -2610,12 +2610,70 @@ ${areaText || "暂无区域"}
           </div>
         </section>
 
-        <nav className="baihua-bottom-bar">
-          <button onClick={() => setShowMoreSheet(true)}>更多</button>
-          <button onClick={() => setShowPaymentSheet(true)}>租期/支付</button>
-          <button onClick={() => copyCustomerPlanLink(currentOrder)}>客户链接</button>
-          <button className="primary" onClick={() => setShowSubmitSheet(true)}>提交方案</button>
+    
+        <nav style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 50,
+          background: "rgba(255,255,255,.98)",
+          borderTop: "1px solid #e4eaf2",
+          padding: "10px 12px calc(10px + env(safe-area-inset-bottom))",
+          display: "grid",
+          gridTemplateColumns: "auto 1fr 1fr", /* 分配3个按钮的比例 */
+          gap: 10
+        }}>
+          {/* 1. 保留【更多】功能，做成灰色辅按钮 */}
+          <button
+            style={{ 
+              border: "1px solid #d8e1ec", 
+              borderRadius: 10, 
+              background: "#f6f8fb", 
+              color: "#526274", 
+              fontWeight: 900, 
+              padding: "13px 16px", 
+              fontSize: 14 
+            }}
+            onClick={() => setShowMoreSheet(true)}
+          >
+            更多
+          </button>
+
+          {/* 2. 保留【客户链接】功能，做成蓝色线框按钮 */}
+          <button
+            style={{ 
+              border: "1px solid #2f6fb3", 
+              borderRadius: 10, 
+              background: "#fff", 
+              color: "#2f6fb3", 
+              fontWeight: 900, 
+              padding: "13px 10px", 
+              fontSize: 15 
+            }}
+            onClick={() => copyCustomerPlanLink(currentOrder)}
+          >
+            客户链接
+          </button>
+          
+          {/* 3. 保留【提交方案】功能，做成蓝色主按钮 */}
+          <button
+            style={{ 
+              border: 0, 
+              borderRadius: 10, 
+              background: "#2f6fb3", 
+              color: "#fff", 
+              fontWeight: 900, 
+              padding: "13px 10px", 
+              fontSize: 15, 
+              boxShadow: "0 8px 18px rgba(47,111,179,.22)" 
+            }}
+            onClick={() => setShowSubmitSheet(true)}
+          >
+            提交方案
+          </button>
         </nav>
+      
 
         {showAreaSheet && renderAreaSheet()}
         {showProductSheet && renderProductSheet()}
