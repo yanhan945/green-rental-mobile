@@ -166,7 +166,6 @@ function persistOrdersToLocalStore(orders) {
   }
 }
 
-
 function normalizeProducts(data) {
   const list = Array.isArray(data) ? data : defaultProducts;
   return list.map((product) => {
@@ -217,7 +216,6 @@ function getProductImage(product) {
 function isImageUrl(value) {
   return /^https?:\/\//i.test(String(value || "").trim());
 }
-
 
 function normalizeCustomers(data) {
   const list = Array.isArray(data) ? data : [];
@@ -298,7 +296,6 @@ async function fetchOrdersFromCloud() {
   const rows = await response.json();
   return normalizeOrders(rows.map((row) => row.data).filter((item) => item?.type !== "product_library"));
 }
-
 
 async function fetchProductsFromCloud() {
   const response = await fetch(`${ORDERS_API}?id=eq.${PRODUCT_CLOUD_ID}&select=id,data,updated_at`, {
@@ -522,7 +519,6 @@ function App() {
     note: "",
     tagsText: "办公室,长期租赁",
   });
-
 
   const [newProductForm, setNewProductForm] = useState({
     name: "",
@@ -1725,6 +1721,7 @@ ${areaText || "暂无区域"}
     return <span className="area-size">{children}</span>;
   }
 
+  // --- 核心修复区域开始：CoreOrderCard 重新排版 ---
   function CoreOrderCard({ order, mode = "staff" }) {
     const stats = getPlanStats(order.plan);
     const hint = getOrderHint(order);
@@ -1733,69 +1730,87 @@ ${areaText || "暂无区域"}
       const isPending = order.status === "待接单";
       const canBuild = ["配置中", "待商户确认"].includes(order.status);
       const canExecute = ["方案已确认", "执行中"].includes(order.status);
-      const videoBlue = "#2f6fb3";
-      const statusTone = isPending ? "#eaf3ff" : canBuild ? "#e9f6f1" : "#f1f4f8";
-      const statusColor = isPending ? videoBlue : canBuild ? "#2b8c68" : "#4d6075";
+      
+      const videoBlue = "#3a75c4"; 
+      const statusTone = isPending ? "#e8f1fc" : canBuild ? "#fff4e6" : "#f3f5f8";
+      const statusColor = isPending ? videoBlue : canBuild ? "#b7791f" : "#5f6b7a";
 
       return (
         <article style={{
           background: "#fff",
-          border: "1px solid #e6ebf2",
-          borderRadius: 14,
-          padding: 14,
-          marginBottom: 12,
-          boxShadow: "0 6px 18px rgba(31, 58, 88, 0.06)",
+          border: "1px solid #e3e8ef",
+          borderRadius: "14px",
+          padding: "16px",
+          marginBottom: "12px",
+          boxShadow: "0 4px 12px rgba(31, 41, 55, 0.04)",
+          textAlign: "left"
         }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+            <strong style={{ color: "#8a96a6", fontSize: "13px", fontFamily: "monospace" }}>#{String(order.id).slice(-8)}</strong>
             <span style={{
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              minWidth: 72,
-              padding: "5px 10px",
-              borderRadius: 6,
+              padding: "4px 8px",
+              borderRadius: "6px",
               background: statusTone,
               color: statusColor,
-              fontWeight: 800,
-              fontSize: 13,
+              fontWeight: "800",
+              fontSize: "12px",
             }}>
               {order.status}
             </span>
-            <strong style={{ color: "#26384d", fontSize: 13 }}>#{String(order.id).slice(-8)}</strong>
           </div>
 
-          <h2 style={{ margin: "0 0 10px", color: "#172538", fontSize: 18, lineHeight: 1.25 }}>{order.customerName}</h2>
+          <h2 style={{ margin: "0 0 12px", color: "#1f2937", fontSize: "18px", fontWeight: "800", lineHeight: "1.3" }}>
+            {order.customerName}
+          </h2>
 
-          <div style={{ display: "grid", gridTemplateColumns: "88px 1fr", rowGap: 8, columnGap: 10, fontSize: 14, lineHeight: 1.45 }}>
-            <span style={{ color: "#7b899a" }}>任务地址</span><strong style={{ color: "#223247", textAlign: "right" }}>{order.address || "-"}</strong>
-            <span style={{ color: "#7b899a" }}>联系人</span><strong style={{ color: "#223247", textAlign: "right" }}>{order.contactName || "-"}{order.phone ? `｜${order.phone}` : ""}</strong>
-            <span style={{ color: "#7b899a" }}>预约时间</span><strong style={{ color: "#223247", textAlign: "right" }}>{order.expectedDate || "待确认"}</strong>
-            <span style={{ color: "#7b899a" }}>场景名称</span><strong style={{ color: "#223247", textAlign: "right" }}>{Array.isArray(order.tags) ? order.tags.join(" / ") : "办公室"}</strong>
-            <span style={{ color: "#7b899a" }}>当前报价</span><strong style={{ color: "#223247", textAlign: "right" }}>¥ {money(stats.finalRent)}</strong>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "13px", lineHeight: "1.4" }}>
+            <div style={{ display: "flex" }}>
+              <span style={{ color: "#8a96a6", width: "72px", flexShrink: 0 }}>任务地址</span>
+              <strong style={{ color: "#1f2937", fontWeight: "600" }}>{order.address || "-"}</strong>
+            </div>
+            <div style={{ display: "flex" }}>
+              <span style={{ color: "#8a96a6", width: "72px", flexShrink: 0 }}>联系人员</span>
+              <strong style={{ color: "#1f2937", fontWeight: "600" }}>{order.contactName || "-"}{order.phone ? ` ｜ ${order.phone}` : ""}</strong>
+            </div>
+            <div style={{ display: "flex" }}>
+              <span style={{ color: "#8a96a6", width: "72px", flexShrink: 0 }}>预约时间</span>
+              <strong style={{ color: "#1f2937", fontWeight: "600" }}>{order.expectedDate || "待确认"}</strong>
+            </div>
+            <div style={{ display: "flex" }}>
+              <span style={{ color: "#8a96a6", width: "72px", flexShrink: 0 }}>当前报价</span>
+              <strong style={{ color: "#d64545", fontWeight: "800", fontFamily: "monospace", fontSize: "14px" }}>¥ {money(stats.finalRent)}</strong>
+            </div>
           </div>
 
-          {hint && <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10, background: "#f6f8fb", color: "#637083", fontSize: 13 }}>{hint}</div>}
+          {hint && (
+            <div style={{ marginTop: "14px", padding: "10px 12px", borderRadius: "8px", background: "#f8fafc", color: "#5f6b7a", fontSize: "12px", border: "1px solid #edf1f5" }}>
+              {hint}
+            </div>
+          )}
 
-          <div style={{ borderTop: "1px solid #edf1f5", marginTop: 14, paddingTop: 12 }}>
+          <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px dashed #e3e8ef" }}>
             {isPending && (
               <button
-                style={{ width: "100%", border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 14px", fontSize: 16 }}
+                style={{ width: "100%", border: 0, borderRadius: "10px", background: videoBlue, color: "#fff", fontWeight: "800", padding: "12px", fontSize: "15px" }}
                 onClick={() => setSelectedOrder(order)}
               >
-                接单
+                立即接单
               </button>
             )}
 
             {!isPending && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "10px" }}>
                 <button
-                  style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "12px 10px", fontSize: 15 }}
+                  style={{ border: `1px solid #b9d3f2`, borderRadius: "10px", background: "#f7f9fc", color: videoBlue, fontWeight: "700", padding: "10px", fontSize: "14px" }}
                   onClick={() => openRouteNavigation(order.address)}
                 >
                   导航
                 </button>
                 <button
-                  style={{ border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "12px 10px", fontSize: 15 }}
+                  style={{ border: 0, borderRadius: "10px", background: videoBlue, color: "#fff", fontWeight: "800", padding: "10px", fontSize: "14px", boxShadow: "0 4px 10px rgba(58, 117, 196, 0.2)" }}
                   onClick={() => {
                     if (canExecute && order.status === "执行中") {
                       setCurrentOrderId(order.id);
@@ -1805,7 +1820,7 @@ ${areaText || "暂无区域"}
                     openPlanForOrder(order);
                   }}
                 >
-                  {order.status === "执行中" ? "完成任务" : canBuild ? "场景详情" : "查看详情"}
+                  {order.status === "执行中" ? "完成任务" : canBuild ? "编辑场景方案" : "查看详情"}
                 </button>
               </div>
             )}
@@ -1887,6 +1902,7 @@ ${areaText || "暂无区域"}
       </article>
     );
   }
+  // --- 核心修复区域结束 ---
 
   function StatusSummaryCard({ order, editable = false }) {
     return (
@@ -2129,7 +2145,6 @@ ${areaText || "暂无区域"}
     );
   }
 
-
   function updateCompletePhoto(group, index, value) {
     setCompleteForm((form) => ({
       ...form,
@@ -2309,7 +2324,7 @@ ${areaText || "暂无区域"}
   function renderPlanPage() {
     if (!currentOrder || !currentPlan) return null;
 
-    const videoBlue = "#2f6fb3";
+    const videoBlue = "#3a75c4";
     const selectedRows = planAreas.flatMap((area) =>
       safeItems(area).map((item) => ({ ...item, areaId: area.id, areaName: area.name }))
     );
@@ -2439,7 +2454,7 @@ ${areaText || "暂无区域"}
                 {selectedRows.length === 0 ? (
                   <tr><td colSpan="6" style={{ padding: 22, textAlign: "center", color: "#8a96a8" }}>暂无物料。先添加场景，再选择植物。</td></tr>
                 ) : selectedRows.map((item) => {
-                  const product = allProducts.find((p) => p.id === item.productId) || item;
+                  const product = merchantProducts.find((p) => p.id === item.productId) || item;
                   const image = getProductImage(product);
                   return (
                     <tr key={`${item.areaId}-${item.productId}`} style={{ borderTop: "1px solid #edf1f5" }}>
@@ -2493,7 +2508,6 @@ ${areaText || "暂无区域"}
     );
   }
 
-
   function renderAreaSheet() {
     return (
       <div className="sheet-mask" onClick={() => setShowAreaSheet(false)}>
@@ -2522,7 +2536,7 @@ ${areaText || "暂无区域"}
   }
 
   function renderProductSheet() {
-    const videoBlue = "#2f6fb3";
+    const videoBlue = "#3a75c4";
     const sheetStyle = {
       height: "92vh",
       maxHeight: "92vh",
@@ -2631,16 +2645,15 @@ ${areaText || "暂无区域"}
     );
   }
 
-
   function renderPaymentSheet() {
     const optionStyle = (selected) =>
       selected
         ? {
-            background: "#1f7a3f",
+            background: "#3a75c4",
             color: "#fff",
-            borderColor: "#1f7a3f",
+            borderColor: "#3a75c4",
             fontWeight: 800,
-            boxShadow: "0 10px 24px rgba(31, 122, 63, 0.22)",
+            boxShadow: "0 10px 24px rgba(58, 117, 196, 0.22)",
           }
         : {};
 
@@ -2655,7 +2668,7 @@ ${areaText || "暂无区域"}
 
           <div className="empty-card">
             <p>当前选择：{currentPlan.leaseMonths || 12} 月｜{currentPlan.paymentMethod || "月付"}｜押金{currentPlan.needDeposit ? "需要" : "不需要"}</p>
-            <span>点选后会立即保存，绿色按钮就是当前生效选项。</span>
+            <span>点选后会立即保存，颜色变深的按钮就是当前生效选项。</span>
           </div>
 
           <div className="sheet-block">
@@ -3830,7 +3843,7 @@ ${areaText || "暂无区域"}
       <header style={{ position: "sticky", top: 0, zIndex: 20, height: 54, display: "grid", gridTemplateColumns: "72px 1fr 72px", alignItems: "center", background: "#fff", borderBottom: "1px solid #e8edf3", padding: "0 12px" }}>
         <span />
         <strong style={{ textAlign: "center", fontSize: 17 }}>任务列表</strong>
-        <button style={{ border: 0, background: "#eef2f6", color: "#2f6fb3", borderRadius: 8, padding: "8px 10px", fontWeight: 900 }} onClick={() => switchRole("merchant")}>商户</button>
+        <button style={{ border: 0, background: "#eef2f6", color: "#3a75c4", borderRadius: 8, padding: "8px 10px", fontWeight: 900 }} onClick={() => switchRole("merchant")}>商户</button>
       </header>
 
       <section style={{ margin: "12px", background: "#fff", border: "1px solid #e4eaf2", borderRadius: 14, padding: 12, boxShadow: "0 6px 18px rgba(31,58,88,.05)" }}>
@@ -3839,14 +3852,14 @@ ${areaText || "暂无区域"}
             <p style={{ margin: 0, color: "#7b899a", fontSize: 12, fontWeight: 900, letterSpacing: 1 }}>STAFF TASKS · V3.4</p>
             <h1 style={{ margin: "5px 0 0", color: "#182536", fontSize: 22 }}>员工任务台</h1>
           </div>
-          <button style={{ border: 0, borderRadius: 10, background: "#2f6fb3", color: "#fff", fontWeight: 900, padding: "11px 13px" }} onClick={refreshOrdersFromCloud}>日期/刷新</button>
+          <button style={{ border: 0, borderRadius: 10, background: "#3a75c4", color: "#fff", fontWeight: 900, padding: "11px 13px" }} onClick={refreshOrdersFromCloud}>日期/刷新</button>
         </div>
         <p style={{ margin: "10px 0 0", color: "#7b899a", fontSize: 13 }}>{syncMessage}｜{autoSyncState}</p>
       </section>
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, padding: "0 12px 12px" }}>
         {STAFF_TABS.map((tab) => (
-          <button key={tab} style={{ border: "1px solid #e4eaf2", borderRadius: 10, padding: "10px 4px", background: activeStaffTab === tab ? "#2f6fb3" : "#fff", color: activeStaffTab === tab ? "#fff" : "#526274", fontWeight: 900 }} onClick={() => setActiveStaffTab(tab)}>
+          <button key={tab} style={{ border: "1px solid #e4eaf2", borderRadius: 10, padding: "10px 4px", background: activeStaffTab === tab ? "#3a75c4" : "#fff", color: activeStaffTab === tab ? "#fff" : "#526274", fontWeight: 900 }} onClick={() => setActiveStaffTab(tab)}>
             {tab}
           </button>
         ))}
