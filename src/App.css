@@ -1265,3 +1265,148 @@ button.danger,
   color: #b44a3e !important;
   font-weight: 800 !important;
 }
+/* v3.9 局部优化 01：员工任务列表卡片百花酱化，只改任务列表，不动业务逻辑 */
+
+.order-list {
+  gap: 12px !important;
+  padding-bottom: 28px !important;
+}
+
+.task-card {
+  position: relative;
+  border: 1px solid #d8e0ea !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(30, 41, 59, 0.06) !important;
+  overflow: hidden !important;
+}
+
+.task-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #2f6fae;
+}
+
+.task-card-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start !important;
+  gap: 10px !important;
+  padding: 12px 12px 8px 16px !important;
+  border-bottom: 1px solid #edf1f6;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbfd 100%);
+}
+
+.task-card-header h2 {
+  margin: 0 !important;
+  color: #172033 !important;
+  font-size: 17px !important;
+  line-height: 1.28 !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.01em;
+}
+
+.task-card-header p {
+  margin: 4px 0 0 !important;
+  color: #7b8797 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.task-status {
+  border: 1px solid #c9d8e8 !important;
+  border-radius: 999px !important;
+  padding: 5px 9px !important;
+  background: #eef4fb !important;
+  color: #245a8d !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  white-space: nowrap;
+}
+
+.task-info-row {
+  grid-template-columns: 68px minmax(0, 1fr) !important;
+  gap: 8px !important;
+  border-top: 0 !important;
+  border-bottom: 1px solid #f0f3f7 !important;
+  padding: 8px 12px 8px 16px !important;
+  color: #8490a0 !important;
+  font-size: 12px !important;
+}
+
+.task-info-row span {
+  color: #8a96a6 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.task-info-row strong {
+  color: #1f2937 !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  line-height: 1.45 !important;
+  word-break: break-word;
+}
+
+.task-card .description {
+  margin: 9px 12px 10px 16px !important;
+  border: 1px solid #e6edf5 !important;
+  border-radius: 10px !important;
+  padding: 9px 10px !important;
+  background: #f8fafd !important;
+  color: #566274 !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+.task-card .actions {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  border-top: 1px solid #e6edf5 !important;
+  padding: 10px 12px 12px 16px !important;
+  background: #fbfcfe !important;
+}
+
+.task-card .actions button {
+  min-height: 38px !important;
+  border: 1px solid #d8e0ea !important;
+  border-radius: 9px !important;
+  padding: 8px 10px !important;
+  background: #ffffff !important;
+  color: #2f5f91 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  box-shadow: none !important;
+}
+
+.task-card .actions button + button {
+  border-left: 1px solid #d8e0ea !important;
+}
+
+.task-card .actions .primary-button,
+.task-card .actions button.primary-button {
+  border-color: #2f6fae !important;
+  background: #2f6fae !important;
+  color: #ffffff !important;
+}
+
+.task-card .actions button:hover {
+  background: #f3f7fb !important;
+}
+
+.task-card .actions .primary-button:hover,
+.task-card .actions button.primary-button:hover {
+  background: #245a8d !important;
+}
+
+/* 兜底：避免任务列表再出现浏览器默认小灰按钮 */
+.task-card button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
