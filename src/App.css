@@ -1410,3 +1410,175 @@ button.danger,
   appearance: none !important;
   -webkit-appearance: none !important;
 }
+/* v3.9 局部优化 02：定价与分享模块去原生按钮化 */
+
+.price-card {
+  display: block !important;
+  margin: 12px 0 86px !important;
+  padding: 14px !important;
+  border: 1px solid #dbe4ef !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 6px 18px rgba(30, 41, 59, 0.07) !important;
+  text-align: left !important;
+}
+
+.price-card h2,
+.price-card h3 {
+  margin: 0 0 8px !important;
+  color: #172033 !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+  text-align: left !important;
+}
+
+.price-card p {
+  margin: 0 0 12px !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+  text-align: left !important;
+}
+
+.price-card > div {
+  margin-top: 10px !important;
+}
+
+.price-card strong {
+  color: #172033 !important;
+  font-size: 16px !important;
+  font-weight: 900 !important;
+}
+
+.price-card input,
+.price-card select,
+.price-card textarea {
+  width: 100% !important;
+  min-height: 42px !important;
+  border: 1px solid #cfd8e3 !important;
+  border-radius: 10px !important;
+  padding: 9px 11px !important;
+  background: #f8fafc !important;
+  color: #172033 !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.price-card input:focus,
+.price-card select:focus,
+.price-card textarea:focus {
+  border-color: #2f6fae !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(47, 111, 174, 0.12) !important;
+}
+
+.price-card button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  min-height: 36px !important;
+  border: 1px solid #cfd8e3 !important;
+  border-radius: 10px !important;
+  padding: 8px 12px !important;
+  background: #f8fafc !important;
+  color: #2f5f91 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  line-height: 1.1 !important;
+  box-shadow: none !important;
+}
+
+.price-card button:hover {
+  background: #eef4fb !important;
+  border-color: #bfd5ec !important;
+}
+
+.price-card button.selected,
+.price-card button.active,
+.price-card button[aria-pressed="true"] {
+  border-color: #2f6fae !important;
+  background: #2f6fae !important;
+  color: #ffffff !important;
+}
+
+.price-card .price-input {
+  display: inline-flex !important;
+  width: auto !important;
+  min-width: 160px !important;
+  max-width: 100% !important;
+  margin-left: 6px !important;
+}
+
+.price-card .option-grid,
+.price-card .payment-grid,
+.price-card .plan-type-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 8px 0 10px !important;
+}
+
+.price-card .payment-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.price-card .rent-preview,
+.price-card .confirm-row {
+  display: grid !important;
+  grid-template-columns: 96px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 8px !important;
+  border-bottom: 1px solid #edf1f6 !important;
+  padding: 8px 0 !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+}
+
+.price-card .rent-preview:last-child,
+.price-card .confirm-row:last-child {
+  border-bottom: 0 !important;
+}
+
+.price-card .rent-preview span,
+.price-card .confirm-row span {
+  color: #8a96a6 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.price-card .rent-preview strong,
+.price-card .confirm-row strong {
+  color: #172033 !important;
+  font-size: 15px !important;
+  font-weight: 900 !important;
+}
+
+/* 底部固定操作栏也去掉原生按钮感 */
+.bottom-actions {
+  gap: 8px !important;
+  padding: 10px 10px 14px !important;
+  border-top: 1px solid #dbe4ef !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.bottom-actions button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  min-height: 42px !important;
+  border: 1px solid #cfd8e3 !important;
+  border-radius: 10px !important;
+  background: #f8fafc !important;
+  color: #2f5f91 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  box-shadow: none !important;
+}
+
+.bottom-actions .submit-plan-button,
+.bottom-actions button:last-child {
+  border-color: #2f6fae !important;
+  background: #2f6fae !important;
+  color: #ffffff !important;
+}
