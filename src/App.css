@@ -1,4 +1,4 @@
-/* v3.4 员工端视频冷灰蓝工具风 CSS 覆盖版 */
+/* v3.5 融合版：保留完整业务功能，视觉更接近参考视频冷灰蓝工具风 */
 
 :root {
   --page-bg: #f3f5f8;
@@ -8,14 +8,14 @@
   --text-main: #1f2937;
   --text-sub: #5f6b7a;
   --text-light: #8a96a6;
-  --brand: #3a75c4;
-  --brand-dark: #255f9f;
-  --brand-soft: #e8f1fc;
-  --brand-border: #b9d3f2;
+  --brand: #2f6fae;
+  --brand-dark: #245a8d;
+  --brand-soft: #eaf2fb;
+  --brand-border: #bfd5ec;
   --danger: #d64545;
   --danger-soft: #fff0f0;
-  --success: #2f8f5b;
-  --success-soft: #e9f7ef;
+  --success: #2f6fae;
+  --success-soft: #eef4fb;
   --warning: #b7791f;
   --warning-soft: #fff7e6;
   --radius: 12px;
@@ -1186,4 +1186,82 @@ textarea:focus {
   .bottom-actions {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+
+/* v3.5 merge polish: remove residual green visual language from staff-side video skin */
+.task-status,
+.status-pill,
+.area-size {
+  background: var(--brand-soft) !important;
+  color: var(--brand-dark) !important;
+}
+
+.tag-list span {
+  background: #f3f6fa !important;
+  color: #4b5f76 !important;
+}
+
+.primary-button,
+.submit-plan-button,
+.submit-sheet-button,
+.add-area-button {
+  background: var(--brand) !important;
+  color: #fff !important;
+}
+
+.quick-area-list button,
+.area-card > button,
+.ghost-button,
+.bottom-actions button:not(.submit-plan-button) {
+  color: var(--brand) !important;
+}
+
+.product-bottom strong,
+.price-card strong,
+.price-detail-card div:nth-child(3) strong,
+.price-detail-card div:nth-child(4) strong {
+  color: var(--brand-dark) !important;
+}
+
+.product-bottom button,
+.category-tabs button.active,
+.material-tabs button.active,
+.tab.active {
+  background: var(--brand) !important;
+  color: #fff !important;
+}
+
+/* Make modal/table feel closer to the reference: tighter, flatter, less app-brand rounded */
+.order-card,
+.task-card,
+.plan-summary-card,
+.price-card,
+.empty-card,
+.area-card,
+.product-card,
+.empty-product-card {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 14px rgba(31,41,55,0.06) !important;
+}
+
+/* Product selector should scroll inside, while bottom action stays visible */
+.product-layout {
+  min-height: 0 !important;
+}
+.product-list {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding-bottom: 88px !important;
+}
+
+/* Weak danger action: do not look like browser default button */
+.clear-area-button,
+button.danger,
+.ghost-button.danger {
+  border: 1px solid #f1c8c4 !important;
+  border-radius: 10px !important;
+  background: #fff7f6 !important;
+  color: #b44a3e !important;
+  font-weight: 800 !important;
 }
