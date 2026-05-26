@@ -2481,42 +2481,77 @@ ${areaText || "暂无区域"}
           </div>
         </section>
 
-        <section className="plan-pricing-panel" style={cardStyle}>
-          <div className="plan-panel-title-row">
-            <div>
-              <strong>定价与分享</strong>
-              <p>租期、付款、押金、报价和客户链接集中在这里，避免功能藏起来。</p>
+    
+        <section style={{
+          background: "#fff",
+          border: "1px solid #e4eaf2",
+          borderRadius: 14,
+          margin: "12px 12px 0",
+          padding: 16,
+          boxShadow: "0 8px 22px rgba(31,58,88,.05)",
+          textAlign: "left"
+        }}>
+          <strong style={{ display: "block", marginBottom: 16, color: "#182536", fontSize: 17, fontWeight: 900 }}>定价与支付设置</strong>
+
+          {/* 1. 核心数据 */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
+            <div style={{ background: "#f6f8fb", borderRadius: 10, padding: 12 }}>
+              <span style={{ color: "#7b899a", fontSize: 12, fontWeight: 700 }}>预估日租金</span>
+              <strong style={{ display: "block", marginTop: 4, fontSize: 18, color: "#182536" }}>¥ {money(currentStats.dailyRent)}</strong>
             </div>
-            <button onClick={() => setShowPaymentSheet(true)}>高级设置</button>
+            <div style={{ background: "#f6f8fb", borderRadius: 10, padding: 12 }}>
+              <span style={{ color: "#7b899a", fontSize: 12, fontWeight: 700 }}>系统建议总价</span>
+              <strong style={{ display: "block", marginTop: 4, fontSize: 18, color: "#2f6fb3" }}>¥ {money(currentStats.systemTotalRent)}</strong>
+            </div>
           </div>
 
-          <div className="pricing-stats-grid">
-            <div><span>日租金</span><strong>¥ {money(currentStats.dailyRent)}</strong></div>
-            <div><span>系统总租金</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
-            <div><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
-          </div>
-
-          <div className="pricing-option-block">
-            <div className="pricing-option-title"><strong>租期选择</strong><span>{currentPlan.leaseMonths || 12} 月</span></div>
-            <div className="segmented-grid four">
-              {[6, 12, 24, 36].map((month) => {
-                const selected = Number(currentPlan.leaseMonths || 12) === month;
+          {/* 2. 租期选择 */}
+          <div style={{ marginBottom: 18 }}>
+            <span style={{ display: "block", color: "#647286", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>选择租期</span>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+              {[6, 12, 24, 36].map((m) => {
+                const selected = Number(currentPlan.leaseMonths || 12) === m;
                 return (
-                  <button key={month} className={selected ? "segmented-button active" : "segmented-button"} onClick={() => updateCurrentPlanField("leaseMonths", month)}>
-                    {month}月
+                  <button
+                    key={m}
+                    onClick={() => updateCurrentPlanField("leaseMonths", m)}
+                    style={{
+                      border: selected ? "1px solid #2f6fb3" : "1px solid #d8e1ec",
+                      background: selected ? "#2f6fb3" : "#fff",
+                      color: selected ? "#fff" : "#526274",
+                      borderRadius: 8,
+                      padding: "9px 0",
+                      fontSize: 13,
+                      fontWeight: 800
+                    }}
+                  >
+                    {m} 个月
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <div className="pricing-option-block">
-            <div className="pricing-option-title"><strong>支付方式</strong><span>{currentPlan.paymentMethod || "月付"}</span></div>
-            <div className="segmented-grid four">
+          {/* 3. 支付方式 */}
+          <div style={{ marginBottom: 18 }}>
+            <span style={{ display: "block", color: "#647286", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>支付方式</span>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
               {["月付", "季付", "半年付", "年付"].map((method) => {
-                const selected = (currentPlan.paymentMethod || "月付") === method;
+                const selected = currentPlan.paymentMethod === method;
                 return (
-                  <button key={method} className={selected ? "segmented-button active" : "segmented-button"} onClick={() => updateCurrentPlanField("paymentMethod", method)}>
+                  <button
+                    key={method}
+                    onClick={() => updateCurrentPlanField("paymentMethod", method)}
+                    style={{
+                      border: selected ? "1px solid #2f6fb3" : "1px solid #d8e1ec",
+                      background: selected ? "#2f6fb3" : "#fff",
+                      color: selected ? "#fff" : "#526274",
+                      borderRadius: 8,
+                      padding: "9px 0",
+                      fontSize: 13,
+                      fontWeight: 800
+                    }}
+                  >
                     {method}
                   </button>
                 );
@@ -2524,23 +2559,54 @@ ${areaText || "暂无区域"}
             </div>
           </div>
 
-          <div className="pricing-option-block compact">
-            <div className="pricing-option-title"><strong>押金</strong><span>{currentPlan.needDeposit ? "需要" : "不需要"}</span></div>
-            <div className="segmented-grid two">
-              <button className={currentPlan.needDeposit ? "segmented-button active" : "segmented-button"} onClick={() => updateCurrentPlanField("needDeposit", true)}>需要押金</button>
-              <button className={!currentPlan.needDeposit ? "segmented-button active" : "segmented-button"} onClick={() => updateCurrentPlanField("needDeposit", false)}>不需要</button>
+          {/* 4. 押金设置 */}
+          <div style={{ marginBottom: 18 }}>
+            <span style={{ display: "block", color: "#647286", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>是否需要押金</span>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <button
+                onClick={() => updateCurrentPlanField("needDeposit", true)}
+                style={{
+                  border: currentPlan.needDeposit ? "1px solid #2f6fb3" : "1px solid #d8e1ec",
+                  background: currentPlan.needDeposit ? "#eaf3ff" : "#fff",
+                  color: currentPlan.needDeposit ? "#2f6fb3" : "#526274",
+                  borderRadius: 8,
+                  padding: "9px 0",
+                  fontSize: 13,
+                  fontWeight: 800
+                }}
+              >
+                {currentPlan.needDeposit ? "✓ 需要押金" : "需要押金"}
+              </button>
+              <button
+                onClick={() => updateCurrentPlanField("needDeposit", false)}
+                style={{
+                  border: !currentPlan.needDeposit ? "1px solid #2f6fb3" : "1px solid #d8e1ec",
+                  background: !currentPlan.needDeposit ? "#eaf3ff" : "#fff",
+                  color: !currentPlan.needDeposit ? "#2f6fb3" : "#526274",
+                  borderRadius: 8,
+                  padding: "9px 0",
+                  fontSize: 13,
+                  fontWeight: 800
+                }}
+              >
+                {!currentPlan.needDeposit ? "✓ 信用免押" : "信用免押"}
+              </button>
             </div>
           </div>
 
-          <label className="final-price-editor">
-            <span>销售定价 / 最终报价</span>
-            <input type="number" value={currentPlan.customFinalRent || ""} onChange={(e) => updateCurrentPlanField("customFinalRent", e.target.value)} placeholder={`默认 ¥${money(currentStats.systemTotalRent)}`} />
-          </label>
-
-          <div className="pricing-action-grid">
-            <button onClick={() => setShowPriceSheet(true)}>快捷改价</button>
-            <button onClick={() => copyText(buildPlanText(currentOrder), "方案摘要已复制")}>复制摘要</button>
-            <button onClick={() => copyCustomerPlanLink(currentOrder)}>生成客户查看链接</button>
+          {/* 5. 最终报价 */}
+          <div>
+            <span style={{ display: "block", color: "#647286", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>实际销售报价 (元)</span>
+            <label style={{ display: "flex", alignItems: "center", border: "1px solid #d8e1ec", borderRadius: 10, padding: "4px 12px", background: "#fcfdfe" }}>
+              <span style={{ color: "#182536", fontSize: 16, fontWeight: 800, marginRight: 8 }}>¥</span>
+              <input
+                type="number"
+                value={currentPlan.customFinalRent || ""}
+                onChange={(e) => updateCurrentPlanField("customFinalRent", e.target.value)}
+                placeholder={`默认按 ¥${money(currentStats.systemTotalRent)}`}
+                style={{ flex: 1, border: 0, background: "transparent", padding: "12px 0", fontSize: 15, fontWeight: 800, color: "#d64545", outline: "none" }}
+              />
+            </label>
           </div>
         </section>
 
