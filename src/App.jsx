@@ -1731,7 +1731,7 @@ ${areaText || "暂无区域"}
       const canBuild = ["配置中", "待商户确认"].includes(order.status);
       const canExecute = ["方案已确认", "执行中"].includes(order.status);
       
-      const videoBlue = "#2f6fae"; 
+      const videoBlue = "#2d5f8f"; 
       const statusTone = isPending ? "#eaf2fb" : canBuild ? "#fff4e6" : "#f3f5f8";
       const statusColor = isPending ? videoBlue : canBuild ? "#b7791f" : "#5f6b7a";
 
@@ -2211,7 +2211,7 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("plan")}>←</button>
           <div>
-            <p className="eyebrow">Task Complete · v3.5</p>
+            <p className="eyebrow">Task Complete · v3.6</p>
             <h1>任务完成</h1>
           </div>
         </header>
@@ -2324,7 +2324,7 @@ ${areaText || "暂无区域"}
   function renderPlanPage() {
     if (!currentOrder || !currentPlan) return null;
 
-    const videoBlue = "#2f6fae";
+    const videoBlue = "#2d5f8f";
     const selectedRows = planAreas.flatMap((area) =>
       safeItems(area).map((item) => ({ ...item, areaId: area.id, areaName: area.name }))
     );
@@ -2372,7 +2372,7 @@ ${areaText || "暂无区域"}
       <div style={pageStyle}>
         <header style={navStyle}>
           <button style={{ border: 0, background: "transparent", fontSize: 22, color: "#24364b" }} onClick={() => setCurrentPage("orders")}>‹</button>
-          <strong style={{ textAlign: "center", fontSize: 17, color: "#182536" }}>建方案</strong>
+          <strong style={{ textAlign: "center", fontSize: 17, color: "#182536" }}>添加方案</strong>
           <span />
         </header>
 
@@ -2481,21 +2481,74 @@ ${areaText || "暂无区域"}
           </div>
         </section>
 
-        <section style={cardStyle}>
-          <strong style={{ display: "block", marginBottom: 10, color: "#182536", fontSize: 16 }}>定价与分享</strong>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-            <div style={{ background: "#f6f8fb", borderRadius: 10, padding: 12 }}><span style={labelStyle}>日租金</span><strong style={{ display: "block", marginTop: 4, fontSize: 20 }}>¥ {money(currentStats.dailyRent)}</strong></div>
-            <div style={{ background: "#f6f8fb", borderRadius: 10, padding: 12 }}><span style={labelStyle}>租期</span><strong style={{ display: "block", marginTop: 4, fontSize: 20 }}>{currentPlan.leaseMonths || 12}月</strong></div>
+        <section className="plan-pricing-panel" style={cardStyle}>
+          <div className="plan-panel-title-row">
+            <div>
+              <strong>定价与分享</strong>
+              <p>租期、付款、押金、报价和客户链接集中在这里，避免功能藏起来。</p>
+            </div>
+            <button onClick={() => setShowPaymentSheet(true)}>高级设置</button>
           </div>
-          <label style={{ display: "grid", gridTemplateColumns: "96px 1fr", alignItems: "center", gap: 10, border: "1px solid #d8e1ec", borderRadius: 10, padding: "10px 12px" }}>
-            <span style={{ color: "#647286", fontWeight: 800 }}>销售定价</span>
-            <input className="area-input" type="number" value={currentPlan.customFinalRent || ""} onChange={(e) => updateCurrentPlanField("customFinalRent", e.target.value)} placeholder={`默认 ¥${money(currentStats.systemTotalRent)}`} style={{ border: 0, background: "transparent", padding: 0, textAlign: "right" }} />
+
+          <div className="pricing-stats-grid">
+            <div><span>日租金</span><strong>¥ {money(currentStats.dailyRent)}</strong></div>
+            <div><span>系统总租金</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
+            <div><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
+          </div>
+
+          <div className="pricing-option-block">
+            <div className="pricing-option-title"><strong>租期选择</strong><span>{currentPlan.leaseMonths || 12} 月</span></div>
+            <div className="segmented-grid four">
+              {[6, 12, 24, 36].map((month) => {
+                const selected = Number(currentPlan.leaseMonths || 12) === month;
+                return (
+                  <button key={month} className={selected ? "segmented-button active" : "segmented-button"} onClick={() => updateCurrentPlanField("leaseMonths", month)}>
+                    {month}月
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="pricing-option-block">
+            <div className="pricing-option-title"><strong>支付方式</strong><span>{currentPlan.paymentMethod || "月付"}</span></div>
+            <div className="segmented-grid four">
+              {["月付", "季付", "半年付", "年付"].map((method) => {
+                const selected = (currentPlan.paymentMethod || "月付") === method;
+                return (
+                  <button key={method} className={selected ? "segmented-button active" : "segmented-button"} onClick={() => updateCurrentPlanField("paymentMethod", method)}>
+                    {method}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="pricing-option-block compact">
+            <div className="pricing-option-title"><strong>押金</strong><span>{currentPlan.needDeposit ? "需要" : "不需要"}</span></div>
+            <div className="segmented-grid two">
+              <button className={currentPlan.needDeposit ? "segmented-button active" : "segmented-button"} onClick={() => updateCurrentPlanField("needDeposit", true)}>需要押金</button>
+              <button className={!currentPlan.needDeposit ? "segmented-button active" : "segmented-button"} onClick={() => updateCurrentPlanField("needDeposit", false)}>不需要</button>
+            </div>
+          </div>
+
+          <label className="final-price-editor">
+            <span>销售定价 / 最终报价</span>
+            <input type="number" value={currentPlan.customFinalRent || ""} onChange={(e) => updateCurrentPlanField("customFinalRent", e.target.value)} placeholder={`默认 ¥${money(currentStats.systemTotalRent)}`} />
           </label>
+
+          <div className="pricing-action-grid">
+            <button onClick={() => setShowPriceSheet(true)}>快捷改价</button>
+            <button onClick={() => copyText(buildPlanText(currentOrder), "方案摘要已复制")}>复制摘要</button>
+            <button onClick={() => copyCustomerPlanLink(currentOrder)}>生成客户查看链接</button>
+          </div>
         </section>
 
-        <nav style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 50, background: "rgba(255,255,255,.98)", borderTop: "1px solid #e4eaf2", padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", display: "grid", gridTemplateColumns: "0.85fr 1.15fr", gap: 10 }}>
-          <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "13px 10px" }} onClick={() => copyCustomerPlanLink(currentOrder)}>生成客户查看链接</button>
-          <button style={{ border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 10px", boxShadow: "0 8px 18px rgba(47,111,179,.22)" }} onClick={() => setShowSubmitSheet(true)}>提交方案</button>
+        <nav className="baihua-bottom-bar">
+          <button onClick={() => setShowMoreSheet(true)}>更多</button>
+          <button onClick={() => setShowPaymentSheet(true)}>租期/支付</button>
+          <button onClick={() => copyCustomerPlanLink(currentOrder)}>客户链接</button>
+          <button className="primary" onClick={() => setShowSubmitSheet(true)}>提交方案</button>
         </nav>
 
         {showAreaSheet && renderAreaSheet()}
@@ -2536,7 +2589,7 @@ ${areaText || "暂无区域"}
   }
 
   function renderProductSheet() {
-    const videoBlue = "#2f6fae";
+    const videoBlue = "#2d5f8f";
     const sheetStyle = {
       height: "92vh",
       maxHeight: "92vh",
@@ -3029,7 +3082,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.shell}>
           <div style={desktopStyles.topbar}>
             <div>
-              <p className="eyebrow">Review Desk · v3.5</p>
+              <p className="eyebrow">Review Desk · v3.6</p>
               <h1>{order.customerName}</h1>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -3112,7 +3165,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.layout}>
           <aside style={desktopStyles.sidebar}>
             <div style={desktopStyles.brand}>
-              <p className="eyebrow">Merchant Admin · v3.5</p>
+              <p className="eyebrow">Merchant Admin · v3.6</p>
               <h2 style={{ margin: 0 }}>绿植租赁后台</h2>
               <span style={{ color: "#667085", fontSize: 13 }}>公司端 / 商户端</span>
             </div>
@@ -3412,7 +3465,7 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">Customer Editor · v3.5</p><h2>{editingCustomerId ? "编辑客户" : "新增客户"}</h2></div>
+            <div><p className="eyebrow">Customer Editor · v3.6</p><h2>{editingCustomerId ? "编辑客户" : "新增客户"}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>×</button>
           </div>
 
@@ -3477,7 +3530,7 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => setShowCreateProductSheet(false)}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">Product Editor · v3.5</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
+            <div><p className="eyebrow">Product Editor · v3.6</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}>×</button>
           </div>
 
@@ -3606,7 +3659,7 @@ ${areaText || "暂无区域"}
         >
           <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
             <div className="section-title-row">
-              <div><p className="eyebrow">New Order · v3.5</p><h2>创建新订单</h2></div>
+              <div><p className="eyebrow">New Order · v3.6</p><h2>创建新订单</h2></div>
               <button
                 className="close-button"
                 onClick={() => {
@@ -3738,7 +3791,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v3.5</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v3.6</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
