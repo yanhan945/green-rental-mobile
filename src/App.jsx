@@ -1730,87 +1730,34 @@ ${areaText || "暂无区域"}
       const isPending = order.status === "待接单";
       const canBuild = ["配置中", "待商户确认"].includes(order.status);
       const canExecute = ["方案已确认", "执行中"].includes(order.status);
-      
-      const videoBlue = "#2d5f8f"; 
-      const statusTone = isPending ? "#eaf2fb" : canBuild ? "#fff4e6" : "#f3f5f8";
-      const statusColor = isPending ? videoBlue : canBuild ? "#b7791f" : "#5f6b7a";
+      const primaryActionText = order.status === "执行中" ? "完成任务" : canBuild ? "编辑场景方案" : "查看详情";
 
       return (
-        <article style={{
-          background: "#fff",
-          border: "1px solid #e3e8ef",
-          borderRadius: "14px",
-          padding: "16px",
-          marginBottom: "12px",
-          boxShadow: "0 4px 12px rgba(31, 41, 55, 0.04)",
-          textAlign: "left"
-        }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-            <strong style={{ color: "#8a96a6", fontSize: "13px", fontFamily: "monospace" }}>#{String(order.id).slice(-8)}</strong>
-            <span style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "4px 8px",
-              borderRadius: "6px",
-              background: statusTone,
-              color: statusColor,
-              fontWeight: "800",
-              fontSize: "12px",
-            }}>
-              {order.status}
-            </span>
+        <article className="baihua-task-card">
+          <div className="baihua-task-topline">
+            <strong>#{String(order.id).slice(-8)}</strong>
+            <span className="baihua-status-chip">{order.status}</span>
           </div>
 
-          <h2 style={{ margin: "0 0 12px", color: "#1f2937", fontSize: "18px", fontWeight: "800", lineHeight: "1.3" }}>
-            {order.customerName}
-          </h2>
+          <h2>{order.customerName}</h2>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "13px", lineHeight: "1.4" }}>
-            <div style={{ display: "flex" }}>
-              <span style={{ color: "#8a96a6", width: "72px", flexShrink: 0 }}>任务地址</span>
-              <strong style={{ color: "#1f2937", fontWeight: "600" }}>{order.address || "-"}</strong>
-            </div>
-            <div style={{ display: "flex" }}>
-              <span style={{ color: "#8a96a6", width: "72px", flexShrink: 0 }}>联系人员</span>
-              <strong style={{ color: "#1f2937", fontWeight: "600" }}>{order.contactName || "-"}{order.phone ? ` ｜ ${order.phone}` : ""}</strong>
-            </div>
-            <div style={{ display: "flex" }}>
-              <span style={{ color: "#8a96a6", width: "72px", flexShrink: 0 }}>预约时间</span>
-              <strong style={{ color: "#1f2937", fontWeight: "600" }}>{order.expectedDate || "待确认"}</strong>
-            </div>
-            <div style={{ display: "flex" }}>
-              <span style={{ color: "#8a96a6", width: "72px", flexShrink: 0 }}>当前报价</span>
-              <strong style={{ color: "#d64545", fontWeight: "800", fontFamily: "monospace", fontSize: "14px" }}>¥ {money(stats.finalRent)}</strong>
-            </div>
+          <div className="baihua-task-meta">
+            <span>任务地址</span><strong>{order.address || "-"}</strong>
+            <span>联系人员</span><strong>{order.contactName || "-"}{order.phone ? `｜${order.phone}` : ""}</strong>
+            <span>预约时间</span><strong>{order.expectedDate || "待确认"}</strong>
+            <span>当前报价</span><strong className="price">¥ {money(stats.finalRent)}</strong>
           </div>
 
-          {hint && (
-            <div style={{ marginTop: "14px", padding: "10px 12px", borderRadius: "8px", background: "#f8fafc", color: "#5f6b7a", fontSize: "12px", border: "1px solid #edf1f5" }}>
-              {hint}
-            </div>
-          )}
+          {hint && <div className="baihua-task-hint">{hint}</div>}
 
-          <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px dashed #e3e8ef" }}>
-            {isPending && (
-              <button
-                style={{ width: "100%", border: 0, borderRadius: "10px", background: videoBlue, color: "#fff", fontWeight: "800", padding: "12px", fontSize: "15px" }}
-                onClick={() => setSelectedOrder(order)}
-              >
-                立即接单
-              </button>
-            )}
-
-            {!isPending && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "10px" }}>
+          <div className="baihua-task-actions">
+            {isPending ? (
+              <button className="primary" onClick={() => setSelectedOrder(order)}>立即接单</button>
+            ) : (
+              <>
+                <button onClick={() => openRouteNavigation(order.address)}>导航</button>
                 <button
-                  style={{ border: `1px solid #b9d3f2`, borderRadius: "10px", background: "#f7f9fc", color: videoBlue, fontWeight: "700", padding: "10px", fontSize: "14px" }}
-                  onClick={() => openRouteNavigation(order.address)}
-                >
-                  导航
-                </button>
-                <button
-                  style={{ border: 0, borderRadius: "10px", background: videoBlue, color: "#fff", fontWeight: "800", padding: "10px", fontSize: "14px", boxShadow: "0 4px 10px rgba(58, 117, 196, 0.2)" }}
+                  className="primary"
                   onClick={() => {
                     if (canExecute && order.status === "执行中") {
                       setCurrentOrderId(order.id);
@@ -1820,9 +1767,9 @@ ${areaText || "暂无区域"}
                     openPlanForOrder(order);
                   }}
                 >
-                  {order.status === "执行中" ? "完成任务" : canBuild ? "编辑场景方案" : "查看详情"}
+                  {primaryActionText}
                 </button>
-              </div>
+              </>
             )}
           </div>
         </article>
@@ -2152,33 +2099,40 @@ ${areaText || "暂无区域"}
     }));
   }
 
+  function handleMockPhotoFile(group, index, file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => updateCompletePhoto(group, index, String(reader.result || ""));
+    reader.readAsDataURL(file);
+  }
+
   function renderPhotoUploadBlock(title, group, tip) {
     const values = completeForm[group] || ["", "", ""];
     return (
-      <section className="plan-summary-card" style={{ padding: 18 }}>
-        <div className="section-title-row">
+      <section className="baihua-card baihua-upload-block">
+        <div className="baihua-card-title-row compact">
           <div>
-            <p className="eyebrow">UPLOAD</p>
+            <p className="baihua-kicker">UPLOAD</p>
             <h2>{title}</h2>
+            <span>{tip}</span>
           </div>
-          <span className="area-size">最多 3 张</span>
+          <span className="baihua-status-chip">最多 3 张</span>
         </div>
-        <div className="empty-card" style={{ textAlign: "left", marginBottom: 12 }}>
-          <p>{tip}</p>
-          <span>当前先用图片链接模拟上传，后面接 Supabase Storage 后会改成真正选择照片上传。</span>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+
+        <div className="baihua-upload-tip">现在先做成正式上传入口：手机可点“选择照片”调相册/拍照并本地预览；后续接 Supabase Storage 后改成真正云端上传。</div>
+
+        <div className="baihua-upload-grid">
           {values.map((url, index) => (
-            <div key={`${group}-${index}`} style={{ border: "1px solid rgba(39,92,61,.14)", borderRadius: 18, padding: 10, background: "#f7fbf7" }}>
-              <div style={{ aspectRatio: "1 / 1", borderRadius: 14, background: "#eef6ee", display: "grid", placeItems: "center", overflow: "hidden", marginBottom: 8 }}>
-                {isImageUrl(url) ? <img src={url} alt="上传预览" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <strong style={{ fontSize: 28, color: "#2b7a4b" }}>＋</strong>}
-              </div>
+            <div key={`${group}-${index}`} className="baihua-upload-card">
+              <label className="baihua-upload-preview">
+                {url ? <img src={url} alt="上传预览" /> : <strong>＋</strong>}
+                <input type="file" accept="image/*" capture="environment" onChange={(e) => handleMockPhotoFile(group, index, e.target.files?.[0])} />
+              </label>
               <input
-                className="area-input"
+                className="baihua-url-input"
                 value={url}
                 onChange={(e) => updateCompletePhoto(group, index, e.target.value)}
                 placeholder={`图片链接 ${index + 1}`}
-                style={{ padding: "10px 12px", fontSize: 13 }}
               />
             </div>
           ))}
@@ -2207,45 +2161,55 @@ ${areaText || "暂无区域"}
   function renderCompleteUploadPage() {
     if (!currentOrder) return null;
     return (
-      <div className="app">
-        <header className="plan-header">
-          <button className="back-button" onClick={() => setCurrentPage("plan")}>←</button>
+      <div className="baihua-page complete-page">
+        <header className="baihua-nav">
+          <button className="baihua-nav-back" onClick={() => setCurrentPage("plan")}>‹</button>
           <div>
-            <p className="eyebrow">Task Complete · v3.6</p>
-            <h1>任务完成</h1>
+            <p>TASK COMPLETE · v3.7</p>
+            <strong>任务完成</strong>
           </div>
+          <span />
         </header>
 
-        <section className="plan-summary-card" style={{ padding: 18 }}>
-          <div className="plan-summary-top">
-            <div><p>当前订单</p><strong>{currentOrder.customerName}</strong></div>
-            <div><p>完成资料</p><strong>照片 + 备注</strong></div>
+        <section className="baihua-card baihua-task-panel">
+          <div className="baihua-card-title-row">
+            <div>
+              <p className="baihua-kicker">当前订单</p>
+              <h2>{currentOrder.customerName}</h2>
+            </div>
+            <span className="baihua-status-chip">完成资料</span>
           </div>
-          <div className="empty-card" style={{ marginTop: 12, textAlign: "left" }}>
-            <p>提交前补充现场资料</p>
-            <span>先按视频逻辑搭建：大场景图、植物状态图，每组最多 3 张。后续再接真实上传。</span>
+          <div className="baihua-info-grid">
+            <span>任务地址</span><strong>{currentOrder.address || "-"}</strong>
+            <span>联系人</span><strong>{currentOrder.contactName || "-"}{currentOrder.phone ? `｜${currentOrder.phone}` : ""}</strong>
+            <span>提交内容</span><strong>现场照片 + 植物状态 + 备注</strong>
           </div>
         </section>
 
         {renderPhotoUploadBlock("大场景图", "scenePhotos", "用于记录客户现场整体摆放效果。")}
         {renderPhotoUploadBlock("植物状态图", "plantPhotos", "用于记录植物状态、细节和现场交付情况。")}
 
-        <section className="plan-summary-card" style={{ padding: 18 }}>
-          <p className="sheet-label">完成备注</p>
+        <section className="baihua-card baihua-note-card">
+          <div className="baihua-card-title-row compact">
+            <div>
+              <p className="baihua-kicker">REMARK</p>
+              <h2>完成备注</h2>
+              <span>记录客户现场确认情况、额外问题或后续维护提醒。</span>
+            </div>
+          </div>
           <textarea
-            className="area-input"
+            className="baihua-textarea"
             value={completeForm.remark}
             onChange={(e) => setCompleteForm((form) => ({ ...form, remark: e.target.value }))}
             placeholder="例如：已按方案完成摆放，客户现场确认无异议。"
             rows={4}
-            style={{ resize: "vertical", minHeight: 110 }}
           />
         </section>
 
-        <nav className="bottom-actions">
+        <nav className="baihua-bottom-bar complete">
           <button onClick={() => setCurrentPage("plan")}>返回方案</button>
           <button onClick={() => copyCustomerPlanLink(currentOrder)}>客户链接</button>
-          <button className="submit-plan-button" onClick={submitCompleteUpload}>提交完成</button>
+          <button className="primary" onClick={submitCompleteUpload}>提交完成</button>
         </nav>
       </div>
     );
@@ -2324,155 +2288,141 @@ ${areaText || "暂无区域"}
   function renderPlanPage() {
     if (!currentOrder || !currentPlan) return null;
 
-    const videoBlue = "#2d5f8f";
     const selectedRows = planAreas.flatMap((area) =>
       safeItems(area).map((item) => ({ ...item, areaId: area.id, areaName: area.name }))
     );
-
-    const pageStyle = {
-      minHeight: "100vh",
-      background: "#f4f6f9",
-      color: "#182536",
-      paddingBottom: "calc(96px + env(safe-area-inset-bottom))",
-    };
-    const navStyle = {
-      position: "sticky",
-      top: 0,
-      zIndex: 20,
-      height: 54,
-      display: "grid",
-      gridTemplateColumns: "48px 1fr 48px",
-      alignItems: "center",
-      background: "rgba(255,255,255,.98)",
-      borderBottom: "1px solid #e8edf3",
-      padding: "0 12px",
-      boxShadow: "0 6px 18px rgba(31,58,88,.04)",
-    };
-    const cardStyle = {
-      background: "#fff",
-      border: "1px solid #e4eaf2",
-      borderRadius: 14,
-      margin: "12px 12px 0",
-      padding: 14,
-      boxShadow: "0 8px 22px rgba(31,58,88,.05)",
-    };
-    const labelStyle = { color: "#7b899a", fontSize: 13 };
-    const strongStyle = { color: "#1b2d42", fontWeight: 800, fontSize: 14 };
-    const tabStyle = (active) => ({
-      border: 0,
-      background: "transparent",
-      color: active ? videoBlue : "#526274",
-      fontWeight: 900,
-      padding: "13px 0 11px",
-      borderBottom: active ? `3px solid ${videoBlue}` : "3px solid transparent",
-      fontSize: 15,
-    });
+    const activeAreaCount = planAreas.length;
+    const quickAreas = ["前台", "办公室", "会议室", "走廊", "门口"];
 
     return (
-      <div style={pageStyle}>
-        <header style={navStyle}>
-          <button style={{ border: 0, background: "transparent", fontSize: 22, color: "#24364b" }} onClick={() => setCurrentPage("orders")}>‹</button>
-          <strong style={{ textAlign: "center", fontSize: 17, color: "#182536" }}>添加方案</strong>
-          <span />
+      <div className="baihua-page">
+        <header className="baihua-nav">
+          <button className="baihua-nav-back" onClick={() => setCurrentPage("orders")}>‹</button>
+          <div>
+            <p>SCHEME EDITOR · v3.7</p>
+            <strong>添加方案</strong>
+          </div>
+          <button className="baihua-nav-action" onClick={() => setShowMoreSheet(true)}>···</button>
         </header>
 
-        <section style={cardStyle}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 10 }}>
+        <section className="baihua-card baihua-task-panel">
+          <div className="baihua-card-title-row">
             <div>
-              <span style={{ ...labelStyle, display: "block", marginBottom: 4 }}>当前任务</span>
-              <strong style={{ fontSize: 18, color: "#182536" }}>{currentOrder.customerName}</strong>
+              <p className="baihua-kicker">当前任务</p>
+              <h2>{currentOrder.customerName}</h2>
             </div>
-            <span style={{ borderRadius: 6, background: "#eaf2fb", color: videoBlue, padding: "6px 10px", fontWeight: 900 }}>{currentOrder.status}</span>
+            <span className="baihua-status-chip">{currentOrder.status}</span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "78px 1fr", gap: "8px 10px", borderTop: "1px solid #edf1f5", paddingTop: 10 }}>
-            <span style={labelStyle}>任务地址</span><strong style={{ ...strongStyle, textAlign: "right" }}>{currentOrder.address || "-"}</strong>
-            <span style={labelStyle}>联系人</span><strong style={{ ...strongStyle, textAlign: "right" }}>{currentOrder.contactName || "-"}{currentOrder.phone ? `｜${currentOrder.phone}` : ""}</strong>
-            <span style={labelStyle}>预约时间</span><strong style={{ ...strongStyle, textAlign: "right" }}>{currentOrder.expectedDate || "待确认"}</strong>
+
+          <div className="baihua-info-grid">
+            <span>任务地址</span><strong>{currentOrder.address || "-"}</strong>
+            <span>联系人</span><strong>{currentOrder.contactName || "-"}{currentOrder.phone ? `｜${currentOrder.phone}` : ""}</strong>
+            <span>预约时间</span><strong>{currentOrder.expectedDate || "待确认"}</strong>
+            <span>当前报价</span><strong className="price">¥ {money(currentStats.finalRent)}</strong>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 12 }}>
-            <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "11px 8px" }} onClick={() => callPhone(currentOrder.phone)}>电话</button>
-            <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "11px 8px" }} onClick={() => openRouteNavigation(currentOrder.address)}>导航</button>
-            <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "11px 8px" }} onClick={() => copyText(currentOrder.address, "地址已复制")}>地址</button>
+
+          <div className="baihua-action-row three">
+            <button onClick={() => callPhone(currentOrder.phone)}>电话</button>
+            <button onClick={() => openRouteNavigation(currentOrder.address)}>导航</button>
+            <button onClick={() => copyText(currentOrder.address, "地址已复制")}>复制地址</button>
           </div>
         </section>
 
         {currentOrder.status === "方案已确认" && (
-          <section style={cardStyle}>
-            <strong style={{ color: "#182536" }}>商户已确认方案</strong>
-            <p style={{ margin: "8px 0 12px", color: "#6b7788" }}>现在可以开始执行服务。</p>
-            <button style={{ width: "100%", border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 14px" }} onClick={() => startExecution(currentOrder.id)}>开始执行服务</button>
+          <section className="baihua-card baihua-alert-card">
+            <div>
+              <strong>商户已确认方案</strong>
+              <span>现在可以开始执行服务，执行后进入完成上传页。</span>
+            </div>
+            <button onClick={() => startExecution(currentOrder.id)}>开始执行</button>
           </section>
         )}
 
         {currentOrder.status === "执行中" && (
-          <section style={cardStyle}>
-            <strong style={{ color: "#182536" }}>任务执行中</strong>
-            <p style={{ margin: "8px 0 12px", color: "#6b7788" }}>完成摆放后上传现场照片并提交。</p>
-            <button style={{ width: "100%", border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 14px" }} onClick={() => setCurrentPage("completeUpload")}>完成任务并上传照片</button>
+          <section className="baihua-card baihua-alert-card">
+            <div>
+              <strong>任务执行中</strong>
+              <span>完成摆放后上传现场照片和备注，提交后等待商户归档。</span>
+            </div>
+            <button onClick={() => setCurrentPage("completeUpload")}>完成上传</button>
           </section>
         )}
 
-        <section style={cardStyle}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid #e7edf4", marginBottom: 12 }}>
-            <button style={tabStyle(true)}>植物</button>
-            <button style={tabStyle(false)} onClick={() => alert("花盆库已经预留，后续补充数据。")}>花盆</button>
-            <button style={tabStyle(false)} onClick={() => alert("资材库已经预留，后续补充数据。")}>资材</button>
+        <section className="baihua-card baihua-material-panel">
+          <div className="baihua-material-tabs">
+            <button className="active">植物</button>
+            <button onClick={() => alert("花盆库已经预留，后续补充数据。")}>花盆</button>
+            <button onClick={() => alert("资材库已经预留，后续补充数据。")}>资材</button>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+          <div className="baihua-card-title-row compact">
             <div>
-              <strong style={{ color: "#182536", fontSize: 16 }}>场景物料表</strong>
-              <p style={{ margin: "4px 0 0", color: "#7b899a", fontSize: 13 }}>按区域选择植物，数量可直接修改。</p>
+              <p className="baihua-kicker">MATERIAL LIST</p>
+              <h2>场景物料表</h2>
+              <span>已建 {activeAreaCount} 个场景，已选 {currentStats.productCount} 件物料。</span>
             </div>
-            <button style={{ border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "10px 13px" }} onClick={() => setShowAreaSheet(true)}>+ 场景</button>
+            <button className="baihua-solid-mini" onClick={() => setShowAreaSheet(true)}>+ 场景</button>
           </div>
 
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 8 }}>
+          <div className="baihua-area-strip">
             {planAreas.map((area) => (
-              <button key={area.id} style={{ flex: "0 0 auto", border: "1px solid #d8e1ec", borderRadius: 8, padding: "8px 10px", background: currentAreaId === area.id ? "#eaf2fb" : "#fff", color: currentAreaId === area.id ? videoBlue : "#526274", fontWeight: 800 }} onClick={() => openProductSheet(area)}>
-                {area.name} · {getAreaProductCount(area)}件
+              <button key={area.id} className={currentAreaId === area.id ? "active" : ""} onClick={() => openProductSheet(area)}>
+                <strong>{area.name}</strong><span>{getAreaProductCount(area)} 件</span>
               </button>
             ))}
-            {planAreas.length === 0 && ["前台", "办公室", "会议室", "走廊", "门口"].map((name) => (
-              <button key={name} style={{ flex: "0 0 auto", border: "1px solid #d8e1ec", borderRadius: 8, padding: "8px 10px", background: "#fff", color: "#526274", fontWeight: 800 }} onClick={() => addAreaWithName(name)}>{name}</button>
+            {planAreas.length === 0 && quickAreas.map((name) => (
+              <button key={name} onClick={() => addAreaWithName(name)}>
+                <strong>{name}</strong><span>快速创建</span>
+              </button>
             ))}
           </div>
 
-          <div style={{ overflowX: "auto", border: "1px solid #e7edf4", borderRadius: 10 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 620, fontSize: 13 }}>
+          <div className="baihua-table-wrap">
+            <table className="baihua-material-table">
               <thead>
-                <tr style={{ background: "#f6f8fb", color: "#607085" }}>
-                  <th style={{ padding: 10, textAlign: "left" }}>名称</th>
-                  <th style={{ padding: 10, textAlign: "center" }}>图片</th>
-                  <th style={{ padding: 10, textAlign: "right" }}>价格</th>
-                  <th style={{ padding: 10, textAlign: "center" }}>状态</th>
-                  <th style={{ padding: 10, textAlign: "center" }}>数量</th>
-                  <th style={{ padding: 10, textAlign: "center" }}>操作</th>
+                <tr>
+                  <th>名称 / 场景</th>
+                  <th>图片</th>
+                  <th>日租金</th>
+                  <th>状态</th>
+                  <th>数量</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
                 {selectedRows.length === 0 ? (
-                  <tr><td colSpan="6" style={{ padding: 22, textAlign: "center", color: "#8a96a8" }}>暂无物料。先添加场景，再选择植物。</td></tr>
+                  <tr>
+                    <td colSpan="6" className="baihua-empty-cell">暂无物料。先添加场景，再选择植物。</td>
+                  </tr>
                 ) : selectedRows.map((item) => {
                   const product = merchantProducts.find((p) => p.id === item.productId) || item;
                   const image = getProductImage(product);
                   return (
-                    <tr key={`${item.areaId}-${item.productId}`} style={{ borderTop: "1px solid #edf1f5" }}>
-                      <td style={{ padding: 10 }}><strong style={{ color: "#223247" }}>{item.name}</strong><br/><span style={{ color: "#8a96a8" }}>{item.areaName}</span></td>
-                      <td style={{ padding: 10, textAlign: "center" }}><span style={{ width: 42, height: 42, borderRadius: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#f2f5f8", overflow: "hidden" }}>{isImageUrl(image) ? <img src={image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : image}</span></td>
-                      <td style={{ padding: 10, textAlign: "right", fontWeight: 800 }}>¥ {item.pricePerDay}/天</td>
-                      <td style={{ padding: 10, textAlign: "center" }}><span style={{ borderRadius: 6, background: "#eaf2fb", color: "#2f6fae", padding: "4px 8px", fontWeight: 800 }}>有货</span></td>
-                      <td style={{ padding: 10, textAlign: "center" }}><input inputMode="numeric" type="number" value={item.quantity} min="1" style={{ width: 56, height: 34, border: "1px solid #d8e1ec", borderRadius: 8, textAlign: "center", fontWeight: 800 }} onChange={(e) => {
-                        const nextQty = Math.max(1, Number(e.target.value || 1));
-                        updateOrderPlan(currentOrder.id, (plan) => ({
-                          ...plan,
-                          areas: safeAreas(plan).map((area) => area.id === item.areaId ? {
-                            ...area,
-                            items: safeItems(area).map((old) => old.productId === item.productId ? { ...old, quantity: nextQty } : old)
-                          } : area),
-                        }), "数量已同步");
-                      }} /></td>
-                      <td style={{ padding: 10, textAlign: "center" }}><button style={{ border: 0, background: "#fff1f0", color: "#b44a3e", borderRadius: 8, padding: "7px 9px", fontWeight: 800 }} onClick={() => removeItemFromArea(item.areaId, item.productId)}>删除</button></td>
+                    <tr key={`${item.areaId}-${item.productId}`}>
+                      <td><strong>{item.name}</strong><span>{item.areaName}</span></td>
+                      <td><span className="baihua-thumb">{isImageUrl(image) ? <img src={image} alt={item.name} /> : image}</span></td>
+                      <td className="money">¥ {item.pricePerDay}/天</td>
+                      <td><span className="baihua-tag-blue">有货</span></td>
+                      <td>
+                        <input
+                          inputMode="numeric"
+                          type="number"
+                          value={item.quantity}
+                          min="1"
+                          className="baihua-qty-input"
+                          onChange={(e) => {
+                            const nextQty = Math.max(1, Number(e.target.value || 1));
+                            updateOrderPlan(currentOrder.id, (plan) => ({
+                              ...plan,
+                              areas: safeAreas(plan).map((area) => area.id === item.areaId ? {
+                                ...area,
+                                items: safeItems(area).map((old) => old.productId === item.productId ? { ...old, quantity: nextQty } : old)
+                              } : area),
+                            }), "数量已同步");
+                          }}
+                        />
+                      </td>
+                      <td><button className="baihua-text-danger" onClick={() => removeItemFromArea(item.areaId, item.productId)}>删除</button></td>
                     </tr>
                   );
                 })}
@@ -2481,66 +2431,59 @@ ${areaText || "暂无区域"}
           </div>
         </section>
 
-        <section className="plan-pricing-panel" style={cardStyle}>
-          <div className="plan-panel-title-row">
+        <section className="baihua-card baihua-pricing-panel">
+          <div className="baihua-card-title-row compact">
             <div>
-              <strong>定价与分享</strong>
-              <p>租期、付款、押金、报价和客户链接集中在这里，避免功能藏起来。</p>
+              <p className="baihua-kicker">PRICE & SHARE</p>
+              <h2>定价与分享</h2>
+              <span>租期、支付、押金、报价和客户链接集中在这里。</span>
             </div>
-            <button onClick={() => setShowPaymentSheet(true)}>高级设置</button>
+            <button className="baihua-ghost-mini" onClick={() => setShowPaymentSheet(true)}>高级设置</button>
           </div>
 
-          <div className="pricing-stats-grid">
+          <div className="baihua-price-stats">
             <div><span>日租金</span><strong>¥ {money(currentStats.dailyRent)}</strong></div>
             <div><span>系统总租金</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
             <div><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
           </div>
 
-          <div className="pricing-option-block">
-            <div className="pricing-option-title"><strong>租期选择</strong><span>{currentPlan.leaseMonths || 12} 月</span></div>
-            <div className="segmented-grid four">
+          <div className="baihua-option-block">
+            <div className="baihua-option-title"><strong>租期选择</strong><span>{currentPlan.leaseMonths || 12} 月</span></div>
+            <div className="baihua-segment four">
               {[6, 12, 24, 36].map((month) => {
                 const selected = Number(currentPlan.leaseMonths || 12) === month;
-                return (
-                  <button key={month} className={selected ? "segmented-button active" : "segmented-button"} onClick={() => updateCurrentPlanField("leaseMonths", month)}>
-                    {month}月
-                  </button>
-                );
+                return <button key={month} className={selected ? "active" : ""} onClick={() => updateCurrentPlanField("leaseMonths", month)}>{month}月</button>;
               })}
             </div>
           </div>
 
-          <div className="pricing-option-block">
-            <div className="pricing-option-title"><strong>支付方式</strong><span>{currentPlan.paymentMethod || "月付"}</span></div>
-            <div className="segmented-grid four">
+          <div className="baihua-option-block">
+            <div className="baihua-option-title"><strong>支付方式</strong><span>{currentPlan.paymentMethod || "月付"}</span></div>
+            <div className="baihua-segment four">
               {["月付", "季付", "半年付", "年付"].map((method) => {
                 const selected = (currentPlan.paymentMethod || "月付") === method;
-                return (
-                  <button key={method} className={selected ? "segmented-button active" : "segmented-button"} onClick={() => updateCurrentPlanField("paymentMethod", method)}>
-                    {method}
-                  </button>
-                );
+                return <button key={method} className={selected ? "active" : ""} onClick={() => updateCurrentPlanField("paymentMethod", method)}>{method}</button>;
               })}
             </div>
           </div>
 
-          <div className="pricing-option-block compact">
-            <div className="pricing-option-title"><strong>押金</strong><span>{currentPlan.needDeposit ? "需要" : "不需要"}</span></div>
-            <div className="segmented-grid two">
-              <button className={currentPlan.needDeposit ? "segmented-button active" : "segmented-button"} onClick={() => updateCurrentPlanField("needDeposit", true)}>需要押金</button>
-              <button className={!currentPlan.needDeposit ? "segmented-button active" : "segmented-button"} onClick={() => updateCurrentPlanField("needDeposit", false)}>不需要</button>
+          <div className="baihua-option-block">
+            <div className="baihua-option-title"><strong>押金</strong><span>{currentPlan.needDeposit ? "需要" : "不需要"}</span></div>
+            <div className="baihua-segment two">
+              <button className={currentPlan.needDeposit ? "active" : ""} onClick={() => updateCurrentPlanField("needDeposit", true)}>需要押金</button>
+              <button className={!currentPlan.needDeposit ? "active" : ""} onClick={() => updateCurrentPlanField("needDeposit", false)}>不需要</button>
             </div>
           </div>
 
-          <label className="final-price-editor">
+          <label className="baihua-price-editor">
             <span>销售定价 / 最终报价</span>
             <input type="number" value={currentPlan.customFinalRent || ""} onChange={(e) => updateCurrentPlanField("customFinalRent", e.target.value)} placeholder={`默认 ¥${money(currentStats.systemTotalRent)}`} />
           </label>
 
-          <div className="pricing-action-grid">
+          <div className="baihua-action-row three">
             <button onClick={() => setShowPriceSheet(true)}>快捷改价</button>
             <button onClick={() => copyText(buildPlanText(currentOrder), "方案摘要已复制")}>复制摘要</button>
-            <button onClick={() => copyCustomerPlanLink(currentOrder)}>生成客户查看链接</button>
+            <button onClick={() => copyCustomerPlanLink(currentOrder)}>客户链接</button>
           </div>
         </section>
 
@@ -2589,191 +2532,118 @@ ${areaText || "暂无区域"}
   }
 
   function renderProductSheet() {
-    const videoBlue = "#2d5f8f";
-    const sheetStyle = {
-      height: "92vh",
-      maxHeight: "92vh",
-      overflow: "hidden",
-      display: "flex",
-      flexDirection: "column",
-      background: "#fff",
-      borderRadius: "18px 18px 0 0",
-      paddingBottom: "env(safe-area-inset-bottom)",
-    };
-    const topStyle = {
-      flexShrink: 0,
-      background: "#fff",
-      borderBottom: "1px solid #e7edf4",
-      padding: "10px 14px 8px",
-    };
-    const searchWrapStyle = {
-      background: videoBlue,
-      borderRadius: 10,
-      padding: 8,
-      margin: "10px 0",
-    };
-    const productMainStyle = {
-      flex: 1,
-      minHeight: 0,
-      display: "grid",
-      gridTemplateColumns: "92px minmax(0, 1fr)",
-      overflow: "hidden",
-      background: "#f5f7fa",
-    };
-    const rowButtonStyle = {
-      width: "100%",
-      border: 0,
-      borderBottom: "1px solid #e8edf3",
-      background: "transparent",
-      color: "#526274",
-      fontWeight: 800,
-      padding: "15px 8px",
-      textAlign: "center",
-      fontSize: 14,
-    };
+    if (!currentArea) return null;
 
     return (
       <div className="sheet-mask" onClick={() => setShowProductSheet(false)}>
-        <section style={sheetStyle} onClick={(event) => event.stopPropagation()}>
-          <div style={{ width: 48, height: 5, borderRadius: 99, background: "#d8e1ea", margin: "10px auto 2px", flexShrink: 0 }} />
-          <div style={topStyle}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-              <div>
-                <p style={{ margin: 0, color: "#8a96a8", fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 900 }}>Item Selector</p>
-                <h2 style={{ margin: "4px 0 0", color: "#182536", fontSize: 22 }}>{currentArea?.name || "当前场景"}物料选择</h2>
-              </div>
-              <button style={{ width: 38, height: 38, borderRadius: 10, border: 0, background: "#eef2f6", color: "#526274", fontSize: 24, fontWeight: 800 }} onClick={() => setShowProductSheet(false)}>×</button>
+        <section className="baihua-selector" onClick={(event) => event.stopPropagation()}>
+          <div className="baihua-selector-handle" />
+          <header className="baihua-selector-header">
+            <div>
+              <p className="baihua-kicker">ITEM SELECTOR · v3.7</p>
+              <h2>{currentArea?.name || "当前场景"}物料选择</h2>
+              <span>选择植物后会直接加入当前场景，可连续点选。</span>
             </div>
-            <div style={searchWrapStyle}>
-              <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="搜索物料名称 / 规格 / 场景" style={{ width: "100%", height: 42, border: 0, borderRadius: 8, background: "#fff", padding: "0 12px", fontSize: 15, outline: "none" }} />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid #e7edf4" }}>
-              {['植物', '花盆', '资材'].map((name) => (
-                <button key={name} style={{ border: 0, background: "transparent", padding: "11px 0", color: name === '植物' ? videoBlue : "#526274", fontWeight: 900, borderBottom: name === '植物' ? `3px solid ${videoBlue}` : "3px solid transparent" }} onClick={() => name !== '植物' && alert(`${name}库已经预留，后续补充数据。`)}>{name}</button>
-              ))}
-            </div>
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 8 }}>
-              {["全部商品", ...productCategories].map((category) => (
-                <button key={category} style={{ flex: "0 0 auto", border: 0, borderRadius: 8, padding: "8px 12px", background: activeCategory === category ? videoBlue : "#eef2f6", color: activeCategory === category ? "#fff" : "#526274", fontWeight: 900 }} onClick={() => { setActiveCategory(category); setActiveSubCategory(category === "全部商品" ? "全部规格" : "大型植物"); }}>{category}</button>
-              ))}
-            </div>
+            <button onClick={() => setShowProductSheet(false)}>×</button>
+          </header>
+
+          <div className="baihua-selector-search">
+            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="搜索物料名称 / 规格 / 场景" />
           </div>
 
-          <main style={productMainStyle}>
-            <aside style={{ overflowY: "auto", background: "#fff", borderRight: "1px solid #e7edf4", paddingBottom: 86 }}>
+          <div className="baihua-selector-tabs">
+            {['植物', '花盆', '资材'].map((name) => (
+              <button key={name} className={name === '植物' ? 'active' : ''} onClick={() => name !== '植物' && alert(`${name}库已经预留，后续补充数据。`)}>{name}</button>
+            ))}
+          </div>
+
+          <div className="baihua-category-strip">
+            {["全部商品", ...productCategories].map((category) => (
+              <button key={category} className={activeCategory === category ? "active" : ""} onClick={() => { setActiveCategory(category); setActiveSubCategory(category === "全部商品" ? "全部规格" : "大型植物"); }}>{category}</button>
+            ))}
+          </div>
+
+          <main className="baihua-selector-body">
+            <aside>
               {["全部规格", ...subCategories].map((subCategory) => (
-                <button key={subCategory} style={{ ...rowButtonStyle, background: activeSubCategory === subCategory ? "#eaf2fb" : "transparent", color: activeSubCategory === subCategory ? videoBlue : "#526274", borderLeft: activeSubCategory === subCategory ? `4px solid ${videoBlue}` : "4px solid transparent" }} onClick={() => setActiveSubCategory(subCategory)}>{subCategory}</button>
+                <button key={subCategory} className={activeSubCategory === subCategory ? "active" : ""} onClick={() => setActiveSubCategory(subCategory)}>{subCategory}</button>
               ))}
             </aside>
-            <section style={{ overflowY: "auto", minHeight: 0, padding: "10px 10px 96px" }}>
+            <section>
               {filteredProducts.length === 0 ? (
-                <div style={{ background: "#fff", border: "1px solid #e4eaf2", borderRadius: 12, padding: 18, color: "#7b899a", textAlign: "center" }}><strong style={{ color: "#223247" }}>暂无物料</strong><br/>可以切到“全部商品”，或搜索刚新增的商品名称。</div>
+                <div className="baihua-selector-empty"><strong>暂无物料</strong><span>可以切到“全部商品”，或搜索刚新增的商品名称。</span></div>
               ) : filteredProducts.map((product) => {
                 const selected = safeItems(currentArea).find((item) => item.productId === product.id);
                 const selectedQuantity = selected ? Number(selected.quantity || 0) : 0;
                 const image = getProductImage(product);
                 return (
-                  <button key={product.id} onClick={() => addProductToArea(product)} style={{ width: "100%", display: "grid", gridTemplateColumns: "54px 1fr auto", gap: 10, alignItems: "center", background: "#fff", border: "1px solid #e4eaf2", borderRadius: 12, padding: 10, marginBottom: 10, textAlign: "left", boxShadow: "0 4px 12px rgba(31,58,88,.04)" }}>
-                    <span style={{ width: 54, height: 54, borderRadius: 8, background: "#f2f5f8", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", fontSize: 24 }}>{isImageUrl(image) ? <img src={image} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : image}</span>
-                    <span style={{ minWidth: 0 }}>
-                      <strong style={{ display: "block", color: "#182536", fontSize: 15, marginBottom: 4 }}>{product.name}</strong>
-                      <small style={{ display: "block", color: "#7b899a", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{product.description}</small>
-                      <b style={{ display: "block", color: videoBlue, marginTop: 5 }}>¥ {product.pricePerDay}/天</b>
+                  <button key={product.id} className="baihua-product-row" onClick={() => addProductToArea(product)}>
+                    <span className="baihua-product-img">{isImageUrl(image) ? <img src={image} alt={product.name} /> : image}</span>
+                    <span className="baihua-product-main">
+                      <strong>{product.name}</strong>
+                      <small>{product.description}</small>
+                      <b>¥ {product.pricePerDay}/天</b>
                     </span>
-                    <span style={{ borderRadius: 8, background: selectedQuantity > 0 ? "#eaf2fb" : videoBlue, color: selectedQuantity > 0 ? "#2f6fae" : "#fff", padding: "8px 9px", fontWeight: 900, fontSize: 12, whiteSpace: "nowrap" }}>{selectedQuantity > 0 ? `已选${selectedQuantity}` : "添加"}</span>
+                    <span className={selectedQuantity > 0 ? "baihua-add-chip selected" : "baihua-add-chip"}>{selectedQuantity > 0 ? `已选${selectedQuantity}` : "添加"}</span>
                   </button>
                 );
               })}
             </section>
           </main>
 
-          <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 60, background: "rgba(255,255,255,.98)", borderTop: "1px solid #e4eaf2", padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-            <button style={{ border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 12px", fontSize: 16 }} onClick={() => setShowProductSheet(false)}>
-              已选 {getAreaProductCount(currentArea)} 件｜日租金 ¥ {money(getAreaDailyRent(currentArea))}｜完成选品
-            </button>
-            <button style={{ border: "1px solid #f0c7c2", borderRadius: 10, background: "#fff7f6", color: "#b44a3e", fontWeight: 800, padding: "10px 12px" }} onClick={clearCurrentAreaItems}>清空当前场景物料</button>
-          </div>
+          <footer className="baihua-selector-footer">
+            <button className="primary" onClick={() => setShowProductSheet(false)}>已选 {getAreaProductCount(currentArea)} 件｜日租金 ¥ {money(getAreaDailyRent(currentArea))}｜完成选品</button>
+            <button className="danger" onClick={clearCurrentAreaItems}>清空当前场景物料</button>
+          </footer>
         </section>
       </div>
     );
   }
 
   function renderPaymentSheet() {
-    const optionStyle = (selected) =>
-      selected
-        ? {
-            background: "#2f6fae",
-            color: "#fff",
-            borderColor: "#2f6fae",
-            fontWeight: 800,
-            boxShadow: "0 10px 24px rgba(58, 117, 196, 0.22)",
-          }
-        : {};
-
     return (
       <div className="sheet-mask" onClick={() => setShowPaymentSheet(false)}>
-        <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
+        <section className="bottom-sheet baihua-sheet" onClick={(event) => event.stopPropagation()}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <div><p className="eyebrow">Payment</p><h2>租期与支付</h2></div>
             <button className="close-button" onClick={() => setShowPaymentSheet(false)}>×</button>
           </div>
 
-          <div className="empty-card">
-            <p>当前选择：{currentPlan.leaseMonths || 12} 月｜{currentPlan.paymentMethod || "月付"}｜押金{currentPlan.needDeposit ? "需要" : "不需要"}</p>
-            <span>点选后会立即保存，颜色变深的按钮就是当前生效选项。</span>
+          <div className="baihua-sheet-summary">
+            <strong>{currentPlan.leaseMonths || 12} 月｜{currentPlan.paymentMethod || "月付"}｜押金{currentPlan.needDeposit ? "需要" : "不需要"}</strong>
+            <span>点选后立即保存，深色选项就是当前生效设置。</span>
           </div>
 
-          <div className="sheet-block">
-            <p className="sheet-label">选择租期</p>
-            <div className="option-grid">
+          <div className="baihua-option-block">
+            <div className="baihua-option-title"><strong>选择租期</strong><span>{currentPlan.leaseMonths || 12} 月</span></div>
+            <div className="baihua-segment four">
               {[6, 12, 24, 36].map((m) => {
                 const selected = Number(currentPlan.leaseMonths || 12) === m;
-                return (
-                  <button
-                    key={m}
-                    className={selected ? "selected" : ""}
-                    style={optionStyle(selected)}
-                    onClick={() => updateCurrentPlanField("leaseMonths", m)}
-                  >
-                    {selected ? `✓ ${m} 月` : `${m} 月`}
-                  </button>
-                );
+                return <button key={m} className={selected ? "active" : ""} onClick={() => updateCurrentPlanField("leaseMonths", m)}>{m} 月</button>;
               })}
             </div>
           </div>
 
-          <div className="sheet-block">
-            <p className="sheet-label">支付方式</p>
-            <div className="option-grid payment-grid">
+          <div className="baihua-option-block">
+            <div className="baihua-option-title"><strong>支付方式</strong><span>{currentPlan.paymentMethod || "月付"}</span></div>
+            <div className="baihua-segment four">
               {["月付", "季付", "半年付", "年付"].map((method) => {
-                const selected = currentPlan.paymentMethod === method;
-                return (
-                  <button
-                    key={method}
-                    className={selected ? "selected" : ""}
-                    style={optionStyle(selected)}
-                    onClick={() => updateCurrentPlanField("paymentMethod", method)}
-                  >
-                    {selected ? `✓ ${method}` : method}
-                  </button>
-                );
+                const selected = (currentPlan.paymentMethod || "月付") === method;
+                return <button key={method} className={selected ? "active" : ""} onClick={() => updateCurrentPlanField("paymentMethod", method)}>{method}</button>;
               })}
             </div>
           </div>
 
-          <div className="deposit-row">
-            <div><strong>是否需要押金</strong><span>真实业务里可根据客户情况调整</span></div>
-            <button
-              className={currentPlan.needDeposit ? "switch-button active" : "switch-button"}
-              style={optionStyle(Boolean(currentPlan.needDeposit))}
-              onClick={() => updateCurrentPlanField("needDeposit", !currentPlan.needDeposit)}
-            >
-              {currentPlan.needDeposit ? "✓ 需要" : "不需要"}
-            </button>
+          <div className="baihua-option-block">
+            <div className="baihua-option-title"><strong>是否需要押金</strong><span>{currentPlan.needDeposit ? "需要" : "不需要"}</span></div>
+            <div className="baihua-segment two">
+              <button className={currentPlan.needDeposit ? "active" : ""} onClick={() => updateCurrentPlanField("needDeposit", true)}>需要押金</button>
+              <button className={!currentPlan.needDeposit ? "active" : ""} onClick={() => updateCurrentPlanField("needDeposit", false)}>不需要</button>
+            </div>
           </div>
 
-          <div className="rent-preview"><span>预计总租金</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
+          <div className="baihua-rent-preview"><span>预计总租金</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
           <button className="submit-sheet-button" onClick={() => setShowPaymentSheet(false)}>保存租期与支付</button>
         </section>
       </div>
@@ -2783,24 +2653,21 @@ ${areaText || "暂无区域"}
   function renderPriceSheet() {
     return (
       <div className="sheet-mask" onClick={() => setShowPriceSheet(false)}>
-        <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
+        <section className="bottom-sheet baihua-sheet" onClick={(event) => event.stopPropagation()}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <div><p className="eyebrow">Adjust Price</p><h2>修改最终报价</h2></div>
             <button className="close-button" onClick={() => setShowPriceSheet(false)}>×</button>
           </div>
 
-          <div className="sheet-block">
-            <p className="sheet-label">系统预计总租金</p>
-            <div className="price-preview-line"><span>按当前商品和租期自动计算</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
-          </div>
+          <div className="baihua-rent-preview"><span>系统预计总租金</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
 
-          <div className="sheet-block">
-            <p className="sheet-label">最终报价</p>
-            <input className="price-input" type="number" value={currentPlan.customFinalRent || ""} onChange={(e) => updateCurrentPlanField("customFinalRent", e.target.value)} placeholder="不填则使用系统预计总租金" />
-          </div>
+          <label className="baihua-price-editor in-sheet">
+            <span>最终报价</span>
+            <input type="number" value={currentPlan.customFinalRent || ""} onChange={(e) => updateCurrentPlanField("customFinalRent", e.target.value)} placeholder="不填则使用系统预计总租金" />
+          </label>
 
-          <div className="quick-price-list">
+          <div className="baihua-quick-price-list">
             {[money(currentStats.systemTotalRent), 1980, 2880, 3880].map((price) => (
               <button key={price} onClick={() => updateCurrentPlanField("customFinalRent", String(price))}>¥ {price}</button>
             ))}
@@ -2815,21 +2682,23 @@ ${areaText || "暂无区域"}
   function renderMoreSheet() {
     return (
       <div className="sheet-mask" onClick={() => setShowMoreSheet(false)}>
-        <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
+        <section className="bottom-sheet baihua-sheet" onClick={(event) => event.stopPropagation()}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <div><p className="eyebrow">More</p><h2>更多操作</h2></div>
             <button className="close-button" onClick={() => setShowMoreSheet(false)}>×</button>
           </div>
 
-          <button className="submit-sheet-button" onClick={() => copyText(buildPlanText(currentOrder), "方案摘要已复制")}>复制方案摘要</button>
-          <button className="submit-sheet-button" onClick={() => copyCustomerPlanLink(currentOrder)}>复制客户方案链接</button>
-          <button className="submit-sheet-button" onClick={() => markPlanSentToCustomer(currentOrder.id)}>标记已转发客户</button>
-          <button className="submit-sheet-button" onClick={() => openRouteNavigation(currentOrder.address)}>打开导航</button>
-          <button className="submit-sheet-button" onClick={() => locateStaff(currentOrder.id)}>定位当前位置</button>
-          <button className="submit-sheet-button" onClick={() => exportOrderData(currentOrder)}>导出当前订单数据</button>
+          <div className="baihua-more-grid">
+            <button onClick={() => copyText(buildPlanText(currentOrder), "方案摘要已复制")}>复制方案摘要</button>
+            <button onClick={() => copyCustomerPlanLink(currentOrder)}>复制客户链接</button>
+            <button onClick={() => markPlanSentToCustomer(currentOrder.id)}>标记已转发</button>
+            <button onClick={() => openRouteNavigation(currentOrder.address)}>打开导航</button>
+            <button onClick={() => locateStaff(currentOrder.id)}>定位当前位置</button>
+            <button onClick={() => exportOrderData(currentOrder)}>导出订单数据</button>
+          </div>
 
-          <button className="ghost-button danger" onClick={() => {
+          <button className="baihua-danger-wide" onClick={() => {
             updateOrderPlan(currentOrder.id, (plan) => ({ ...plan, areas: [] }), "全部区域已清空");
             setShowMoreSheet(false);
           }}>
@@ -2843,27 +2712,22 @@ ${areaText || "暂无区域"}
   function renderSubmitSheet() {
     return (
       <div className="sheet-mask" onClick={() => setShowSubmitSheet(false)}>
-        <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
+        <section className="bottom-sheet baihua-sheet" onClick={(event) => event.stopPropagation()}>
           <div className="sheet-handle" />
           <div className="sheet-header">
             <div><p className="eyebrow">Submit Plan</p><h2>提交给商户确认</h2></div>
             <button className="close-button" onClick={() => setShowSubmitSheet(false)}>×</button>
           </div>
 
-          <div className="sheet-block">
-            <div className="empty-card">
-              <p>提交后会留在“做方案”</p>
-              <span>商户确认前显示为待商户确认；确认后会进入执行中。</span>
-            </div>
-
-            <div className="confirm-row"><span>项目 / 客户</span><strong>{currentOrder.customerName}</strong></div>
-            <div className="confirm-row"><span>区域数量</span><strong>{currentStats.areaCount} 个</strong></div>
-            <div className="confirm-row"><span>商品数量</span><strong>{currentStats.productCount} 件</strong></div>
-            <div className="confirm-row"><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
+          <div className="baihua-submit-summary">
+            <div><span>项目 / 客户</span><strong>{currentOrder.customerName}</strong></div>
+            <div><span>区域数量</span><strong>{currentStats.areaCount} 个</strong></div>
+            <div><span>商品数量</span><strong>{currentStats.productCount} 件</strong></div>
+            <div><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
           </div>
 
           {currentStats.productCount === 0 && (
-            <div className="rent-preview"><span>提醒</span><strong>当前还没有添加商品，也可以先提交测试流程</strong></div>
+            <div className="baihua-rent-preview warning"><span>提醒</span><strong>当前还没有添加商品，也可以先提交测试流程</strong></div>
           )}
 
           <button className="submit-sheet-button" onClick={submitPlan}>确认提交给商户</button>
