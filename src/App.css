@@ -1765,17 +1765,3 @@ button.danger,
   white-space: normal !important;
   padding: 12px !important;
 }
-/* 强制铺满所有容器 */
-.admin-layout {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  height: 100vh; /* 强制占满屏幕高度 */
-  overflow: hidden; /* 防止出现双滚动条 */
-}
-
-.admin-main {
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow-y: auto; /* 只有右侧区域自己滚动 */
-  padding: 24px;
-}
