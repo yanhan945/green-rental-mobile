@@ -1,5 +1,19 @@
 /* v3.5 融合版：保留完整业务功能，视觉更接近参考视频冷灰蓝工具风 */
+/* ================= 紧急破除 React 默认限制，实现真正的 SaaS 全屏铺满 ================= */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  height: 100%;
+}
 
+#root {
+  max-width: 100% !important; /* 打破默认的 1280px 限制 */
+  width: 100% !important;
+  margin: 0 !important;       /* 取消默认居中 */
+  padding: 0 !important;      /* 取消四周的白边 */
+  text-align: left !important;
+}
 :root {
   --page-bg: #f3f5f8;
   --card-bg: #ffffff;
