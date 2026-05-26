@@ -1731,8 +1731,8 @@ ${areaText || "暂无区域"}
       const canBuild = ["配置中", "待商户确认"].includes(order.status);
       const canExecute = ["方案已确认", "执行中"].includes(order.status);
       
-      const videoBlue = "#3a75c4"; 
-      const statusTone = isPending ? "#e8f1fc" : canBuild ? "#fff4e6" : "#f3f5f8";
+      const videoBlue = "#2f6fae"; 
+      const statusTone = isPending ? "#eaf2fb" : canBuild ? "#fff4e6" : "#f3f5f8";
       const statusColor = isPending ? videoBlue : canBuild ? "#b7791f" : "#5f6b7a";
 
       return (
@@ -2211,7 +2211,7 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("plan")}>←</button>
           <div>
-            <p className="eyebrow">Task Complete · v3.4</p>
+            <p className="eyebrow">Task Complete · v3.5</p>
             <h1>任务完成</h1>
           </div>
         </header>
@@ -2324,7 +2324,7 @@ ${areaText || "暂无区域"}
   function renderPlanPage() {
     if (!currentOrder || !currentPlan) return null;
 
-    const videoBlue = "#3a75c4";
+    const videoBlue = "#2f6fae";
     const selectedRows = planAreas.flatMap((area) =>
       safeItems(area).map((item) => ({ ...item, areaId: area.id, areaName: area.name }))
     );
@@ -2382,7 +2382,7 @@ ${areaText || "暂无区域"}
               <span style={{ ...labelStyle, display: "block", marginBottom: 4 }}>当前任务</span>
               <strong style={{ fontSize: 18, color: "#182536" }}>{currentOrder.customerName}</strong>
             </div>
-            <span style={{ borderRadius: 6, background: "#eaf3ff", color: videoBlue, padding: "6px 10px", fontWeight: 900 }}>{currentOrder.status}</span>
+            <span style={{ borderRadius: 6, background: "#eaf2fb", color: videoBlue, padding: "6px 10px", fontWeight: 900 }}>{currentOrder.status}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "78px 1fr", gap: "8px 10px", borderTop: "1px solid #edf1f5", paddingTop: 10 }}>
             <span style={labelStyle}>任务地址</span><strong style={{ ...strongStyle, textAlign: "right" }}>{currentOrder.address || "-"}</strong>
@@ -2429,7 +2429,7 @@ ${areaText || "暂无区域"}
 
           <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 8 }}>
             {planAreas.map((area) => (
-              <button key={area.id} style={{ flex: "0 0 auto", border: "1px solid #d8e1ec", borderRadius: 8, padding: "8px 10px", background: currentAreaId === area.id ? "#eaf3ff" : "#fff", color: currentAreaId === area.id ? videoBlue : "#526274", fontWeight: 800 }} onClick={() => openProductSheet(area)}>
+              <button key={area.id} style={{ flex: "0 0 auto", border: "1px solid #d8e1ec", borderRadius: 8, padding: "8px 10px", background: currentAreaId === area.id ? "#eaf2fb" : "#fff", color: currentAreaId === area.id ? videoBlue : "#526274", fontWeight: 800 }} onClick={() => openProductSheet(area)}>
                 {area.name} · {getAreaProductCount(area)}件
               </button>
             ))}
@@ -2461,7 +2461,7 @@ ${areaText || "暂无区域"}
                       <td style={{ padding: 10 }}><strong style={{ color: "#223247" }}>{item.name}</strong><br/><span style={{ color: "#8a96a8" }}>{item.areaName}</span></td>
                       <td style={{ padding: 10, textAlign: "center" }}><span style={{ width: 42, height: 42, borderRadius: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#f2f5f8", overflow: "hidden" }}>{isImageUrl(image) ? <img src={image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : image}</span></td>
                       <td style={{ padding: 10, textAlign: "right", fontWeight: 800 }}>¥ {item.pricePerDay}/天</td>
-                      <td style={{ padding: 10, textAlign: "center" }}><span style={{ borderRadius: 6, background: "#e9f6f1", color: "#2b8c68", padding: "4px 8px", fontWeight: 800 }}>有货</span></td>
+                      <td style={{ padding: 10, textAlign: "center" }}><span style={{ borderRadius: 6, background: "#eaf2fb", color: "#2f6fae", padding: "4px 8px", fontWeight: 800 }}>有货</span></td>
                       <td style={{ padding: 10, textAlign: "center" }}><input inputMode="numeric" type="number" value={item.quantity} min="1" style={{ width: 56, height: 34, border: "1px solid #d8e1ec", borderRadius: 8, textAlign: "center", fontWeight: 800 }} onChange={(e) => {
                         const nextQty = Math.max(1, Number(e.target.value || 1));
                         updateOrderPlan(currentOrder.id, (plan) => ({
@@ -2536,7 +2536,7 @@ ${areaText || "暂无区域"}
   }
 
   function renderProductSheet() {
-    const videoBlue = "#3a75c4";
+    const videoBlue = "#2f6fae";
     const sheetStyle = {
       height: "92vh",
       maxHeight: "92vh",
@@ -2609,7 +2609,7 @@ ${areaText || "暂无区域"}
           <main style={productMainStyle}>
             <aside style={{ overflowY: "auto", background: "#fff", borderRight: "1px solid #e7edf4", paddingBottom: 86 }}>
               {["全部规格", ...subCategories].map((subCategory) => (
-                <button key={subCategory} style={{ ...rowButtonStyle, background: activeSubCategory === subCategory ? "#eaf3ff" : "transparent", color: activeSubCategory === subCategory ? videoBlue : "#526274", borderLeft: activeSubCategory === subCategory ? `4px solid ${videoBlue}` : "4px solid transparent" }} onClick={() => setActiveSubCategory(subCategory)}>{subCategory}</button>
+                <button key={subCategory} style={{ ...rowButtonStyle, background: activeSubCategory === subCategory ? "#eaf2fb" : "transparent", color: activeSubCategory === subCategory ? videoBlue : "#526274", borderLeft: activeSubCategory === subCategory ? `4px solid ${videoBlue}` : "4px solid transparent" }} onClick={() => setActiveSubCategory(subCategory)}>{subCategory}</button>
               ))}
             </aside>
             <section style={{ overflowY: "auto", minHeight: 0, padding: "10px 10px 96px" }}>
@@ -2627,7 +2627,7 @@ ${areaText || "暂无区域"}
                       <small style={{ display: "block", color: "#7b899a", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{product.description}</small>
                       <b style={{ display: "block", color: videoBlue, marginTop: 5 }}>¥ {product.pricePerDay}/天</b>
                     </span>
-                    <span style={{ borderRadius: 8, background: selectedQuantity > 0 ? "#e9f6f1" : videoBlue, color: selectedQuantity > 0 ? "#2b8c68" : "#fff", padding: "8px 9px", fontWeight: 900, fontSize: 12, whiteSpace: "nowrap" }}>{selectedQuantity > 0 ? `已选${selectedQuantity}` : "添加"}</span>
+                    <span style={{ borderRadius: 8, background: selectedQuantity > 0 ? "#eaf2fb" : videoBlue, color: selectedQuantity > 0 ? "#2f6fae" : "#fff", padding: "8px 9px", fontWeight: 900, fontSize: 12, whiteSpace: "nowrap" }}>{selectedQuantity > 0 ? `已选${selectedQuantity}` : "添加"}</span>
                   </button>
                 );
               })}
@@ -2649,9 +2649,9 @@ ${areaText || "暂无区域"}
     const optionStyle = (selected) =>
       selected
         ? {
-            background: "#3a75c4",
+            background: "#2f6fae",
             color: "#fff",
-            borderColor: "#3a75c4",
+            borderColor: "#2f6fae",
             fontWeight: 800,
             boxShadow: "0 10px 24px rgba(58, 117, 196, 0.22)",
           }
@@ -2922,7 +2922,7 @@ ${areaText || "暂无区域"}
         gridTemplateColumns: "1.6fr 0.9fr 0.9fr 0.9fr 0.9fr 1.2fr",
         gap: 10,
         padding: "8px 14px",
-        color: "#6f8176",
+        color: "#667085",
         fontSize: 13,
         fontWeight: 800,
       },
@@ -2930,7 +2930,7 @@ ${areaText || "暂无区域"}
         border: 0,
         borderRadius: 14,
         padding: "10px 12px",
-        background: "#217642",
+        background: "#2f6fae",
         color: "white",
         fontWeight: 900,
         cursor: "pointer",
@@ -2939,8 +2939,8 @@ ${areaText || "暂无区域"}
         border: 0,
         borderRadius: 14,
         padding: "10px 12px",
-        background: "#eff7ef",
-        color: "#17412d",
+        background: "#eef4fb",
+        color: "#1f2937",
         fontWeight: 900,
         cursor: "pointer",
       },
@@ -2962,7 +2962,7 @@ ${areaText || "暂无区域"}
         <section style={desktopStyles.metricCard}>
           <p className="eyebrow">{label}</p>
           <strong style={{ display: "block", fontSize: 28, color: "#173f2d", marginTop: 6 }}>{value}</strong>
-          {hint && <span style={{ color: "#738278", fontSize: 13 }}>{hint}</span>}
+          {hint && <span style={{ color: "#667085", fontSize: 13 }}>{hint}</span>}
         </section>
       );
     }
@@ -2998,7 +2998,7 @@ ${areaText || "暂无区域"}
                     <div style={desktopStyles.row} key={order.id}>
                       <div>
                         <strong>{order.customerName}</strong>
-                        <span style={{ display: "block", color: "#7a8a80", fontSize: 13 }}>{order.address}</span>
+                        <span style={{ display: "block", color: "#667085", fontSize: 13 }}>{order.address}</span>
                       </div>
                       <strong>{order.status}</strong>
                       <span>{order.contactName || "-"}{order.phone ? `｜${order.phone}` : ""}</span>
@@ -3029,7 +3029,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.shell}>
           <div style={desktopStyles.topbar}>
             <div>
-              <p className="eyebrow">Review Desk · v3.4</p>
+              <p className="eyebrow">Review Desk · v3.5</p>
               <h1>{order.customerName}</h1>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -3112,9 +3112,9 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.layout}>
           <aside style={desktopStyles.sidebar}>
             <div style={desktopStyles.brand}>
-              <p className="eyebrow">Merchant Admin · v3.4</p>
+              <p className="eyebrow">Merchant Admin · v3.5</p>
               <h2 style={{ margin: 0 }}>绿植租赁后台</h2>
-              <span style={{ color: "#738278", fontSize: 13 }}>公司端 / 商户端</span>
+              <span style={{ color: "#667085", fontSize: 13 }}>公司端 / 商户端</span>
             </div>
 
             {navItems.map((item) => (
@@ -3122,8 +3122,8 @@ ${areaText || "暂无区域"}
                 key={item}
                 style={{
                   ...desktopStyles.navButton,
-                  background: merchantTab === item ? "#217642" : "#eff7ef",
-                  color: merchantTab === item ? "#fff" : "#17412d",
+                  background: merchantTab === item ? "#2f6fae" : "#eef4fb",
+                  color: merchantTab === item ? "#fff" : "#1f2937",
                 }}
                 onClick={() => setMerchantTab(item)}
               >
@@ -3131,7 +3131,7 @@ ${areaText || "暂无区域"}
               </button>
             ))}
 
-            <button style={{ ...desktopStyles.navButton, background: "#f7fbf6", color: "#17412d", marginTop: 12 }} onClick={() => switchRole("staff")}>
+            <button style={{ ...desktopStyles.navButton, background: "#f8fafc", color: "#1f2937", marginTop: 12 }} onClick={() => switchRole("staff")}>
               切到员工端
             </button>
           </aside>
@@ -3141,8 +3141,8 @@ ${areaText || "暂无区域"}
               <div>
                 <p className="eyebrow">Dashboard</p>
                 <h1>{merchantTab}</h1>
-                <span style={{ color: "#738278" }}>{syncMessage}</span>
-                <span style={{ display: "block", color: "#217642", fontWeight: 800, marginTop: 4 }}>实时同步：{autoSyncState}</span>
+                <span style={{ color: "#667085" }}>{syncMessage}</span>
+                <span style={{ display: "block", color: "#2f6fae", fontWeight: 800, marginTop: 4 }}>实时同步：{autoSyncState}</span>
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button style={desktopStyles.softButton} onClick={refreshOrdersFromCloud}>刷新订单</button>
@@ -3265,7 +3265,7 @@ ${areaText || "暂无区域"}
                         <article
                           className="product-card"
                           key={product.id}
-                          style={isListed ? undefined : { opacity: 0.55, filter: "grayscale(0.75)", background: "#f4f6f2" }}
+                          style={isListed ? undefined : { opacity: 0.55, filter: "grayscale(0.75)", background: "#f6f8fb" }}
                         >
                           <div className="product-image" style={{ width: 76, height: 76, flexShrink: 0 }}>
                             {isImageUrl(getProductImage(product)) ? (
@@ -3412,7 +3412,7 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">Customer Editor · v3.4</p><h2>{editingCustomerId ? "编辑客户" : "新增客户"}</h2></div>
+            <div><p className="eyebrow">Customer Editor · v3.5</p><h2>{editingCustomerId ? "编辑客户" : "新增客户"}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>×</button>
           </div>
 
@@ -3477,7 +3477,7 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => setShowCreateProductSheet(false)}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">Product Editor · v3.4</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
+            <div><p className="eyebrow">Product Editor · v3.5</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}>×</button>
           </div>
 
@@ -3560,11 +3560,11 @@ ${areaText || "暂无区域"}
             border: "1px solid rgba(34, 116, 67, 0.12)"
           }}>
             <button
-              style={{ minWidth: 128, border: 0, borderRadius: 18, padding: "14px 22px", background: "#eef7ef", color: "#214b35", fontWeight: 900, cursor: "pointer" }}
+              style={{ minWidth: 128, border: 0, borderRadius: 18, padding: "14px 22px", background: "#eef4fb", color: "#334155", fontWeight: 900, cursor: "pointer" }}
               onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}
             >取消</button>
             <button
-              style={{ minWidth: 180, border: 0, borderRadius: 18, padding: "14px 24px", background: "#217642", color: "#fff", fontWeight: 900, cursor: "pointer", boxShadow: "0 14px 28px rgba(33, 118, 66, 0.22)" }}
+              style={{ minWidth: 180, border: 0, borderRadius: 18, padding: "14px 24px", background: "#2f6fae", color: "#fff", fontWeight: 900, cursor: "pointer", boxShadow: "0 14px 28px rgba(33, 118, 66, 0.22)" }}
               onClick={createMerchantProduct}
             >{editingProductId ? "保存修改" : "保存商品"}</button>
           </div>
@@ -3606,7 +3606,7 @@ ${areaText || "暂无区域"}
         >
           <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
             <div className="section-title-row">
-              <div><p className="eyebrow">New Order · v3.4</p><h2>创建新订单</h2></div>
+              <div><p className="eyebrow">New Order · v3.5</p><h2>创建新订单</h2></div>
               <button
                 className="close-button"
                 onClick={() => {
@@ -3657,8 +3657,8 @@ ${areaText || "暂无区域"}
                   border: 0,
                   borderRadius: 18,
                   padding: "14px 22px",
-                  background: "#eef7ef",
-                  color: "#214b35",
+                  background: "#eef4fb",
+                  color: "#334155",
                   fontWeight: 900,
                   cursor: "pointer",
                 }}
@@ -3672,7 +3672,7 @@ ${areaText || "暂无区域"}
                   border: 0,
                   borderRadius: 18,
                   padding: "14px 24px",
-                  background: "#217642",
+                  background: "#2f6fae",
                   color: "#fff",
                   fontWeight: 900,
                   cursor: "pointer",
@@ -3738,7 +3738,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v3.4</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v3.5</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
@@ -3843,23 +3843,23 @@ ${areaText || "暂无区域"}
       <header style={{ position: "sticky", top: 0, zIndex: 20, height: 54, display: "grid", gridTemplateColumns: "72px 1fr 72px", alignItems: "center", background: "#fff", borderBottom: "1px solid #e8edf3", padding: "0 12px" }}>
         <span />
         <strong style={{ textAlign: "center", fontSize: 17 }}>任务列表</strong>
-        <button style={{ border: 0, background: "#eef2f6", color: "#3a75c4", borderRadius: 8, padding: "8px 10px", fontWeight: 900 }} onClick={() => switchRole("merchant")}>商户</button>
+        <button style={{ border: 0, background: "#eef2f6", color: "#2f6fae", borderRadius: 8, padding: "8px 10px", fontWeight: 900 }} onClick={() => switchRole("merchant")}>商户</button>
       </header>
 
       <section style={{ margin: "12px", background: "#fff", border: "1px solid #e4eaf2", borderRadius: 14, padding: 12, boxShadow: "0 6px 18px rgba(31,58,88,.05)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
           <div>
-            <p style={{ margin: 0, color: "#7b899a", fontSize: 12, fontWeight: 900, letterSpacing: 1 }}>STAFF TASKS · V3.4</p>
+            <p style={{ margin: 0, color: "#7b899a", fontSize: 12, fontWeight: 900, letterSpacing: 1 }}>STAFF TASKS · V3.5</p>
             <h1 style={{ margin: "5px 0 0", color: "#182536", fontSize: 22 }}>员工任务台</h1>
           </div>
-          <button style={{ border: 0, borderRadius: 10, background: "#3a75c4", color: "#fff", fontWeight: 900, padding: "11px 13px" }} onClick={refreshOrdersFromCloud}>日期/刷新</button>
+          <button style={{ border: 0, borderRadius: 10, background: "#2f6fae", color: "#fff", fontWeight: 900, padding: "11px 13px" }} onClick={refreshOrdersFromCloud}>日期/刷新</button>
         </div>
         <p style={{ margin: "10px 0 0", color: "#7b899a", fontSize: 13 }}>{syncMessage}｜{autoSyncState}</p>
       </section>
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, padding: "0 12px 12px" }}>
         {STAFF_TABS.map((tab) => (
-          <button key={tab} style={{ border: "1px solid #e4eaf2", borderRadius: 10, padding: "10px 4px", background: activeStaffTab === tab ? "#3a75c4" : "#fff", color: activeStaffTab === tab ? "#fff" : "#526274", fontWeight: 900 }} onClick={() => setActiveStaffTab(tab)}>
+          <button key={tab} style={{ border: "1px solid #e4eaf2", borderRadius: 10, padding: "10px 4px", background: activeStaffTab === tab ? "#2f6fae" : "#fff", color: activeStaffTab === tab ? "#fff" : "#526274", fontWeight: 900 }} onClick={() => setActiveStaffTab(tab)}>
             {tab}
           </button>
         ))}
