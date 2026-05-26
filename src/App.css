@@ -1,6 +1,4 @@
-/* v3.4 员工端视频冷灰蓝工具风 CSS 覆盖版
-   目标：去掉旧版绿色园艺风，改成参考视频里的冷色、扁平、工具型移动端 UI。
-*/
+/* v3.4 员工端视频冷灰蓝工具风 CSS 覆盖版 */
 
 :root {
   --page-bg: #f3f5f8;
@@ -59,7 +57,6 @@ button:active {
   transform: translateY(1px);
 }
 
-/* 手机端应用框架 */
 .app {
   width: 100%;
   max-width: 430px;
@@ -69,7 +66,6 @@ button:active {
   background: var(--page-bg);
 }
 
-/* 顶部导航：参考视频里的工具型 NavBar */
 .app-header,
 .plan-header {
   position: sticky;
@@ -146,7 +142,6 @@ h1 {
   line-height: 1;
 }
 
-/* 状态 Tab：蓝色下划线/扁平胶囊 */
 .tabs {
   display: flex;
   gap: 6px;
@@ -178,7 +173,6 @@ h1 {
   box-shadow: none;
 }
 
-/* 任务列表页：参考视频卡片风 */
 .order-list {
   display: grid;
   gap: 10px;
@@ -333,7 +327,6 @@ h1 {
   background: var(--brand-dark);
 }
 
-/* 表单与弹窗：视频里的扁平底部弹窗 */
 .sheet-mask {
   position: fixed;
   inset: 0;
@@ -442,7 +435,6 @@ textarea:focus {
   font-weight: 900;
 }
 
-/* 建方案页：压缩信息，让编辑区成为主角 */
 .plan-summary-card,
 .price-card,
 .empty-card {
@@ -498,7 +490,6 @@ textarea:focus {
   text-align: left;
 }
 
-/* 视频同款表格/清单风 */
 .area-section,
 .scene-builder,
 .material-editor {
@@ -549,7 +540,6 @@ textarea:focus {
   font-size: 13px;
 }
 
-/* 区域卡片改成更紧凑的表格感 */
 .area-list {
   display: grid;
   gap: 8px;
@@ -675,7 +665,6 @@ textarea:focus {
   font-weight: 900;
 }
 
-/* 底部操作栏：扁平工具按钮 */
 .bottom-actions {
   position: fixed;
   left: 50%;
@@ -710,7 +699,6 @@ textarea:focus {
   color: #fff;
 }
 
-/* 报价区：工具型汇总 */
 .price-card {
   display: flex;
   align-items: center;
@@ -773,7 +761,6 @@ textarea:focus {
   font-size: 22px;
 }
 
-/* 选品页：顶部搜索固定，右侧列表独立滚动 */
 .product-page,
 .product-sheet,
 .selector-page {
@@ -991,7 +978,6 @@ textarea:focus {
   font-size: 12px;
 }
 
-/* 选品底部只突出完成按钮，清空弱化 */
 .clear-area-button,
 .clear-current-area-button {
   width: 100%;
@@ -1021,7 +1007,6 @@ textarea:focus {
   font-weight: 800;
 }
 
-/* 上传完成页 */
 .upload-card,
 .photo-upload-card {
   border: 1px solid var(--line);
@@ -1061,7 +1046,6 @@ textarea:focus {
   object-fit: cover;
 }
 
-/* 商品库/商户后台通用修正：保留电脑后台可用性 */
 .merchant-dashboard,
 .admin-layout,
 .desktop-dashboard {
@@ -1088,7 +1072,6 @@ textarea:focus {
   color: var(--success);
 }
 
-/* 表单按钮统一，去掉原生按钮感 */
 .form-actions,
 .modal-actions,
 .sheet-actions {
@@ -1126,7 +1109,6 @@ textarea:focus {
   color: #fff;
 }
 
-/* 快捷按钮 */
 .quick-area-list,
 .quick-price-list {
   display: flex;
@@ -1182,7 +1164,6 @@ textarea:focus {
   text-align: left;
 }
 
-/* 小屏兜底 */
 @media (max-width: 360px) {
   .app {
     padding-left: 10px;
