@@ -1693,3 +1693,61 @@ button.danger,
   from { transform: translateX(120%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
+/* ================= 紧急修复：商户端全局按钮样式 ================= */
+.admin-layout .primary-button,
+.admin-layout .ghost-button,
+.admin-layout .ghost-button.danger {
+  min-height: 40px !important;
+  padding: 8px 16px !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+/* 蓝色主操作按钮 */
+.admin-layout .primary-button {
+  background: #2f6fae !important;
+  color: #fff !important;
+  border: 1px solid #2f6fae !important;
+  box-shadow: 0 4px 10px rgba(47, 111, 174, 0.2) !important;
+}
+.admin-layout .primary-button:hover {
+  background: #245a8d !important;
+}
+
+/* 白色/灰色次要操作按钮 */
+.admin-layout .ghost-button {
+  background: #fff !important;
+  color: #2f6fae !important;
+  border: 1px solid #cfd8e3 !important;
+  box-shadow: none !important;
+}
+.admin-layout .ghost-button:hover {
+  background: #f8fafc !important;
+  border-color: #2f6fae !important;
+}
+
+/* 红色危险/打回按钮 */
+.admin-layout .ghost-button.danger {
+  background: #fef2f2 !important;
+  color: #ef4444 !important;
+  border: 1px solid #fecaca !important;
+}
+.admin-layout .ghost-button.danger:hover {
+  background: #fee2e2 !important;
+}
+
+/* 修复 Todo 紧急待办卡片里，蓝色按钮文字被挤压看不见的问题 */
+.admin-card .primary-button {
+  line-height: 1.4 !important;
+  height: auto !important;
+  white-space: normal !important;
+  padding: 12px !important;
+}
