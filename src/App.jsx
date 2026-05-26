@@ -2211,7 +2211,7 @@ ${areaText || "暂无区域"}
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("plan")}>←</button>
           <div>
-            <p className="eyebrow">Task Complete · v3.6</p>
+            <p className="eyebrow">Task Complete · v3.8</p>
             <h1>任务完成</h1>
           </div>
         </header>
@@ -3082,7 +3082,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.shell}>
           <div style={desktopStyles.topbar}>
             <div>
-              <p className="eyebrow">Review Desk · v3.6</p>
+              <p className="eyebrow">Review Desk · v3.8</p>
               <h1>{order.customerName}</h1>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -3165,7 +3165,7 @@ ${areaText || "暂无区域"}
         <div style={desktopStyles.layout}>
           <aside style={desktopStyles.sidebar}>
             <div style={desktopStyles.brand}>
-              <p className="eyebrow">Merchant Admin · v3.6</p>
+              <p className="eyebrow">Merchant Admin · v3.8</p>
               <h2 style={{ margin: 0 }}>绿植租赁后台</h2>
               <span style={{ color: "#667085", fontSize: 13 }}>公司端 / 商户端</span>
             </div>
@@ -3465,7 +3465,7 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">Customer Editor · v3.6</p><h2>{editingCustomerId ? "编辑客户" : "新增客户"}</h2></div>
+            <div><p className="eyebrow">Customer Editor · v3.8</p><h2>{editingCustomerId ? "编辑客户" : "新增客户"}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateCustomerSheet(false); resetNewCustomerForm(); }}>×</button>
           </div>
 
@@ -3530,7 +3530,7 @@ ${areaText || "暂无区域"}
       <div style={overlayStyle} onClick={() => setShowCreateProductSheet(false)}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">Product Editor · v3.6</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
+            <div><p className="eyebrow">Product Editor · v3.8</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}>×</button>
           </div>
 
@@ -3659,7 +3659,7 @@ ${areaText || "暂无区域"}
         >
           <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
             <div className="section-title-row">
-              <div><p className="eyebrow">New Order · v3.6</p><h2>创建新订单</h2></div>
+              <div><p className="eyebrow">New Order · v3.8</p><h2>创建新订单</h2></div>
               <button
                 className="close-button"
                 onClick={() => {
@@ -3791,7 +3791,7 @@ ${areaText || "暂无区域"}
           <div className="sheet-handle" />
 
           <div className="sheet-header">
-            <div><p className="eyebrow">New Order · v3.6</p><h2>创建新订单</h2></div>
+            <div><p className="eyebrow">New Order · v3.8</p><h2>创建新订单</h2></div>
             <button
               className="close-button"
               onClick={() => {
