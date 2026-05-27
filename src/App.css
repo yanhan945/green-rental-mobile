@@ -4022,3 +4022,627 @@ input:focus {
   border: 2px solid currentColor;
   border-radius: 999px 999px 6px 6px;
 }
+/* =========================================================
+   v4.5 GardenOS 双端质感精修版
+   员工端：iOS Tab / 卡片比例精修
+   商户端：参考第三张概念图，浅石材 + 浅木质 + 南法总部驾驶舱
+   只改视觉，不动业务逻辑
+========================================================= */
+
+/* =========================
+   1. 员工端继续精修：更接近 iOS App
+========================= */
+
+.staff-app-shell {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(236, 219, 188, 0.38) 0%, transparent 30%),
+    radial-gradient(circle at 96% 10%, rgba(111, 128, 99, 0.14) 0%, transparent 32%),
+    linear-gradient(180deg, #fbf7ef 0%, #f2e7d6 50%, #eadcc5 100%) !important;
+}
+
+.staff-app-main {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+
+/* 顶部更轻、更像系统导航 */
+.staff-app-topbar {
+  height: 54px !important;
+  padding: 0 14px !important;
+  background: rgba(255, 250, 242, 0.88) !important;
+  border-bottom: 1px solid rgba(116, 102, 74, 0.08) !important;
+  box-shadow: 0 8px 22px rgba(58, 47, 30, 0.04) !important;
+}
+
+.staff-app-topbar strong {
+  font-size: 19px !important;
+  letter-spacing: -0.045em !important;
+}
+
+/* 左上头像再精致一点 */
+.staff-avatar-entry {
+  width: 39px !important;
+  height: 39px !important;
+  border-color: rgba(184, 150, 88, 0.24) !important;
+  background: rgba(255, 252, 246, 0.88) !important;
+  box-shadow:
+    0 8px 18px rgba(58, 47, 30, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.70) !important;
+}
+
+.staff-avatar-entry span {
+  width: 29px !important;
+  height: 29px !important;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 250, 242, 0.28), transparent 34%),
+    linear-gradient(135deg, #31452f 0%, #7b6f3d 100%) !important;
+}
+
+/* 首页卡片略微收紧，少一点网页大卡感 */
+.garden-today-card,
+.garden-status-card,
+.garden-progress-card,
+.staff-profile-hero,
+.staff-profile-card,
+.staff-visible-info > div,
+.staff-setting-accordion details,
+.staff-report-card,
+.staff-compact-header,
+.staff-empty-card {
+  border-radius: 25px !important;
+  border-color: rgba(116, 102, 74, 0.12) !important;
+  box-shadow:
+    0 16px 36px rgba(58, 47, 30, 0.085),
+    inset 0 1px 0 rgba(255, 255, 255, 0.70) !important;
+}
+
+.garden-today-card,
+.garden-status-card,
+.garden-progress-card {
+  padding: 17px !important;
+  margin-bottom: 14px !important;
+}
+
+.garden-today-card::before,
+.garden-status-card::before,
+.garden-progress-card::before {
+  inset: 8px !important;
+  border-radius: 20px !important;
+  border-color: rgba(184, 150, 88, 0.14) !important;
+}
+
+.garden-dashboard-head {
+  padding: 13px 3px 10px !important;
+}
+
+.garden-user-line h1 {
+  font-size: 26px !important;
+}
+
+.garden-card-title-row {
+  margin-bottom: 12px !important;
+}
+
+.garden-card-title-row h2 {
+  font-size: 21px !important;
+}
+
+.garden-task-row {
+  min-height: 62px !important;
+  padding-top: 9px !important;
+  padding-bottom: 9px !important;
+}
+
+.garden-task-icon {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 14px !important;
+}
+
+.garden-task-main strong {
+  font-size: 15px !important;
+}
+
+.garden-status-grid {
+  gap: 10px !important;
+}
+
+.garden-status-grid button {
+  min-height: 82px !important;
+  border-radius: 20px !important;
+  padding: 12px !important;
+}
+
+.garden-status-grid strong {
+  font-size: 27px !important;
+}
+
+.garden-progress-body {
+  margin-top: 8px !important;
+}
+
+.garden-bars {
+  height: 104px !important;
+}
+
+.garden-progress-number strong {
+  font-size: 48px !important;
+}
+
+/* 底部 Tab：更像 iOS，降低厚重感 */
+.staff-bottom-tab {
+  max-width: 430px !important;
+  gap: 4px !important;
+  padding: 7px 12px 13px !important;
+  border-top: 1px solid rgba(116, 102, 74, 0.08) !important;
+  background: rgba(255, 250, 242, 0.92) !important;
+  backdrop-filter: blur(26px) saturate(1.18) !important;
+  box-shadow:
+    0 -14px 34px rgba(58, 47, 30, 0.075),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+}
+
+.staff-bottom-item {
+  min-height: 50px !important;
+  border-radius: 19px !important;
+  color: rgba(83, 78, 67, 0.72) !important;
+  font-size: 11px !important;
+  letter-spacing: -0.02em !important;
+}
+
+.staff-bottom-item.active {
+  background:
+    linear-gradient(180deg, rgba(237, 241, 231, 0.96), rgba(227, 234, 221, 0.90)) !important;
+  color: #31452f !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    0 8px 18px rgba(49, 69, 47, 0.08) !important;
+}
+
+.staff-tab-icon {
+  width: 20px !important;
+  height: 20px !important;
+  opacity: 0.92;
+}
+
+.staff-tab-icon.home::before,
+.staff-tab-icon.task::before,
+.staff-tab-icon.profile::before,
+.staff-tab-icon.profile::after {
+  border-width: 1.7px !important;
+}
+
+.staff-tab-icon.home::after {
+  border-left-width: 1.7px !important;
+  border-top-width: 1.7px !important;
+}
+
+.staff-tab-icon.report::before,
+.staff-tab-icon.report::after,
+.staff-tab-icon.task::after {
+  opacity: 0.92;
+}
+
+/* 我的页：卡片再轻一点 */
+.staff-profile-hero {
+  padding: 19px !important;
+  margin-bottom: 13px !important;
+}
+
+.staff-profile-hero h1 {
+  font-size: 27px !important;
+}
+
+.staff-profile-card.refined {
+  padding: 15px !important;
+}
+
+.staff-visible-info > div,
+.staff-setting-accordion details {
+  padding: 14px !important;
+}
+
+
+/* =========================
+   2. 商户端：第三张概念图方向
+   浅石材主面板 + 浅木质侧栏 + 南法总部驾驶舱
+========================= */
+
+.admin-layout {
+  grid-template-columns: 228px minmax(0, 1fr) !important;
+  min-height: 100vh !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(216, 197, 162, 0.24) 0%, transparent 30%),
+    radial-gradient(circle at 100% 0%, rgba(111, 128, 99, 0.14) 0%, transparent 34%),
+    linear-gradient(135deg, #f6efe2 0%, #f8f4ec 48%, #ede1cd 100%) !important;
+}
+
+/* 浅木质侧边栏：不再深蓝 */
+.admin-sidebar {
+  position: relative !important;
+  overflow: hidden !important;
+  padding: 22px 14px !important;
+  border-right: 1px solid rgba(116, 102, 74, 0.16) !important;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 18%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(123, 91, 52, 0.055) 0px,
+      rgba(123, 91, 52, 0.055) 1px,
+      transparent 1px,
+      transparent 18px
+    ),
+    linear-gradient(180deg, #e5d5b5 0%, #d9c49e 45%, #cbb489 100%) !important;
+  color: #4f4a38 !important;
+  box-shadow:
+    16px 0 44px rgba(58, 47, 30, 0.09),
+    inset -1px 0 0 rgba(255, 255, 255, 0.35) !important;
+}
+
+.admin-sidebar::before {
+  content: "M";
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 22px;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 250, 242, 0.28), transparent 34%),
+    linear-gradient(135deg, #31452f, #7b6f3d);
+  color: #fffaf2;
+  font-size: 28px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  box-shadow: 0 16px 36px rgba(49, 69, 47, 0.22);
+}
+
+.admin-sidebar .brand {
+  margin: 0 0 18px !important;
+  padding: 0 8px 18px !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(89, 78, 53, 0.16) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: center !important;
+}
+
+.admin-sidebar .brand .eyebrow,
+.admin-sidebar .brand p {
+  color: rgba(76, 70, 48, 0.62) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.12em !important;
+}
+
+.admin-sidebar .brand h2 {
+  color: #263222 !important;
+  font-size: 18px !important;
+  letter-spacing: -0.04em !important;
+}
+
+.admin-sidebar .brand span {
+  color: #7d6c43 !important;
+}
+
+/* 商户端导航：更像高端侧栏 */
+.admin-nav-btn {
+  min-height: 42px !important;
+  border: 1px solid transparent !important;
+  border-radius: 14px !important;
+  padding: 0 13px !important;
+  background: transparent !important;
+  color: rgba(45, 51, 37, 0.74) !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  text-align: left !important;
+  box-shadow: none !important;
+}
+
+.admin-nav-btn:hover {
+  border-color: rgba(89, 78, 53, 0.12) !important;
+  background: rgba(255, 250, 242, 0.32) !important;
+  color: #263222 !important;
+}
+
+.admin-nav-btn.active {
+  border-color: rgba(89, 78, 53, 0.15) !important;
+  background:
+    linear-gradient(135deg, rgba(49, 69, 47, 0.18), rgba(255, 250, 242, 0.38)) !important;
+  color: #263222 !important;
+  box-shadow:
+    inset 3px 0 0 #31452f,
+    0 10px 24px rgba(58, 47, 30, 0.08) !important;
+}
+
+/* 侧栏底部切换按钮 */
+.admin-sidebar .admin-nav-btn[style] {
+  border-color: rgba(89, 78, 53, 0.16) !important;
+  background: rgba(255, 250, 242, 0.32) !important;
+  color: #263222 !important;
+}
+
+/* 主工作区：石材白背景，不再冷灰 */
+.admin-main {
+  height: 100vh !important;
+  padding: 0 28px 38px !important;
+  background:
+    radial-gradient(circle at 82% 0%, rgba(255, 255, 255, 0.62) 0%, transparent 28%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.70), rgba(247, 241, 231, 0.42)) !important;
+}
+
+/* 顶部栏：白石材 + 搜索框气质 */
+.admin-topbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  margin: 0 -28px 22px !important;
+  padding: 18px 28px !important;
+  border-bottom: 1px solid rgba(116, 102, 74, 0.10) !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  backdrop-filter: blur(24px) saturate(1.15) !important;
+  box-shadow: 0 8px 24px rgba(58, 47, 30, 0.04) !important;
+}
+
+.admin-topbar .eyebrow {
+  color: #b89658 !important;
+}
+
+.admin-topbar h1 {
+  color: #20251d !important;
+  font-size: 27px !important;
+  letter-spacing: -0.055em !important;
+}
+
+.admin-topbar span {
+  color: #7d7567 !important;
+}
+
+/* 商户端数据卡：像第三张里的小统计牌 */
+.admin-metric-grid {
+  grid-template-columns: repeat(5, minmax(130px, 1fr)) !important;
+  gap: 14px !important;
+  margin-bottom: 20px !important;
+}
+
+.metric-box {
+  position: relative !important;
+  overflow: hidden !important;
+  min-height: 116px !important;
+  border: 1px solid rgba(116, 102, 74, 0.13) !important;
+  border-left: 0 !important;
+  border-radius: 20px !important;
+  padding: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(245, 237, 222, 0.90)) !important;
+  box-shadow:
+    0 16px 36px rgba(58, 47, 30, 0.085),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+.metric-box::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  height: 7px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, #8d4e38 0%, #8d4e38 58%, rgba(116, 102, 74, 0.13) 58%, rgba(116, 102, 74, 0.13) 100%);
+}
+
+.metric-box:nth-child(2)::before,
+.metric-box:nth-child(4)::before {
+  background:
+    linear-gradient(90deg, #31452f 0%, #31452f 62%, rgba(116, 102, 74, 0.13) 62%, rgba(116, 102, 74, 0.13) 100%);
+}
+
+.metric-box h3 {
+  margin: 0 0 8px !important;
+  color: #7d7567 !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.08em !important;
+}
+
+.metric-box strong {
+  color: #7b392a !important;
+  font-size: 32px !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-weight: 700 !important;
+}
+
+.metric-box span,
+.metric-box p {
+  color: #8a8070 !important;
+}
+
+/* 商户端内容卡：白石材面板 */
+.admin-card,
+.admin-data-panel {
+  border: 1px solid rgba(116, 102, 74, 0.13) !important;
+  border-radius: 24px !important;
+  padding: 22px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(255, 248, 237, 0.92)) !important;
+  box-shadow:
+    0 18px 44px rgba(58, 47, 30, 0.085),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+.admin-card h2,
+.admin-section-head h2 {
+  color: #20251d !important;
+  font-size: 21px !important;
+  letter-spacing: -0.045em !important;
+}
+
+.admin-card p,
+.admin-section-head p,
+.admin-card span {
+  color: #7d7567 !important;
+}
+
+/* Todo 区域和 area-card 从冷蓝边框转为南法卡片 */
+.admin-card .area-card {
+  border: 1px solid rgba(116, 102, 74, 0.13) !important;
+  border-radius: 20px !important;
+  background: rgba(255, 252, 246, 0.76) !important;
+  box-shadow: 0 12px 28px rgba(58, 47, 30, 0.06) !important;
+}
+
+/* 商户端按钮：取消蓝色主调 */
+.admin-layout .primary-button,
+.admin-table-actions .primary-button,
+.admin-section-head .primary-button {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #31452f 0%, #4d6845 100%) !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 12px 26px rgba(49, 69, 47, 0.18) !important;
+}
+
+.admin-layout .primary-button:hover {
+  background: linear-gradient(135deg, #263922 0%, #405c38 100%) !important;
+}
+
+.admin-layout .ghost-button,
+.admin-table-actions .ghost-button,
+.admin-section-head .ghost-button {
+  border: 1px solid rgba(116, 102, 74, 0.16) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 252, 246, 0.84) !important;
+  color: #31452f !important;
+  box-shadow: 0 8px 18px rgba(58, 47, 30, 0.05) !important;
+}
+
+.admin-layout .ghost-button.danger {
+  border-color: rgba(176, 74, 60, 0.22) !important;
+  background: rgba(255, 241, 237, 0.92) !important;
+  color: #9f4a3c !important;
+}
+
+/* 表格更像第三张中间面板 */
+.admin-table {
+  border: 1px solid rgba(116, 102, 74, 0.13) !important;
+  border-radius: 20px !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  box-shadow: 0 14px 34px rgba(58, 47, 30, 0.06) !important;
+}
+
+.admin-table-head {
+  background: rgba(232, 218, 193, 0.52) !important;
+  color: #6f654f !important;
+}
+
+.admin-table-row {
+  border-bottom-color: rgba(116, 102, 74, 0.10) !important;
+}
+
+.admin-table-row strong {
+  color: #20251d !important;
+}
+
+.admin-table-row em {
+  color: #7d7567 !important;
+}
+
+/* 状态标签：陶土 / 橄榄，替代蓝色 */
+.admin-status-chip {
+  border: 1px solid rgba(141, 78, 56, 0.18) !important;
+  background: rgba(242, 219, 205, 0.78) !important;
+  color: #8d4e38 !important;
+}
+
+.admin-status-chip.muted {
+  border-color: rgba(116, 102, 74, 0.12) !important;
+  background: rgba(237, 241, 231, 0.82) !important;
+  color: #4d6845 !important;
+}
+
+/* 浮窗提醒：南法待办纸条，而不是红色警报 */
+.admin-toast-fixed {
+  right: 28px !important;
+  bottom: 28px !important;
+  border: 1px solid rgba(141, 78, 56, 0.18) !important;
+  border-left: 0 !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 252, 246, 0.98), rgba(245, 234, 210, 0.96)) !important;
+  box-shadow: 0 20px 52px rgba(58, 47, 30, 0.15) !important;
+}
+
+.admin-toast-fixed button {
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #8d4e38, #b66b4d) !important;
+  box-shadow: 0 12px 24px rgba(141, 78, 56, 0.22) !important;
+}
+
+/* 审核台也跟随商户端风格 */
+.admin-review-desk {
+  gap: 22px !important;
+}
+
+.admin-review-desk .admin-card {
+  border-radius: 24px !important;
+}
+
+/* 压住 JSX 里残留的蓝色 inline style */
+.admin-layout [style*="#3b82f6"],
+.admin-layout [style*="#2f6fae"],
+.admin-layout [style*="#1e3a8a"] {
+  color: #31452f !important;
+}
+
+.admin-layout [style*="#f8fafc"],
+.admin-layout [style*="#f1f5f9"] {
+  background: rgba(255, 252, 246, 0.84) !important;
+}
+
+.admin-layout [style*="#bfdbfe"],
+.admin-layout [style*="#e2e8f0"] {
+  border-color: rgba(116, 102, 74, 0.13) !important;
+}
+
+/* 响应式：商户端窄屏不崩 */
+@media (max-width: 1100px) {
+  .admin-layout {
+    grid-template-columns: 190px minmax(0, 1fr) !important;
+  }
+
+  .admin-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-layout {
+    display: block !important;
+  }
+
+  .admin-sidebar {
+    min-height: auto !important;
+    padding: 14px !important;
+  }
+
+  .admin-sidebar::before {
+    margin: 0 0 12px !important;
+  }
+
+  .admin-nav-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    margin: 0 6px 8px 0 !important;
+  }
+
+  .admin-main {
+    height: auto !important;
+    padding: 0 14px 32px !important;
+  }
+
+  .admin-topbar {
+    margin: 0 -14px 16px !important;
+    padding: 14px !important;
+  }
+}
