@@ -3310,3 +3310,408 @@ input:focus {
     font-size: 22px;
   }
 }
+/* =========================================================
+   v4.3 GardenOS 员工端首页结构升级
+   参考第三张概念图：Today’s Tasks + Statistics + Week Progress
+========================================================= */
+
+.garden-dashboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 4px 14px;
+}
+
+.garden-user-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.garden-user-avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid rgba(184, 150, 88, 0.26);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 242, 0.96), rgba(237, 241, 231, 0.88));
+  color: #31452f;
+  font-size: 19px;
+  font-weight: 950;
+  box-shadow: 0 10px 24px rgba(58, 47, 30, 0.10);
+}
+
+.garden-user-line p {
+  margin: 0 0 2px;
+  color: #8a8070;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.garden-user-line h1 {
+  margin: 0;
+  color: #20251d;
+  font-size: 29px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.06em;
+}
+
+.garden-bell-button {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(116, 102, 74, 0.15);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.82);
+  color: #31452f;
+  font-size: 22px;
+  font-weight: 950;
+  box-shadow: 0 12px 30px rgba(58, 47, 30, 0.08);
+}
+
+.garden-today-card,
+.garden-status-card,
+.garden-progress-card {
+  position: relative;
+  margin-bottom: 18px;
+  border: 1px solid rgba(116, 102, 74, 0.16);
+  border-radius: 30px;
+  padding: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(255, 248, 237, 0.90));
+  box-shadow:
+    0 22px 54px rgba(58, 47, 30, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px) saturate(1.08);
+  overflow: hidden;
+}
+
+.garden-today-card::before,
+.garden-status-card::before,
+.garden-progress-card::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(184, 150, 88, 0.18);
+  border-radius: 24px;
+  pointer-events: none;
+}
+
+.garden-card-title-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.garden-kicker {
+  margin: 0 0 8px;
+  color: #b89658;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+}
+
+.garden-card-title-row h2 {
+  margin: 0;
+  color: #20251d;
+  font-size: 24px;
+  line-height: 1.12;
+  font-weight: 950;
+  letter-spacing: -0.05em;
+}
+
+.garden-card-title-row > button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(237, 241, 231, 0.86);
+  color: #31452f;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.garden-task-row {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 20px 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 70px;
+  border: 0;
+  border-top: 1px solid rgba(116, 102, 74, 0.12);
+  border-radius: 0;
+  padding: 12px 0;
+  background: transparent;
+  color: #20251d;
+  text-align: left;
+}
+
+.garden-task-row:first-of-type {
+  border-top: 0;
+}
+
+.garden-task-row.hot {
+  margin: 8px 0;
+  border: 1px solid rgba(184, 111, 76, 0.16);
+  border-radius: 20px;
+  padding: 12px;
+  background: rgba(201, 115, 80, 0.12);
+  box-shadow: 0 14px 34px rgba(201, 115, 80, 0.10);
+}
+
+.garden-task-index {
+  color: #a69c89;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.garden-task-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  background:
+    linear-gradient(135deg, rgba(237, 241, 231, 0.98), rgba(242, 231, 210, 0.92));
+  color: #4d6845;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.garden-task-main {
+  min-width: 0;
+}
+
+.garden-task-main strong {
+  display: block;
+  overflow: hidden;
+  color: #20251d;
+  font-size: 16px;
+  font-weight: 950;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.garden-task-main em {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: #827b6d;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.garden-task-side {
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+}
+
+.garden-task-side b {
+  display: inline-flex;
+  align-items: center;
+  min-height: 27px;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: #edf1e7;
+  color: #4d6845;
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.garden-task-side em {
+  color: #b8564d;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.garden-empty-row {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 6px;
+  padding: 18px 0 6px;
+  text-align: center;
+}
+
+.garden-empty-row strong {
+  color: #20251d;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.garden-empty-row span {
+  color: #827b6d;
+  font-size: 13px;
+}
+
+.garden-status-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.garden-status-grid button {
+  min-height: 94px;
+  border: 1px solid rgba(116, 102, 74, 0.13);
+  border-radius: 24px;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.92), rgba(242, 231, 210, 0.50));
+  box-shadow: 0 14px 34px rgba(58, 47, 30, 0.07);
+  text-align: left;
+}
+
+.garden-status-grid span {
+  display: block;
+  margin-bottom: 10px;
+  color: #827b6d;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.garden-status-grid strong {
+  color: #20251d;
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.garden-sync-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 0 11px;
+  background: rgba(237, 241, 231, 0.88);
+  color: #4d6845;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.garden-progress-body {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  align-items: end;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.garden-bars {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  height: 118px;
+  gap: 9px;
+  padding: 0 4px;
+}
+
+.garden-bars i {
+  display: block;
+  width: 100%;
+  max-width: 26px;
+  height: var(--h);
+  border-radius: 999px 999px 10px 10px;
+  background: linear-gradient(180deg, #d8c5a2, #efe2ca);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.garden-bars i:nth-child(2),
+.garden-bars i:nth-child(5) {
+  background: linear-gradient(180deg, #c97350, #e8c0a7);
+}
+
+.garden-bars i:nth-child(4),
+.garden-bars i:nth-child(7) {
+  background: linear-gradient(180deg, #6f8063, #b9c5ae);
+}
+
+.garden-progress-number {
+  display: grid;
+  justify-items: end;
+}
+
+.garden-progress-number strong {
+  color: #20251d;
+  font-size: 52px;
+  line-height: 0.9;
+  font-weight: 950;
+  letter-spacing: -0.08em;
+}
+
+.garden-progress-number span {
+  margin-top: 10px;
+  color: #827b6d;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.garden-sync-text {
+  position: relative;
+  z-index: 1;
+  margin: 16px 0 0;
+  color: #827b6d;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+/* 让 v4.3 首页盖过 v4.2 的大 Hero 和旧概览卡气质 */
+.staff-app-shell .garden-today-card button,
+.staff-app-shell .garden-status-card button,
+.staff-app-shell .garden-progress-card button,
+.staff-app-shell .garden-bell-button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  font-family: inherit !important;
+}
+
+@media (max-width: 360px) {
+  .garden-today-card,
+  .garden-status-card,
+  .garden-progress-card {
+    border-radius: 26px;
+    padding: 16px;
+  }
+
+  .garden-task-row {
+    grid-template-columns: 18px 38px minmax(0, 1fr);
+  }
+
+  .garden-task-side {
+    grid-column: 3;
+    justify-items: start;
+  }
+
+  .garden-progress-body {
+    grid-template-columns: 1fr;
+  }
+
+  .garden-progress-number {
+    justify-items: start;
+  }
+}
