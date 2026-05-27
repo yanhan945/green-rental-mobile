@@ -3206,7 +3206,7 @@ ${areaText || "暂无区域"}
               </div>
 
               <div className="admin-card">
-                <h2 style={{ fontSize: 17, marginBottom: 16, color: "#0f172a" }}>🔥 紧急待办 (Todo)</h2>
+                <h2 style={{ fontSize: 17, marginBottom: 16, color: "#0f172a" }}><h2>待办审核</h2> (Todo)</h2>
                 {todoOrders.length === 0 ? (
                   <div className="empty-card" style={{ background: "#f8fafc", border: "none" }}><p>当前无紧急待办</p><span>喝杯咖啡休息一下，所有员工任务进展顺利。</span></div>
                 ) : (
@@ -3233,7 +3233,7 @@ ${areaText || "暂无区域"}
           {todoOrders.length > 0 && merchantTab !== "工作台" && (
             <div className="admin-toast-fixed">
               <div>
-                <strong style={{ color: "#0f172a", display: "block", fontSize: 16, marginBottom: 4 }}>🚨 待办流程提醒</strong>
+                <strong style={{ color: "#0f172a", display: "block", fontSize: 16, marginBottom: 4 }}>待办流程提醒</strong>
                 <span style={{ color: "#64748b", fontSize: 13 }}>您有 <b>{todoOrders.length}</b> 个员工提交的任务需要您的确认。</span>
               </div>
               <button 
