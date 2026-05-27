@@ -3270,22 +3270,333 @@ ${areaText || "暂无区域"}
             </div>
           )}
 
-          {/* ... 其他 Tab (订单管理/商品库等) 暂时使用默认展示，保持功能完整 ... */}
+                    {/* v4.0：恢复商户端真实管理页 */}
           {merchantTab === "订单管理" && (
-            <div className="admin-card">
-               <h2>订单检索池</h2>
-               <div className="empty-card" style={{ background: "#f8fafc", border: "none" }}><p>订单检索功能已挂载</p><span>后续更新中，将引入表格虚拟滚动和更强的搜索面板。请暂时通过“工作台”查看订单流。</span></div>
+            <div className="admin-card admin-data-panel">
+              <div className="admin-section-head">
+                <div>
+                  <h2>订单管理</h2>
+                  <p>查看全部订单、筛选状态、进入方案审核或归档。</p>
+                </div>
+                <button className="primary-button" onClick={() => setShowCreateOrderSheet(true)}>
+                  + 创建新派单
+                </button>
+              </div>
+
+              <div className="admin-filter-row">
+                <input
+                  value={merchantSearchText}
+                  onChange={(e) => setMerchantSearchText(e.target.value)}
+                  placeholder="搜索客户、联系人、电话、地址、标签"
+                />
+                <select
+                  value={merchantStatusFilter}
+                  onChange={(e) => setMerchantStatusFilter(e.target.value)}
+                >
+                  {MERCHANT_STATUS_TABS.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {displayOrders.length === 0 ? (
+                <div className="empty-card">
+                  <p>暂无匹配订单</p>
+                  <span>可以切换状态筛选，或创建一条新派单。</span>
+                </div>
+              ) : (
+                <div className="admin-table">
+                  <div className="admin-table-row admin-table-head">
+                    <span>客户 / 项目</span>
+                    <span>联系人</span>
+                    <span>状态</span>
+                    <span>面积</span>
+                    <span>来源</span>
+                    <span>操作</span>
+                  </div>
+
+                  {displayOrders.map((order) => (
+                    <div className="admin-table-row" key={order.id}>
+                      <span>
+                        <strong>{order.customerName}</strong>
+                        <em>{order.address || "暂无地址"}</em>
+                      </span>
+                      <span>
+                        <strong>{order.contactName || "-"}</strong>
+                        <em>{order.phone || "暂无电话"}</em>
+                      </span>
+                      <span>
+                        <b className="admin-status-chip">{order.status}</b>
+                      </span>
+                      <span>{order.areaSize || "-"}</span>
+                      <span>{order.source || "-"}</span>
+                      <span className="admin-table-actions">
+                        <button
+                          className="ghost-button"
+                          onClick={() => {
+                            if (order.plan) {
+                              openMerchantPlanWorkbench(order);
+                              return;
+                            }
+                            setSelectedOrderDetail(order);
+                            setMerchantViewingOrder(null);
+                          }}
+                        >
+                          查看
+                        </button>
+                        <button className="ghost-button" onClick={() => exportOrderData(order)}>
+                          导出
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
+
           {merchantTab === "商品库" && (
-            <div className="admin-card">
-               <h2>中央商品库</h2>
-               <div className="empty-card" style={{ background: "#f8fafc", border: "none" }}><p>数据均已上云</p><span>员工端实时拉取数据。更强大的后台商品增删改查模块建设中。</span></div>
+            <div className="admin-card admin-data-panel">
+              <div className="admin-section-head">
+                <div>
+                  <h2>商品库</h2>
+                  <p>维护绿植商品、价格、分类、图片链接和上下架状态。</p>
+                </div>
+                <button
+                  className="primary-button"
+                  onClick={() => {
+                    resetNewProductForm();
+                    setShowCreateProductSheet(true);
+                  }}
+                >
+                  + 新增商品
+                </button>
+              </div>
+
+              <div className="admin-filter-row">
+                <input
+                  value={productSearchText}
+                  onChange={(e) => setProductSearchText(e.target.value)}
+                  placeholder="搜索商品名称、分类、描述、备注"
+                />
+                <select
+                  value={productCategoryFilter}
+                  onChange={(e) => setProductCategoryFilter(e.target.value)}
+                >
+                  <option value="全部">全部分类</option>
+                  {productCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {filteredMerchantProducts.length === 0 ? (
+                <div className="empty-card">
+                  <p>暂无商品</p>
+                  <span>可以新增商品，员工端选品时会读取这里的数据。</span>
+                </div>
+              ) : (
+                <div className="admin-table product-admin-table">
+                  <div className="admin-table-row admin-table-head">
+                    <span>商品</span>
+                    <span>分类</span>
+                    <span>日租金</span>
+                    <span>库存</span>
+                    <span>状态</span>
+                    <span>操作</span>
+                  </div>
+
+                  {filteredMerchantProducts.map((product) => (
+                    <div className="admin-table-row" key={product.id}>
+                      <span className="admin-product-cell">
+                        <i>
+                          {isImageUrl(getProductImage(product)) ? (
+                            <img src={getProductImage(product)} alt={product.name} />
+                          ) : (
+                            getProductImage(product)
+                          )}
+                        </i>
+                        <span>
+                          <strong>{product.name}</strong>
+                          <em>{product.description || "暂无描述"}</em>
+                        </span>
+                      </span>
+                      <span>
+                        <strong>{product.category || "-"}</strong>
+                        <em>{product.subCategory || "-"}</em>
+                      </span>
+                      <span>¥ {money(product.pricePerDay)} / 天</span>
+                      <span>{product.stock || "充足"}</span>
+                      <span>
+                        <b className={product.status === "已上架" ? "admin-status-chip" : "admin-status-chip muted"}>
+                          {product.status || "已上架"}
+                        </b>
+                      </span>
+                      <span className="admin-table-actions">
+                        <button className="ghost-button" onClick={() => openEditProduct(product)}>
+                          编辑
+                        </button>
+                        <button className="ghost-button" onClick={() => toggleProductStatus(product.id)}>
+                          {product.status === "已上架" ? "下架" : "上架"}
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-          {merchantTab === "客户库" && <div className="admin-card"><h2>客户资产库</h2><div className="empty-card"><p>正在汇聚数据</p></div></div>}
-          {merchantTab === "执行监测" && <div className="admin-card"><h2>现场执行雷达</h2><div className="empty-card"><p>GPS雷达监控</p></div></div>}
-          {merchantTab === "设置" && <div className="admin-card"><h2>系统设置</h2><div className="empty-card"><p>Supabase 密钥与多租户设置</p></div></div>}
+
+          {merchantTab === "客户库" && (
+            <div className="admin-card admin-data-panel">
+              <div className="admin-section-head">
+                <div>
+                  <h2>客户库</h2>
+                  <p>沉淀历史客户资料，可快速创建新派单。</p>
+                </div>
+                <button
+                  className="primary-button"
+                  onClick={() => {
+                    resetNewCustomerForm();
+                    setShowCreateCustomerSheet(true);
+                  }}
+                >
+                  + 新增客户
+                </button>
+              </div>
+
+              <div className="admin-filter-row">
+                <input
+                  value={customerSearchText}
+                  onChange={(e) => setCustomerSearchText(e.target.value)}
+                  placeholder="搜索客户、联系人、电话、地址、备注"
+                />
+              </div>
+
+              {filteredCustomers.length === 0 ? (
+                <div className="empty-card">
+                  <p>暂无客户</p>
+                  <span>创建派单后也会自动沉淀客户资料。</span>
+                </div>
+              ) : (
+                <div className="admin-table customer-admin-table">
+                  <div className="admin-table-row admin-table-head">
+                    <span>客户名称</span>
+                    <span>联系人</span>
+                    <span>地址</span>
+                    <span>面积</span>
+                    <span>标签</span>
+                    <span>操作</span>
+                  </div>
+
+                  {filteredCustomers.map((customer) => (
+                    <div className="admin-table-row" key={customer.id}>
+                      <span>
+                        <strong>{customer.name}</strong>
+                        <em>{customer.note || "暂无备注"}</em>
+                      </span>
+                      <span>
+                        <strong>{customer.contactName || "-"}</strong>
+                        <em>{customer.phone || "暂无电话"}</em>
+                      </span>
+                      <span>{customer.address || "-"}</span>
+                      <span>{customer.areaSize || "-"}</span>
+                      <span>{customer.tagsText || "-"}</span>
+                      <span className="admin-table-actions">
+                        <button className="ghost-button" onClick={() => openEditCustomer(customer)}>
+                          编辑
+                        </button>
+                        <button className="primary-button" onClick={() => fillOrderFromCustomer(customer)}>
+                          派单
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {merchantTab === "执行监测" && (
+            <div className="admin-card admin-data-panel">
+              <div className="admin-section-head">
+                <div>
+                  <h2>执行监测</h2>
+                  <p>查看已确认方案、执行中、待归档订单。</p>
+                </div>
+              </div>
+
+              {monitoredOrders.length === 0 ? (
+                <div className="empty-card">
+                  <p>暂无执行中订单</p>
+                  <span>商户确认方案后，订单会进入这里。</span>
+                </div>
+              ) : (
+                <div className="admin-table">
+                  <div className="admin-table-row admin-table-head">
+                    <span>客户 / 项目</span>
+                    <span>订单状态</span>
+                    <span>执行状态</span>
+                    <span>配送状态</span>
+                    <span>地址</span>
+                    <span>操作</span>
+                  </div>
+
+                  {monitoredOrders.map((order) => (
+                    <div className="admin-table-row" key={order.id}>
+                      <span>
+                        <strong>{order.customerName}</strong>
+                        <em>{order.contactName || "-"}</em>
+                      </span>
+                      <span><b className="admin-status-chip">{order.status}</b></span>
+                      <span>{order.executionStatus || "-"}</span>
+                      <span>{order.deliveryStatus || "-"}</span>
+                      <span>{order.address || "-"}</span>
+                      <span className="admin-table-actions">
+                        <button className="ghost-button" onClick={() => openMerchantPlanWorkbench(order)}>
+                          查看执行
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {merchantTab === "设置" && (
+            <div className="admin-card admin-data-panel">
+              <div className="admin-section-head">
+                <div>
+                  <h2>系统设置</h2>
+                  <p>当前版本先保留同步状态与数据维护入口。</p>
+                </div>
+              </div>
+
+              <div className="admin-setting-grid">
+                <div>
+                  <strong>云端连接</strong>
+                  <span>{syncState}</span>
+                </div>
+                <div>
+                  <strong>自动同步</strong>
+                  <span>{autoSyncState}</span>
+                </div>
+                <div>
+                  <strong>订单数量</strong>
+                  <span>{orders.length} 笔</span>
+                </div>
+                <div>
+                  <strong>商品数量</strong>
+                  <span>{merchantProducts.length} 个</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {showCreateOrderSheet && renderCreateOrderSheet()}
         </main>
