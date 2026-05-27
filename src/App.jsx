@@ -4275,73 +4275,112 @@ ${areaText || "暂无区域"}
         </>
       )}
 
-      {staffAppTab === "我的" && (
-        <>
-          <section className="staff-compact-header">
-            <div>
-              <p className="staff-kicker">PARTNER PROFILE</p>
-              <h1>我的服务身份</h1>
-              <span>账号、组织、接单权限与同步状态</span>
-            </div>
-          </section>
+     {staffAppTab === "我的" && (
+  <>
+    <section className="staff-profile-hero">
+      <p className="staff-kicker">PARTNER PROFILE</p>
+      <h1>我的服务身份</h1>
+      <span>账号、组织、接单权限与同步状态</span>
+    </section>
 
-          <section className="staff-profile-card">
-            <div className="staff-avatar">G</div>
-            <div>
-              <h2>园林服务人员</h2>
-              <p>当前为测试身份，后续接入邮箱 / 手机号登录。</p>
-            </div>
-          </section>
+    <section className="staff-profile-card refined">
+      <div className="staff-avatar large">G</div>
+      <div>
+        <h2>园林服务人员</h2>
+        <p>当前为测试身份，后续接入邮箱 / 手机号登录。</p>
+        <b className="staff-login-pill">未登录 · 测试模式</b>
+      </div>
+    </section>
 
-          <section className="staff-setting-list">
-            <div>
-              <span>登录账号</span>
-              <strong>待接入邮箱 / 手机号</strong>
-            </div>
-            <div>
-              <span>所属组织</span>
-              <strong>南通总部 / 城市合作方</strong>
-            </div>
-            <div>
-              <span>服务区域</span>
-              <strong>默认全部测试订单可见</strong>
-            </div>
-            <div>
-              <span>接单权限</span>
-              <strong>公共抢单 + 指定派单预留</strong>
-            </div>
-            <div>
-              <span>同步状态</span>
-              <strong>{syncState}</strong>
-            </div>
-            <div>
-              <span>自动同步</span>
-              <strong>{autoSyncState}</strong>
-            </div>
-          </section>
+    <section className="staff-visible-info">
+      <div>
+        <span>所属组织</span>
+        <strong>南通总部 / 城市合作方</strong>
+        <em>由商户端或总部后台分配，员工端仅展示。</em>
+      </div>
 
-          <section className="staff-setting-actions">
+      <div>
+        <span>服务区域</span>
+        <strong>默认全部测试订单可见</strong>
+        <em>正式版可绑定城市、区域或合作公司。</em>
+      </div>
+
+      <div>
+        <span>当前接单模式</span>
+        <strong>公共抢单 + 指定派单预留</strong>
+        <em>未来可按员工、手机号、邮箱、合作方定向派单。</em>
+      </div>
+    </section>
+
+    <section className="staff-setting-accordion">
+      <details>
+        <summary>
+          <span>账号状态</span>
+          <strong>未登录</strong>
+        </summary>
+        <div className="staff-detail-content">
+          <p>后续这里接入邮箱 / 手机号登录，用于确认员工、加盟商或城市合作方身份。</p>
+          <button>登录 / 绑定账号</button>
+          <button>修改密码</button>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span>接单权限</span>
+          <strong>查看规则</strong>
+        </summary>
+        <div className="staff-detail-content">
+          <p>公共抢单：符合条件的人都可见，谁先接谁做。</p>
+          <p>指定派单：商户端指定员工、手机号、邮箱或合作方后，只有对应人员可见。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span>通知设置</span>
+          <strong>预留</strong>
+        </summary>
+        <div className="staff-detail-content">
+          <p>后续可接入新派单提醒、方案打回提醒、客户确认提醒、归档提醒。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span>数据同步</span>
+          <strong>{syncState}</strong>
+        </summary>
+        <div className="staff-detail-content">
+          <p>自动同步：{autoSyncState}</p>
+          <p>{syncMessage}</p>
+          <div className="staff-detail-actions">
             <button onClick={refreshOrdersFromCloud}>刷新云端数据</button>
             <button onClick={uploadLocalOrdersToCloud}>上传本地数据</button>
-          </section>
-        </>
-      )}
-    </main>
+          </div>
+        </div>
+      </details>
+    </section>
+  </>
+)}
 
-    <nav className="staff-bottom-tab">
-      {["首页", "任务", "上报", "我的"].map((tab) => (
-        <button
-          key={tab}
-          className={staffAppTab === tab ? "active" : ""}
-          onClick={() => setStaffAppTab(tab)}
-        >
-          <span>
-            {tab === "首页" ? "⌂" : tab === "任务" ? "□" : tab === "上报" ? "＋" : "◦"}
-          </span>
-          {tab}
-        </button>
-      ))}
-    </nav>
+   <nav className="staff-bottom-tab">
+  {[
+    { key: "首页", icon: "home", label: "首页" },
+    { key: "任务", icon: "task", label: "任务" },
+    { key: "上报", icon: "report", label: "上报" },
+    { key: "我的", icon: "profile", label: "我的" },
+  ].map((item) => (
+    <button
+      key={item.key}
+      className={`staff-bottom-item ${staffAppTab === item.key ? "active" : ""}`}
+      onClick={() => setStaffAppTab(item.key)}
+    >
+      <i className={`staff-tab-icon ${item.icon}`} />
+      <span>{item.label}</span>
+    </button>
+  ))}
+</nav>
 
       {selectedOrder && (
         <div className="sheet-mask" onClick={() => setSelectedOrder(null)}>
