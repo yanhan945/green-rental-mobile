@@ -4035,14 +4035,20 @@ ${areaText || "暂无区域"}
  return (
   <div className="staff-app-shell">
     <header className="staff-app-topbar">
-      <button className="staff-mini-button" onClick={() => setStaffAppTab("我的")}>
-        我的
-      </button>
-      <strong>GardenOS</strong>
-      <button className="staff-mini-button merchant-switch" onClick={() => switchRole("merchant")}>
-        商户
-      </button>
-    </header>
+  <button
+    className="staff-avatar-entry"
+    onClick={() => setStaffAppTab("我的")}
+    aria-label="进入我的页面"
+  >
+    <span>G</span>
+  </button>
+
+  <strong>GardenOS</strong>
+
+  <button className="staff-mini-button merchant-switch" onClick={() => switchRole("merchant")}>
+    商户
+  </button>
+</header>
 
     <main className="staff-app-main">
       {staffAppTab === "首页" && (
