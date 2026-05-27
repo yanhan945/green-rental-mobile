@@ -4032,42 +4032,215 @@ ${areaText || "暂无区域"}
   if (currentPage === "plan" && currentOrder && currentPlan) return renderPlanPage();
   if (activeRole === "merchant") return renderMerchantPage();
 
-  return (
-    <div style={{ minHeight: "100vh", background: "#f4f6f9", color: "#182536", paddingBottom: "24px" }}>
-      <header style={{ position: "sticky", top: 0, zIndex: 20, height: 54, display: "grid", gridTemplateColumns: "72px 1fr 72px", alignItems: "center", background: "#fff", borderBottom: "1px solid #e8edf3", padding: "0 12px" }}>
-        <span />
-        <strong style={{ textAlign: "center", fontSize: 17 }}>任务列表</strong>
-        <button style={{ border: 0, background: "#eef2f6", color: "#2f6fae", borderRadius: 8, padding: "8px 10px", fontWeight: 900 }} onClick={() => switchRole("merchant")}>商户</button>
-      </header>
+ return (
+  <div className="staff-app-shell">
+    <header className="staff-app-topbar">
+      <button className="staff-mini-button" onClick={() => setStaffAppTab("我的")}>
+        我的
+      </button>
+      <strong>GardenOS</strong>
+      <button className="staff-mini-button merchant-switch" onClick={() => switchRole("merchant")}>
+        商户
+      </button>
+    </header>
 
-      <section style={{ margin: "12px", background: "#fff", border: "1px solid #e4eaf2", borderRadius: 14, padding: 12, boxShadow: "0 6px 18px rgba(31,58,88,.05)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <div>
-            <p style={{ margin: 0, color: "#7b899a", fontSize: 12, fontWeight: 900, letterSpacing: 1 }}>STAFF TASKS · V3.5</p>
-            <h1 style={{ margin: "5px 0 0", color: "#182536", fontSize: 22 }}>员工任务台</h1>
-          </div>
-          <button style={{ border: 0, borderRadius: 10, background: "#2f6fae", color: "#fff", fontWeight: 900, padding: "11px 13px" }} onClick={refreshOrdersFromCloud}>日期/刷新</button>
-        </div>
-        <p style={{ margin: "10px 0 0", color: "#7b899a", fontSize: 13 }}>{syncMessage}｜{autoSyncState}</p>
-      </section>
+    <main className="staff-app-main">
+      {staffAppTab === "首页" && (
+        <>
+          <section className="staff-hero-card">
+            <div>
+              <p className="staff-kicker">PROVENCE SERVICE HUB</p>
+              <h1>城市园林服务工作台</h1>
+              <span>标准化接单 · 方案配置 · 现场交付</span>
+            </div>
+            <button onClick={refreshOrdersFromCloud}>刷新</button>
+          </section>
 
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, padding: "0 12px 12px" }}>
-        {STAFF_TABS.map((tab) => (
-          <button key={tab} style={{ border: "1px solid #e4eaf2", borderRadius: 10, padding: "10px 4px", background: activeStaffTab === tab ? "#2f6fae" : "#fff", color: activeStaffTab === tab ? "#fff" : "#526274", fontWeight: 900 }} onClick={() => setActiveStaffTab(tab)}>
-            {tab}
-          </button>
-        ))}
-      </section>
+          <section className="staff-overview-grid">
+            <button onClick={() => { setStaffAppTab("任务"); setActiveStaffTab("待接单"); }}>
+              <span>待接单</span>
+              <strong>{orders.filter((order) => order.status === "待接单").length}</strong>
+            </button>
+            <button onClick={() => { setStaffAppTab("任务"); setActiveStaffTab("做方案"); }}>
+              <span>做方案</span>
+              <strong>{orders.filter((order) => ["配置中", "待商户确认"].includes(order.status)).length}</strong>
+            </button>
+            <button onClick={() => { setStaffAppTab("任务"); setActiveStaffTab("执行中"); }}>
+              <span>执行中</span>
+              <strong>{orders.filter((order) => ["方案已确认", "执行中"].includes(order.status)).length}</strong>
+            </button>
+            <button onClick={() => { setStaffAppTab("任务"); setActiveStaffTab("已完成"); }}>
+              <span>已完成</span>
+              <strong>{orders.filter((order) => ["待商户归档", "已完成"].includes(order.status)).length}</strong>
+            </button>
+          </section>
 
-      <main style={{ padding: "0 12px" }}>
-        {filteredStaffOrders.length === 0 ? (
-          <div style={{ background: "#fff", border: "1px solid #e4eaf2", borderRadius: 14, padding: 24, textAlign: "center", color: "#7b899a" }}><strong style={{ color: "#223247" }}>暂无{activeStaffTab}任务</strong><br/>订单变化会自动同步，也可以点击刷新。</div>
-        ) : (
-          filteredStaffOrders.map((order) => (
-            <CoreOrderCard key={order.id} order={order} mode="staff" />
-          ))
-        )}
-      </main>
+          <section className="staff-section-head">
+            <div>
+              <h2>今日推荐处理</h2>
+              <p>{syncMessage}｜{autoSyncState}</p>
+            </div>
+          </section>
+
+          <section className="staff-task-list">
+            {orders.filter((order) => ["待接单", "配置中", "方案已确认", "执行中", "待商户归档"].includes(order.status)).length === 0 ? (
+              <div className="staff-empty-card">
+                <strong>暂无待处理任务</strong>
+                <span>订单变化会自动同步，也可以点击刷新。</span>
+              </div>
+            ) : (
+              orders
+                .filter((order) => ["待接单", "配置中", "方案已确认", "执行中", "待商户归档"].includes(order.status))
+                .slice(0, 3)
+                .map((order) => <CoreOrderCard key={order.id} order={order} mode="staff" />)
+            )}
+          </section>
+        </>
+      )}
+
+      {staffAppTab === "任务" && (
+        <>
+          <section className="staff-compact-header">
+            <div>
+              <p className="staff-kicker">TASK FLOW</p>
+              <h1>任务列表</h1>
+              <span>{autoSyncState}</span>
+            </div>
+            <button onClick={refreshOrdersFromCloud}>刷新</button>
+          </section>
+
+          <section className="staff-status-tabs">
+            {STAFF_TABS.map((tab) => (
+              <button
+                key={tab}
+                className={activeStaffTab === tab ? "active" : ""}
+                onClick={() => setActiveStaffTab(tab)}
+              >
+                {tab}
+              </button>
+            ))}
+          </section>
+
+          <section className="staff-task-list">
+            {filteredStaffOrders.length === 0 ? (
+              <div className="staff-empty-card">
+                <strong>暂无{activeStaffTab}任务</strong>
+                <span>订单变化会自动同步，也可以点击刷新。</span>
+              </div>
+            ) : (
+              filteredStaffOrders.map((order) => (
+                <CoreOrderCard key={order.id} order={order} mode="staff" />
+              ))
+            )}
+          </section>
+        </>
+      )}
+
+      {staffAppTab === "上报" && (
+        <>
+          <section className="staff-compact-header">
+            <div>
+              <p className="staff-kicker">FIELD REPORT</p>
+              <h1>现场上报</h1>
+              <span>用于完成照片、现场备注、异常反馈</span>
+            </div>
+          </section>
+
+          <section className="staff-report-card">
+            <h2>快捷上报</h2>
+            <p>当前版本先从执行中订单进入完成上传；后续这里会升级为拍照、定位、异常反馈入口。</p>
+
+            {orders.filter((order) => order.status === "执行中").length === 0 ? (
+              <div className="staff-empty-mini">暂无执行中订单</div>
+            ) : (
+              orders
+                .filter((order) => order.status === "执行中")
+                .slice(0, 3)
+                .map((order) => (
+                  <button
+                    key={order.id}
+                    className="staff-report-row"
+                    onClick={() => {
+                      setCurrentOrderId(order.id);
+                      setCurrentPage("completeUpload");
+                    }}
+                  >
+                    <span>{order.customerName}</span>
+                    <strong>去完成上报</strong>
+                  </button>
+                ))
+            )}
+          </section>
+        </>
+      )}
+
+      {staffAppTab === "我的" && (
+        <>
+          <section className="staff-compact-header">
+            <div>
+              <p className="staff-kicker">PARTNER PROFILE</p>
+              <h1>我的服务身份</h1>
+              <span>账号、组织、接单权限与同步状态</span>
+            </div>
+          </section>
+
+          <section className="staff-profile-card">
+            <div className="staff-avatar">G</div>
+            <div>
+              <h2>园林服务人员</h2>
+              <p>当前为测试身份，后续接入邮箱 / 手机号登录。</p>
+            </div>
+          </section>
+
+          <section className="staff-setting-list">
+            <div>
+              <span>登录账号</span>
+              <strong>待接入邮箱 / 手机号</strong>
+            </div>
+            <div>
+              <span>所属组织</span>
+              <strong>南通总部 / 城市合作方</strong>
+            </div>
+            <div>
+              <span>服务区域</span>
+              <strong>默认全部测试订单可见</strong>
+            </div>
+            <div>
+              <span>接单权限</span>
+              <strong>公共抢单 + 指定派单预留</strong>
+            </div>
+            <div>
+              <span>同步状态</span>
+              <strong>{syncState}</strong>
+            </div>
+            <div>
+              <span>自动同步</span>
+              <strong>{autoSyncState}</strong>
+            </div>
+          </section>
+
+          <section className="staff-setting-actions">
+            <button onClick={refreshOrdersFromCloud}>刷新云端数据</button>
+            <button onClick={uploadLocalOrdersToCloud}>上传本地数据</button>
+          </section>
+        </>
+      )}
+    </main>
+
+    <nav className="staff-bottom-tab">
+      {["首页", "任务", "上报", "我的"].map((tab) => (
+        <button
+          key={tab}
+          className={staffAppTab === tab ? "active" : ""}
+          onClick={() => setStaffAppTab(tab)}
+        >
+          <span>
+            {tab === "首页" ? "⌂" : tab === "任务" ? "□" : tab === "上报" ? "＋" : "◦"}
+          </span>
+          {tab}
+        </button>
+      ))}
+    </nav>
 
       {selectedOrder && (
         <div className="sheet-mask" onClick={() => setSelectedOrder(null)}>
