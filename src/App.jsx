@@ -453,6 +453,7 @@ function App() {
 
   const [activeRole, setActiveRole] = useState("staff");
   const [activeStaffTab, setActiveStaffTab] = useState("待接单");
+  const [staffAppTab, setStaffAppTab] = useState("首页");
   const [merchantTab, setMerchantTab] = useState("工作台");
   const [merchantStatusFilter, setMerchantStatusFilter] = useState("全部");
   const [merchantSearchText, setMerchantSearchText] = useState("");
@@ -1727,107 +1728,81 @@ ${areaText || "暂无区域"}
     const hint = getOrderHint(order);
 
     if (mode === "staff") {
-      const isPending = order.status === "待接单";
-      const canBuild = ["配置中", "待商户确认"].includes(order.status);
-      const canExecute = ["方案已确认", "执行中"].includes(order.status);
-      
-      const videoBlue = "#2d5f8f"; 
-      const statusTone = isPending ? "#eaf2fb" : canBuild ? "#fff4e6" : "#f3f5f8";
-      const statusColor = isPending ? videoBlue : canBuild ? "#b7791f" : "#5f6b7a";
+  const isPending = order.status === "待接单";
+  const canBuild = ["配置中", "待商户确认"].includes(order.status);
+  const canExecute = ["方案已确认", "执行中"].includes(order.status);
 
-      return (
-        <article style={{
-          background: "#fff",
-          border: "1px solid #e3e8ef",
-          borderRadius: "14px",
-          padding: "16px",
-          marginBottom: "12px",
-          boxShadow: "0 4px 12px rgba(31, 41, 55, 0.04)",
-          textAlign: "left"
-        }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-            <strong style={{ color: "#8a96a6", fontSize: "13px", fontFamily: "monospace" }}>#{String(order.id).slice(-8)}</strong>
-            <span style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "4px 8px",
-              borderRadius: "6px",
-              background: statusTone,
-              color: statusColor,
-              fontWeight: "800",
-              fontSize: "12px",
-            }}>
-              {order.status}
-            </span>
-          </div>
+  const statusClass = isPending
+    ? "pending"
+    : canBuild
+      ? "build"
+      : canExecute
+        ? "execute"
+        : order.status === "已完成"
+          ? "done"
+          : "archive";
 
-          <h2 style={{ margin: "0 0 12px", color: "#1f2937", fontSize: "18px", fontWeight: "800", lineHeight: "1.3" }}>
-            {order.customerName}
-          </h2>
+  return (
+    <article className="staff-task-card">
+      <div className="staff-task-top">
+        <span className="staff-order-id">#{String(order.id).slice(-8)}</span>
+        <span className={`staff-status-chip ${statusClass}`}>{order.status}</span>
+      </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "13px", lineHeight: "1.4" }}>
-            <div style={{ display: "flex" }}>
-              <span style={{ color: "#8a96a6", width: "72px", flexShrink: 0 }}>任务地址</span>
-              <strong style={{ color: "#1f2937", fontWeight: "600" }}>{order.address || "-"}</strong>
-            </div>
-            <div style={{ display: "flex" }}>
-              <span style={{ color: "#8a96a6", width: "72px", flexShrink: 0 }}>联系人员</span>
-              <strong style={{ color: "#1f2937", fontWeight: "600" }}>{order.contactName || "-"}{order.phone ? ` ｜ ${order.phone}` : ""}</strong>
-            </div>
-            <div style={{ display: "flex" }}>
-              <span style={{ color: "#8a96a6", width: "72px", flexShrink: 0 }}>预约时间</span>
-              <strong style={{ color: "#1f2937", fontWeight: "600" }}>{order.expectedDate || "待确认"}</strong>
-            </div>
-            <div style={{ display: "flex" }}>
-              <span style={{ color: "#8a96a6", width: "72px", flexShrink: 0 }}>当前报价</span>
-              <strong style={{ color: "#d64545", fontWeight: "800", fontFamily: "monospace", fontSize: "14px" }}>¥ {money(stats.finalRent)}</strong>
-            </div>
-          </div>
+      <div className="staff-task-title-row">
+        <div>
+          <h2>{order.customerName}</h2>
+          <p>{order.source || "商户派单"} · {order.areaSize || "面积待确认"}</p>
+        </div>
+        {order.plan && (
+          <strong className="staff-price">¥ {money(stats.finalRent)}</strong>
+        )}
+      </div>
 
-          {hint && (
-            <div style={{ marginTop: "14px", padding: "10px 12px", borderRadius: "8px", background: "#f8fafc", color: "#5f6b7a", fontSize: "12px", border: "1px solid #edf1f5" }}>
-              {hint}
-            </div>
-          )}
+      <div className="staff-task-info">
+        <span>任务地址</span>
+        <strong>{order.address || "暂无地址"}</strong>
 
-          <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px dashed #e3e8ef" }}>
-            {isPending && (
-              <button
-                style={{ width: "100%", border: 0, borderRadius: "10px", background: videoBlue, color: "#fff", fontWeight: "800", padding: "12px", fontSize: "15px" }}
-                onClick={() => setSelectedOrder(order)}
-              >
-                立即接单
-              </button>
-            )}
+        <span>联系人</span>
+        <strong>
+          {order.contactName || "-"} {order.phone ? `｜${order.phone}` : ""}
+        </strong>
 
-            {!isPending && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "10px" }}>
-                <button
-                  style={{ border: `1px solid #b9d3f2`, borderRadius: "10px", background: "#f7f9fc", color: videoBlue, fontWeight: "700", padding: "10px", fontSize: "14px" }}
-                  onClick={() => openRouteNavigation(order.address)}
-                >
-                  导航
-                </button>
-                <button
-                  style={{ border: 0, borderRadius: "10px", background: videoBlue, color: "#fff", fontWeight: "800", padding: "10px", fontSize: "14px", boxShadow: "0 4px 10px rgba(58, 117, 196, 0.2)" }}
-                  onClick={() => {
-                    if (canExecute && order.status === "执行中") {
-                      setCurrentOrderId(order.id);
-                      setCurrentPage("completeUpload");
-                      return;
-                    }
-                    openPlanForOrder(order);
-                  }}
-                >
-                  {order.status === "执行中" ? "完成任务" : canBuild ? "编辑场景方案" : "查看详情"}
-                </button>
-              </div>
-            )}
-          </div>
-        </article>
-      );
-    }
+        <span>预约时间</span>
+        <strong>{order.expectedDate || "待确认"}</strong>
+      </div>
+
+      {hint && <div className="staff-task-hint">{hint}</div>}
+
+      <div className="staff-task-actions">
+        {isPending ? (
+          <button className="staff-primary-action" onClick={() => setSelectedOrder(order)}>
+            立即接单
+          </button>
+        ) : (
+          <>
+            <button className="staff-ghost-action" onClick={() => openRouteNavigation(order.address)}>
+              导航
+            </button>
+            <button
+              className="staff-primary-action"
+              onClick={() => {
+                if (canExecute && order.status === "执行中") {
+                  setCurrentOrderId(order.id);
+                  setCurrentPage("completeUpload");
+                  return;
+                }
+                openPlanForOrder(order);
+              }}
+            >
+              {order.status === "执行中" ? "完成任务" : canBuild ? "编辑方案" : "查看详情"}
+            </button>
+          </>
+        )}
+      </div>
+    </article>
+  );
+}
 
     return (
       <article className="order-card">
