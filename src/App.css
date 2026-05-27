@@ -2707,3 +2707,606 @@ input:focus {
     border-radius: 22px !important;
   }
 }
+/* =========================================================
+   v4.2 员工端 App 化骨架
+   清理 STAFF TASKS · V3.5 旧视觉，建立 GardenOS 移动工作台
+========================================================= */
+
+.staff-app-shell {
+  --staff-bg: #f7f1e7;
+  --staff-card: rgba(255, 252, 246, 0.92);
+  --staff-ink: #20251d;
+  --staff-text: #3a4435;
+  --staff-muted: #827b6d;
+  --staff-olive: #31452f;
+  --staff-sage: #6f8063;
+  --staff-gold: #b89658;
+  --staff-sand: #eadcc3;
+  --staff-line: rgba(116, 102, 74, 0.16);
+  --staff-shadow: 0 18px 46px rgba(58, 47, 30, 0.10);
+
+  min-height: 100vh;
+  padding-bottom: 92px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(216, 197, 162, 0.36) 0%, transparent 32%),
+    radial-gradient(circle at 100% 0%, rgba(111, 128, 99, 0.18) 0%, transparent 34%),
+    linear-gradient(180deg, #fbf7ef 0%, #f4eadc 46%, #efe1cb 100%);
+  color: var(--staff-ink);
+}
+
+.staff-app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: 72px 1fr 72px;
+  align-items: center;
+  height: 58px;
+  padding: 0 14px;
+  border-bottom: 1px solid rgba(116, 102, 74, 0.12);
+  background: rgba(255, 250, 242, 0.82);
+  backdrop-filter: blur(22px) saturate(1.15);
+}
+
+.staff-app-topbar strong {
+  text-align: center;
+  color: var(--staff-ink);
+  font-size: 18px;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.staff-mini-button {
+  min-height: 36px;
+  border: 1px solid var(--staff-line);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.78);
+  color: var(--staff-olive);
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 8px 22px rgba(58, 47, 30, 0.06);
+}
+
+.staff-mini-button.merchant-switch {
+  color: #fffaf2;
+  background: linear-gradient(135deg, #31452f, #4d6845);
+}
+
+.staff-app-main {
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 14px 14px 0;
+}
+
+.staff-kicker {
+  margin: 0 0 8px;
+  color: var(--staff-gold);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+}
+
+.staff-hero-card,
+.staff-compact-header,
+.staff-report-card,
+.staff-profile-card,
+.staff-setting-list,
+.staff-empty-card {
+  border: 1px solid var(--staff-line);
+  border-radius: 28px;
+  background: var(--staff-card);
+  box-shadow: var(--staff-shadow);
+  backdrop-filter: blur(18px) saturate(1.08);
+}
+
+.staff-hero-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 20px;
+  min-height: 154px;
+  overflow: hidden;
+  position: relative;
+}
+
+.staff-hero-card::after {
+  content: "";
+  position: absolute;
+  right: -34px;
+  bottom: -54px;
+  width: 150px;
+  height: 150px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(184, 150, 88, 0.22), transparent 68%);
+}
+
+.staff-hero-card h1,
+.staff-compact-header h1 {
+  margin: 0;
+  color: var(--staff-ink);
+  font-size: 27px;
+  line-height: 1.12;
+  font-weight: 950;
+  letter-spacing: -0.06em;
+}
+
+.staff-hero-card span,
+.staff-compact-header span,
+.staff-hero-card p,
+.staff-section-head p,
+.staff-report-card p,
+.staff-profile-card p {
+  color: var(--staff-muted);
+}
+
+.staff-hero-card > button,
+.staff-compact-header > button {
+  position: relative;
+  z-index: 1;
+  min-height: 42px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 16px;
+  background: linear-gradient(135deg, #31452f, #4d6845);
+  color: #fffaf2;
+  font-size: 14px;
+  font-weight: 950;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.20);
+}
+
+.staff-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+  margin: 14px 0 18px;
+}
+
+.staff-overview-grid button {
+  min-height: 78px;
+  border: 1px solid var(--staff-line);
+  border-radius: 22px;
+  background: rgba(255, 252, 246, 0.80);
+  box-shadow: 0 12px 30px rgba(58, 47, 30, 0.06);
+}
+
+.staff-overview-grid span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--staff-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.staff-overview-grid strong {
+  color: var(--staff-ink);
+  font-size: 24px;
+  font-weight: 950;
+}
+
+.staff-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 2px 10px;
+}
+
+.staff-section-head h2 {
+  margin: 0 0 4px;
+  color: var(--staff-ink);
+  font-size: 19px;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.staff-section-head p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.staff-compact-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.staff-status-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.staff-status-tabs button {
+  min-height: 44px;
+  border: 1px solid var(--staff-line);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.78);
+  color: var(--staff-muted);
+  font-size: 14px;
+  font-weight: 950;
+  box-shadow: 0 8px 22px rgba(58, 47, 30, 0.04);
+}
+
+.staff-status-tabs button.active {
+  border-color: rgba(49, 69, 47, 0.18);
+  background: linear-gradient(135deg, #31452f, #4d6845);
+  color: #fffaf2;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.20);
+}
+
+.staff-task-list {
+  display: grid;
+  gap: 12px;
+}
+
+/* 新员工任务卡：覆盖旧 task-card / inline 旧蓝色问题 */
+
+.staff-task-card {
+  border: 1px solid var(--staff-line) !important;
+  border-radius: 28px !important;
+  padding: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(255, 248, 237, 0.90)) !important;
+  box-shadow: var(--staff-shadow) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
+  text-align: left !important;
+}
+
+.staff-task-top,
+.staff-task-title-row,
+.staff-task-actions,
+.staff-report-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.staff-order-id {
+  color: #a49a88;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.staff-status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.staff-status-chip.pending {
+  background: #edf1e7;
+  color: #4d6845;
+}
+
+.staff-status-chip.build {
+  background: #f8ead0;
+  color: #9a6b1f;
+}
+
+.staff-status-chip.execute {
+  background: #eeeaf2;
+  color: #74678b;
+}
+
+.staff-status-chip.archive,
+.staff-status-chip.done {
+  background: #f0eee8;
+  color: #766b58;
+}
+
+.staff-task-title-row {
+  align-items: flex-start;
+  margin-top: 14px;
+}
+
+.staff-task-title-row h2 {
+  margin: 0;
+  color: var(--staff-ink);
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 950;
+  letter-spacing: -0.05em;
+}
+
+.staff-task-title-row p {
+  margin: 6px 0 0;
+  color: var(--staff-muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.staff-price {
+  flex: 0 0 auto;
+  color: #b8564d;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.staff-task-info {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 9px 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(116, 102, 74, 0.18);
+}
+
+.staff-task-info span {
+  color: #9a9385;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.staff-task-info strong {
+  color: var(--staff-text);
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.staff-task-hint {
+  margin-top: 14px;
+  border: 1px solid rgba(116, 102, 74, 0.12);
+  border-radius: 18px;
+  padding: 12px;
+  background: rgba(247, 241, 231, 0.72);
+  color: var(--staff-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.staff-task-actions {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(116, 102, 74, 0.18);
+}
+
+.staff-task-actions button {
+  min-height: 46px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.staff-task-actions .staff-primary-action:only-child {
+  width: 100%;
+}
+
+.staff-ghost-action {
+  flex: 0.9;
+  border: 1px solid rgba(116, 102, 74, 0.18);
+  background: rgba(255, 252, 246, 0.76);
+  color: var(--staff-olive);
+}
+
+.staff-primary-action {
+  flex: 1.6;
+  border: 0;
+  background: linear-gradient(135deg, #31452f, #4d6845);
+  color: #fffaf2;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.20);
+}
+
+.staff-empty-card,
+.staff-empty-mini {
+  padding: 24px 18px;
+  text-align: center;
+}
+
+.staff-empty-card strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--staff-ink);
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.staff-empty-card span,
+.staff-empty-mini {
+  color: var(--staff-muted);
+  font-size: 14px;
+}
+
+.staff-report-card,
+.staff-profile-card,
+.staff-setting-list {
+  padding: 18px;
+}
+
+.staff-report-card h2,
+.staff-profile-card h2 {
+  margin: 0 0 8px;
+  color: var(--staff-ink);
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.staff-report-card p {
+  margin: 0 0 14px;
+  line-height: 1.65;
+}
+
+.staff-report-row {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid var(--staff-line);
+  border-radius: 18px;
+  padding: 0 14px;
+  margin-top: 10px;
+  background: rgba(255, 252, 246, 0.78);
+  color: var(--staff-text);
+}
+
+.staff-report-row span {
+  font-weight: 900;
+}
+
+.staff-report-row strong {
+  color: var(--staff-olive);
+  font-weight: 950;
+}
+
+.staff-profile-card {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.staff-avatar {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #31452f, #b89658);
+  color: #fffaf2;
+  font-size: 24px;
+  font-weight: 950;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.20);
+}
+
+.staff-setting-list {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+}
+
+.staff-setting-list div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid rgba(116, 102, 74, 0.12);
+}
+
+.staff-setting-list div:last-child {
+  border-bottom: 0;
+}
+
+.staff-setting-list span {
+  color: var(--staff-muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.staff-setting-list strong {
+  color: var(--staff-ink);
+  font-size: 14px;
+  font-weight: 950;
+  line-height: 1.45;
+}
+
+.staff-setting-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.staff-setting-actions button {
+  min-height: 46px;
+  border: 1px solid var(--staff-line);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.80);
+  color: var(--staff-olive);
+  font-weight: 950;
+}
+
+.staff-bottom-tab {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  width: 100%;
+  max-width: 430px;
+  transform: translateX(-50%);
+  padding: 10px 12px 16px;
+  border-top: 1px solid rgba(116, 102, 74, 0.12);
+  background: rgba(255, 250, 242, 0.86);
+  backdrop-filter: blur(24px) saturate(1.15);
+  box-shadow: 0 -18px 44px rgba(58, 47, 30, 0.10);
+}
+
+.staff-bottom-tab button {
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  color: #938a79;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.staff-bottom-tab button span {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.staff-bottom-tab button.active {
+  background: rgba(237, 241, 231, 0.92);
+  color: var(--staff-olive);
+}
+
+/* 强覆盖旧 v3.5 / v3.9 员工端蓝色残留 */
+.staff-app-shell .task-card,
+.staff-app-shell .order-card {
+  border-radius: 28px !important;
+}
+
+.staff-app-shell button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  font-family: inherit !important;
+}
+
+.staff-app-shell .primary-button,
+.staff-app-shell .submit-plan-button,
+.staff-app-shell .tab.active,
+.staff-app-shell .task-card .actions .primary-button {
+  background: linear-gradient(135deg, #31452f, #4d6845) !important;
+  color: #fffaf2 !important;
+  border-color: transparent !important;
+}
+
+@media (max-width: 360px) {
+  .staff-app-main {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .staff-overview-grid {
+    gap: 7px;
+  }
+
+  .staff-overview-grid button {
+    min-height: 70px;
+    border-radius: 18px;
+  }
+
+  .staff-task-title-row h2 {
+    font-size: 22px;
+  }
+}
