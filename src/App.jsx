@@ -4363,8 +4363,9 @@ ${areaText || "暂无区域"}
     </section>
   </>
 )}
-
-   <nav className="staff-bottom-tab">
+</main>
+   
+    <nav className="staff-bottom-tab">
   {[
     { key: "首页", icon: "home", label: "首页" },
     { key: "任务", icon: "task", label: "任务" },
