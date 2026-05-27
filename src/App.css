@@ -5111,3 +5111,255 @@ input:focus {
     justify-items: start;
   }
 }
+/* =========================================================
+   v4.7 商户端自然融合修复版
+   修复：左右切割太硬 / 假木纹太黄 / 火 emoji 和红色警报低级感
+========================================================= */
+
+/* 商户端整体：让左侧和右侧共享同一个南法浅底，不再像两块页面硬拼 */
+.admin-layout {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(216, 197, 162, 0.18) 0%, transparent 30%),
+    radial-gradient(circle at 100% 0%, rgba(111, 128, 99, 0.10) 0%, transparent 34%),
+    linear-gradient(135deg, #f5efe4 0%, #f8f4ec 44%, #efe4d1 100%) !important;
+}
+
+/* 左侧：从偏黄木板，降成“浅砂岩木饰面” */
+.admin-sidebar {
+  position: relative !important;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 250, 242, 0.42) 0%, transparent 34%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.28), transparent 22%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(108, 92, 58, 0.026) 0px,
+      rgba(108, 92, 58, 0.026) 1px,
+      transparent 1px,
+      transparent 24px
+    ),
+    linear-gradient(180deg, #e9dfc9 0%, #dfd1b5 48%, #d7c7a5 100%) !important;
+  border-right: 0 !important;
+  box-shadow:
+    18px 0 42px rgba(78, 63, 39, 0.055),
+    inset -1px 0 0 rgba(255, 255, 255, 0.34) !important;
+}
+
+/* 让左右交界自然过渡，不是硬切线 */
+.admin-sidebar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -28px;
+  width: 56px;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(216, 202, 173, 0.34) 0%,
+    rgba(245, 239, 228, 0.18) 42%,
+    rgba(245, 239, 228, 0) 100%
+  );
+}
+
+/* 左侧 Logo 更像徽章，别像硬贴上去 */
+.admin-sidebar::before {
+  width: 50px !important;
+  height: 50px !important;
+  margin-bottom: 20px !important;
+  border-radius: 19px !important;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 250, 242, 0.30), transparent 34%),
+    linear-gradient(135deg, #31452f 0%, #6f6640 100%) !important;
+  box-shadow:
+    0 14px 30px rgba(49, 69, 47, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
+
+/* 左侧文字整体降噪 */
+.admin-sidebar .brand {
+  border-bottom-color: rgba(90, 78, 52, 0.11) !important;
+}
+
+.admin-sidebar .brand h2 {
+  color: #2b3325 !important;
+}
+
+.admin-sidebar .brand span,
+.admin-sidebar .brand p,
+.admin-sidebar .brand .eyebrow {
+  color: rgba(86, 76, 52, 0.58) !important;
+}
+
+/* 菜单按钮：选中态更自然，不要像硬高亮 */
+.admin-nav-btn {
+  color: rgba(45, 51, 37, 0.68) !important;
+  border-radius: 16px !important;
+  font-weight: 820 !important;
+}
+
+.admin-nav-btn:hover {
+  background: rgba(255, 250, 242, 0.26) !important;
+  color: #253020 !important;
+}
+
+.admin-nav-btn.active {
+  border-color: rgba(49, 69, 47, 0.10) !important;
+  background:
+    linear-gradient(90deg, rgba(255, 250, 242, 0.58), rgba(255, 250, 242, 0.22)) !important;
+  color: #253020 !important;
+  box-shadow:
+    inset 3px 0 0 rgba(49, 69, 47, 0.82),
+    0 8px 20px rgba(58, 47, 30, 0.055) !important;
+}
+
+/* 主区域稍微带一点同色暖调，跟左侧融起来 */
+.admin-main {
+  background:
+    radial-gradient(circle at 74% 0%, rgba(255, 255, 255, 0.58) 0%, transparent 30%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.72), rgba(246, 238, 224, 0.42)) !important;
+}
+
+/* 顶部栏跟整体更融合 */
+.admin-topbar {
+  background: rgba(255, 252, 246, 0.76) !important;
+  border-bottom-color: rgba(116, 102, 74, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(58, 47, 30, 0.035) !important;
+}
+
+/* 工作台待办卡：去掉“火警报”感觉，改成运营待办卡 */
+.admin-card h2 {
+  color: #20251d !important;
+}
+
+/* 如果 h2 内还残留 emoji，至少用整体样式压住低级感 */
+.admin-card h2:first-child {
+  letter-spacing: -0.035em !important;
+}
+
+/* 待办区域里的订单小卡更高级 */
+.admin-card .order-card,
+.admin-card .empty-card,
+.admin-card .area-card {
+  border-color: rgba(116, 102, 74, 0.12) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.94), rgba(255, 248, 237, 0.88)) !important;
+  box-shadow:
+    0 12px 28px rgba(58, 47, 30, 0.055),
+    inset 0 1px 0 rgba(255, 255, 255, 0.70) !important;
+}
+
+/* 覆盖红色“待商户确认”这种刺眼标签 */
+.admin-layout [style*="#ef4444"],
+.admin-layout [style*="239, 68, 68"],
+.admin-layout [style*="#fee2e2"],
+.admin-layout [style*="#fef2f2"] {
+  background: rgba(242, 219, 205, 0.92) !important;
+  color: #8d4e38 !important;
+  border-color: rgba(141, 78, 56, 0.18) !important;
+  box-shadow: none !important;
+}
+
+/* 状态胶囊：待确认用陶土，不用警报红 */
+.admin-status-chip,
+.area-size,
+.status-pill {
+  border: 1px solid rgba(141, 78, 56, 0.16) !important;
+  background: rgba(242, 219, 205, 0.74) !important;
+  color: #8d4e38 !important;
+  box-shadow: none !important;
+}
+
+/* 已确认/普通状态可以更柔和 */
+.admin-status-chip.muted {
+  border-color: rgba(116, 102, 74, 0.12) !important;
+  background: rgba(237, 241, 231, 0.84) !important;
+  color: #4d6845 !important;
+}
+
+/* 待办按钮不要红色警报，也不要蓝色 */
+.admin-layout .primary-button,
+.admin-card .primary-button,
+.admin-toast-fixed button {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #31452f 0%, #4d6845 100%) !important;
+  color: #fffaf2 !important;
+  box-shadow:
+    0 12px 24px rgba(49, 69, 47, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+}
+
+/* 打回/危险按钮从红色降为陶土色，不刺眼 */
+.admin-layout .ghost-button.danger {
+  border-color: rgba(141, 78, 56, 0.20) !important;
+  background: rgba(255, 246, 239, 0.94) !important;
+  color: #8d4e38 !important;
+}
+
+/* 右下角提醒：保留逻辑，改成高级便签 */
+.admin-toast-fixed {
+  right: 26px !important;
+  bottom: 26px !important;
+  border: 1px solid rgba(116, 102, 74, 0.14) !important;
+  border-left: 0 !important;
+  border-radius: 24px !important;
+  padding: 18px 20px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 252, 246, 0.98), rgba(246, 235, 215, 0.96)) !important;
+  box-shadow:
+    0 22px 54px rgba(58, 47, 30, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+  gap: 16px !important;
+}
+
+/* 用细竖条替代警报红 */
+.admin-toast-fixed::before {
+  content: "";
+  width: 6px;
+  align-self: stretch;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #8d4e38 0%, #b89658 100%);
+}
+
+/* 右下角提醒文字 */
+.admin-toast-fixed strong {
+  color: #20251d !important;
+}
+
+.admin-toast-fixed span {
+  color: #756d5f !important;
+}
+
+/* 去掉旧蓝色残留：商户端整体不再出现工具蓝 */
+.admin-layout [style*="#3b82f6"],
+.admin-layout [style*="#2f6fae"],
+.admin-layout [style*="#1e3a8a"],
+.admin-layout [style*="#bfdbfe"] {
+  color: #31452f !important;
+  border-color: rgba(116, 102, 74, 0.13) !important;
+}
+
+.admin-layout [style*="#f8fafc"],
+.admin-layout [style*="#f1f5f9"] {
+  background: rgba(255, 252, 246, 0.86) !important;
+}
+
+/* 左下角“切换至员工手机视角”更像系统切换入口 */
+.admin-sidebar .admin-nav-btn[style] {
+  border-color: rgba(90, 78, 52, 0.14) !important;
+  background: rgba(255, 250, 242, 0.34) !important;
+  color: #2b3325 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36) !important;
+}
+
+/* 小屏保底 */
+@media (max-width: 760px) {
+  .admin-sidebar::after {
+    display: none !important;
+  }
+
+  .admin-sidebar {
+    background:
+      linear-gradient(180deg, #e9dfc9 0%, #ded0b4 100%) !important;
+  }
+}
