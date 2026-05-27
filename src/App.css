@@ -2022,3 +2022,688 @@ button.danger,
     grid-template-columns: 1fr 1fr;
   }
 }
+/* =========================================================
+   v4.1 GardenOS 南法庄园视觉基底版
+   iOS 质感 + 南法庭院 + 园林服务中台
+   只覆盖视觉，不改业务逻辑
+========================================================= */
+
+:root {
+  --garden-bg: #f7f1e7;
+  --garden-bg-soft: #fbf7ef;
+  --garden-card: rgba(255, 252, 246, 0.92);
+  --garden-card-solid: #fffaf2;
+  --garden-line: rgba(123, 108, 78, 0.16);
+  --garden-line-strong: rgba(105, 93, 66, 0.24);
+
+  --garden-olive: #31452f;
+  --garden-olive-2: #4d6845;
+  --garden-sage: #849579;
+  --garden-sage-soft: #edf1e7;
+
+  --garden-stone: #8f8471;
+  --garden-sand: #d8c5a2;
+  --garden-sand-soft: #f2e7d2;
+  --garden-gold: #b89658;
+  --garden-gold-soft: #f5ead2;
+
+  --garden-lavender: #8c829b;
+  --garden-lavender-soft: #eeeaf2;
+
+  --garden-ink: #1f241d;
+  --garden-text: #384235;
+  --garden-muted: #7c7a6f;
+
+  --garden-danger: #b8564d;
+  --garden-danger-soft: #fff1ed;
+
+  --garden-radius-xl: 28px;
+  --garden-radius-lg: 22px;
+  --garden-radius-md: 16px;
+  --garden-radius-sm: 12px;
+
+  --garden-shadow-card: 0 18px 48px rgba(58, 47, 30, 0.10);
+  --garden-shadow-soft: 0 10px 28px rgba(58, 47, 30, 0.08);
+  --garden-shadow-float: 0 26px 70px rgba(49, 69, 47, 0.18);
+}
+
+/* ---------- 全局底色：从冷后台变成南法庭院底色 ---------- */
+
+html,
+body {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(216, 197, 162, 0.34) 0%, transparent 32%),
+    radial-gradient(circle at 88% 8%, rgba(132, 149, 121, 0.20) 0%, transparent 34%),
+    linear-gradient(180deg, #fbf7ef 0%, #f4ecdf 48%, #efe3cf 100%) !important;
+  color: var(--garden-ink) !important;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
+    "Microsoft YaHei", sans-serif !important;
+}
+
+/* ---------- 通用按钮：iOS 胶囊质感，不再像网页按钮 ---------- */
+
+button {
+  font-family: inherit !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.primary-button,
+.submit-plan-button,
+.submit-sheet-button,
+.add-area-button,
+.product-bottom button,
+.bottom-actions .submit-plan-button,
+.bottom-actions button:last-child {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #31452f 0%, #4d6845 100%) !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.22) !important;
+}
+
+.ghost-button,
+.role-button,
+.back-button,
+.close-button,
+.bottom-actions button {
+  border: 1px solid rgba(123, 108, 78, 0.18) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  color: var(--garden-olive) !important;
+  box-shadow: 0 8px 22px rgba(58, 47, 30, 0.06) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.ghost-button.danger,
+.remove-item-button {
+  background: var(--garden-danger-soft) !important;
+  color: var(--garden-danger) !important;
+  border-color: rgba(184, 86, 77, 0.18) !important;
+}
+
+/* =========================================================
+   员工端：城市合伙人移动工作台
+========================================================= */
+
+.app {
+  max-width: 430px !important;
+  min-height: 100vh !important;
+  margin: 0 auto !important;
+  padding: 14px 14px 28px !important;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(184, 150, 88, 0.18) 0%, transparent 30%),
+    radial-gradient(circle at 88% 4%, rgba(140, 130, 155, 0.13) 0%, transparent 30%),
+    linear-gradient(180deg, #fbf7ef 0%, #f2e7d6 100%) !important;
+}
+
+.app-header,
+.plan-header {
+  margin: -14px -14px 14px !important;
+  padding: 16px 16px 14px !important;
+  border-bottom: 1px solid rgba(123, 108, 78, 0.12) !important;
+  background: rgba(255, 250, 242, 0.78) !important;
+  backdrop-filter: blur(22px) saturate(1.2) !important;
+  box-shadow: 0 10px 28px rgba(58, 47, 30, 0.05) !important;
+}
+
+.eyebrow {
+  color: var(--garden-gold) !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.12em !important;
+}
+
+h1 {
+  color: var(--garden-ink) !important;
+  font-size: 23px !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.04em !important;
+}
+
+.tabs {
+  gap: 8px !important;
+  padding: 6px 2px 14px !important;
+}
+
+.tab {
+  border: 1px solid rgba(123, 108, 78, 0.14) !important;
+  border-radius: 999px !important;
+  padding: 9px 14px !important;
+  background: rgba(255, 252, 246, 0.72) !important;
+  color: var(--garden-muted) !important;
+  box-shadow: 0 8px 22px rgba(58, 47, 30, 0.04) !important;
+}
+
+.tab.active {
+  border-color: rgba(49, 69, 47, 0.18) !important;
+  background: linear-gradient(135deg, #31452f 0%, #526f47 100%) !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 14px 34px rgba(49, 69, 47, 0.22) !important;
+}
+
+/* 员工端任务卡片：从工具卡片变成 iOS 服务卡片 */
+
+.order-card,
+.task-card,
+.plan-summary-card,
+.price-card,
+.empty-card,
+.area-card,
+.product-card,
+.empty-product-card,
+.sheet-block,
+.selected-product-row,
+.material-row {
+  border: 1px solid rgba(123, 108, 78, 0.13) !important;
+  border-radius: var(--garden-radius-lg) !important;
+  background: rgba(255, 252, 246, 0.86) !important;
+  box-shadow: var(--garden-shadow-card) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
+}
+
+.order-card,
+.task-card {
+  overflow: hidden !important;
+}
+
+.order-card-header,
+.task-card-header {
+  padding: 16px 16px 10px !important;
+}
+
+.order-card h2,
+.task-card h2,
+.area-card h3,
+.product-info h3,
+.section-title-row h2,
+.sheet-header h2 {
+  color: var(--garden-ink) !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.order-card-header p,
+.task-card-header p,
+.description,
+.dispatch-time,
+.area-card p,
+.product-info p,
+.empty-card span {
+  color: var(--garden-muted) !important;
+}
+
+/* 状态标签：香槟金 / 橄榄绿 / 薰衣草灰紫 */
+
+.area-size,
+.status-pill,
+.task-status {
+  border: 1px solid rgba(184, 150, 88, 0.22) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #f6ecd8 0%, #efe0bf 100%) !important;
+  color: #806132 !important;
+}
+
+.tag-list span,
+.selected-item-list span {
+  border: 1px solid rgba(132, 149, 121, 0.18) !important;
+  border-radius: 999px !important;
+  background: rgba(237, 241, 231, 0.88) !important;
+  color: var(--garden-olive-2) !important;
+}
+
+.info-row,
+.task-info-row,
+.plan-info-line {
+  border-color: rgba(123, 108, 78, 0.12) !important;
+  color: var(--garden-muted) !important;
+}
+
+.info-row strong,
+.task-info-row strong,
+.plan-info-line strong,
+.plan-summary-top strong,
+.price-card strong,
+.price-detail-card strong {
+  color: var(--garden-ink) !important;
+}
+
+/* 员工端底部操作栏：iOS 浮动工具栏 */
+
+.bottom-actions {
+  max-width: 430px !important;
+  border-top: 1px solid rgba(123, 108, 78, 0.14) !important;
+  padding: 10px 12px 16px !important;
+  background: rgba(255, 250, 242, 0.80) !important;
+  backdrop-filter: blur(24px) saturate(1.15) !important;
+  box-shadow: 0 -18px 44px rgba(58, 47, 30, 0.10) !important;
+}
+
+.bottom-actions button {
+  min-height: 42px !important;
+  border-radius: 999px !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+/* 弹窗：南法 iOS 抽屉 */
+
+.sheet-mask {
+  background: rgba(44, 53, 37, 0.38) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.bottom-sheet {
+  border-radius: 30px 30px 0 0 !important;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(216, 197, 162, 0.20) 0%, transparent 35%),
+    rgba(255, 250, 242, 0.96) !important;
+  box-shadow: 0 -26px 70px rgba(49, 69, 47, 0.22) !important;
+}
+
+.sheet-handle {
+  background: rgba(123, 108, 78, 0.24) !important;
+}
+
+/* 输入框：柔和石材边框 */
+
+.area-input,
+.price-input,
+.search-card input,
+textarea,
+select,
+input {
+  border: 1px solid rgba(123, 108, 78, 0.20) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 252, 246, 0.92) !important;
+  color: var(--garden-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+}
+
+.area-input:focus,
+.price-input:focus,
+.search-card input:focus,
+textarea:focus,
+select:focus,
+input:focus {
+  border-color: rgba(184, 150, 88, 0.62) !important;
+  box-shadow:
+    0 0 0 4px rgba(184, 150, 88, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+}
+
+/* 选品页：南法商品卡 */
+
+.search-card {
+  border-radius: 20px !important;
+  background: linear-gradient(135deg, #31452f 0%, #5b7450 100%) !important;
+  box-shadow: 0 16px 38px rgba(49, 69, 47, 0.22) !important;
+}
+
+.category-tabs,
+.material-tabs,
+.sub-category-list {
+  border: 1px solid rgba(123, 108, 78, 0.14) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  box-shadow: 0 10px 28px rgba(58, 47, 30, 0.06) !important;
+}
+
+.category-tabs button,
+.material-tabs button,
+.sub-category-list button {
+  color: var(--garden-muted) !important;
+  background: transparent !important;
+}
+
+.category-tabs button.active,
+.material-tabs button.active,
+.sub-category-list button.active {
+  color: var(--garden-olive) !important;
+  background: var(--garden-sage-soft) !important;
+  box-shadow: inset 0 -3px 0 var(--garden-gold) !important;
+}
+
+.product-image {
+  border-radius: 18px !important;
+  background: linear-gradient(135deg, #f4ead5 0%, #edf1e7 100%) !important;
+  color: var(--garden-olive) !important;
+}
+
+.product-bottom strong {
+  color: var(--garden-olive) !important;
+}
+
+/* =========================================================
+   商户端：总部园林服务驾驶舱
+========================================================= */
+
+.admin-layout {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(216, 197, 162, 0.28) 0%, transparent 32%),
+    radial-gradient(circle at 100% 0%, rgba(132, 149, 121, 0.18) 0%, transparent 34%),
+    linear-gradient(135deg, #f8f2e8 0%, #f3eadc 48%, #eee1cd 100%) !important;
+}
+
+/* 侧边栏：不再是普通深蓝后台，改为深橄榄庄园感 */
+
+.admin-sidebar {
+  border-right: 1px solid rgba(184, 150, 88, 0.18) !important;
+  background:
+    radial-gradient(circle at 30% 0%, rgba(184, 150, 88, 0.16) 0%, transparent 36%),
+    linear-gradient(180deg, #182118 0%, #263724 52%, #182118 100%) !important;
+  color: rgba(255, 250, 242, 0.72) !important;
+  box-shadow: 18px 0 60px rgba(49, 69, 47, 0.16) !important;
+}
+
+.admin-sidebar .brand {
+  margin-bottom: 30px !important;
+  padding: 16px 12px 18px !important;
+  border: 1px solid rgba(216, 197, 162, 0.16) !important;
+  border-radius: 24px !important;
+  background: rgba(255, 250, 242, 0.06) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.admin-sidebar .brand h2,
+.admin-sidebar h2 {
+  color: #fffaf2 !important;
+  letter-spacing: -0.03em !important;
+}
+
+.admin-sidebar .brand span,
+.admin-sidebar .eyebrow {
+  color: #d8c5a2 !important;
+}
+
+.admin-nav-btn {
+  border: 1px solid transparent !important;
+  border-radius: 18px !important;
+  color: rgba(255, 250, 242, 0.72) !important;
+  padding: 13px 15px !important;
+  font-weight: 850 !important;
+}
+
+.admin-nav-btn:hover {
+  background: rgba(255, 250, 242, 0.08) !important;
+  color: #fffaf2 !important;
+}
+
+.admin-nav-btn.active {
+  border-color: rgba(216, 197, 162, 0.28) !important;
+  background: linear-gradient(135deg, rgba(255, 250, 242, 0.18), rgba(184, 150, 88, 0.18)) !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16) !important;
+}
+
+/* 商户端主区域：更像总部驾驶舱 */
+
+.admin-main {
+  background: transparent !important;
+}
+
+.admin-topbar {
+  border-bottom: 1px solid rgba(123, 108, 78, 0.10) !important;
+  background: rgba(248, 242, 232, 0.74) !important;
+  backdrop-filter: blur(24px) saturate(1.12) !important;
+}
+
+.admin-topbar h1,
+.admin-main h1,
+.admin-card h2,
+.admin-section-head h2 {
+  color: var(--garden-ink) !important;
+  letter-spacing: -0.04em !important;
+}
+
+.admin-topbar span,
+.admin-section-head p,
+.admin-card p {
+  color: var(--garden-muted) !important;
+}
+
+/* 数据卡 / 内容卡：iOS + 庄园砂岩感 */
+
+.admin-card,
+.metric-box,
+.admin-data-panel {
+  border: 1px solid rgba(123, 108, 78, 0.13) !important;
+  border-radius: 26px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.94), rgba(255, 248, 237, 0.88)) !important;
+  box-shadow: var(--garden-shadow-card) !important;
+  backdrop-filter: blur(20px) saturate(1.08) !important;
+}
+
+.metric-box {
+  border-left: 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.metric-box::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  width: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #b89658, rgba(184, 150, 88, 0.12));
+}
+
+.metric-box h3 {
+  padding-top: 12px !important;
+  color: var(--garden-muted) !important;
+  letter-spacing: 0.08em !important;
+}
+
+.metric-box strong {
+  color: var(--garden-ink) !important;
+}
+
+/* 商户端表格：少一点冷硬，多一点高端系统感 */
+
+.admin-table {
+  border: 1px solid rgba(123, 108, 78, 0.14) !important;
+  border-radius: 22px !important;
+  background: rgba(255, 252, 246, 0.86) !important;
+  box-shadow: 0 12px 34px rgba(58, 47, 30, 0.06) !important;
+}
+
+.admin-table-row {
+  border-bottom: 1px solid rgba(123, 108, 78, 0.10) !important;
+  color: var(--garden-text) !important;
+}
+
+.admin-table-head {
+  background: rgba(242, 231, 210, 0.62) !important;
+  color: var(--garden-stone) !important;
+}
+
+.admin-table-row strong {
+  color: var(--garden-ink) !important;
+}
+
+.admin-table-row em {
+  color: var(--garden-muted) !important;
+}
+
+.admin-status-chip {
+  border: 1px solid rgba(184, 150, 88, 0.22) !important;
+  background: var(--garden-gold-soft) !important;
+  color: #806132 !important;
+}
+
+.admin-status-chip.muted {
+  border-color: rgba(123, 108, 78, 0.14) !important;
+  background: rgba(237, 241, 231, 0.82) !important;
+  color: var(--garden-sage) !important;
+}
+
+/* 商户端按钮统一为庄园系统按钮 */
+
+.admin-layout .primary-button,
+.admin-layout .submit-plan-button,
+.admin-layout .submit-sheet-button,
+.admin-table-actions .primary-button,
+.admin-section-head .primary-button {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #31452f 0%, #4d6845 100%) !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.20) !important;
+}
+
+.admin-layout .ghost-button,
+.admin-table-actions .ghost-button,
+.admin-section-head .ghost-button {
+  border: 1px solid rgba(123, 108, 78, 0.18) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  color: var(--garden-olive) !important;
+  box-shadow: 0 8px 22px rgba(58, 47, 30, 0.05) !important;
+}
+
+.admin-layout .ghost-button.danger {
+  background: var(--garden-danger-soft) !important;
+  color: var(--garden-danger) !important;
+}
+
+/* 商品 / 客户弹窗：南法面板 */
+
+.admin-product-cell i {
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, #f2e7d2 0%, #edf1e7 100%) !important;
+  color: var(--garden-olive) !important;
+}
+
+.admin-setting-grid div {
+  border: 1px solid rgba(123, 108, 78, 0.13) !important;
+  border-radius: 22px !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  box-shadow: var(--garden-shadow-soft) !important;
+}
+
+/* 右下角提醒：从红色警报改成高级待办提醒 */
+
+.admin-toast-fixed {
+  border-left: 0 !important;
+  border: 1px solid rgba(184, 150, 88, 0.22) !important;
+  border-radius: 24px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 252, 246, 0.96), rgba(245, 234, 210, 0.94)) !important;
+  box-shadow: var(--garden-shadow-float) !important;
+  backdrop-filter: blur(18px) !important;
+}
+
+.admin-toast-fixed::before {
+  content: "";
+  width: 8px;
+  align-self: stretch;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #b89658, #4d6845);
+}
+
+/* 审核台：更像园林方案评审室 */
+
+.admin-review-desk {
+  gap: 28px !important;
+}
+
+.admin-review-desk > * {
+  border-radius: 26px !important;
+}
+
+/* =========================================================
+   把 App.jsx 里残留的 inline 蓝色/绿色按钮压成 GardenOS
+   解决“神似形不似”和残留毛坯/蓝色问题
+========================================================= */
+
+.app button[style],
+.admin-layout button[style],
+.bottom-sheet button[style] {
+  border-radius: 999px !important;
+  font-family: inherit !important;
+  font-weight: 900 !important;
+}
+
+/* 员工端主操作 inline 按钮 */
+.app button[style*="background"],
+.bottom-sheet button[style*="background"] {
+  box-shadow: none;
+}
+
+/* 有色背景按钮统一改深橄榄，危险按钮另外被 danger 覆盖 */
+.app button[style*="#2f6fae"],
+.app button[style*="#3b82f6"],
+.app button[style*="videoBlue"],
+.admin-layout button[style*="#2f6fae"],
+.admin-layout button[style*="#3b82f6"] {
+  background: linear-gradient(135deg, #31452f 0%, #4d6845 100%) !important;
+  color: #fffaf2 !important;
+  border: 0 !important;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.20) !important;
+}
+
+/* 残留绿色高亮统一成南法橄榄 */
+.app [style*="#166534"],
+.admin-layout [style*="#166534"] {
+  color: var(--garden-olive) !important;
+}
+
+/* 残留蓝色文字统一成橄榄 */
+.app [style*="#2f6fae"],
+.app [style*="#3b82f6"],
+.admin-layout [style*="#2f6fae"],
+.admin-layout [style*="#3b82f6"] {
+  color: var(--garden-olive) !important;
+}
+
+/* =========================================================
+   移动端兼容：商户端在手机上可横向/纵向可用，员工端保持自然适配
+========================================================= */
+
+@media (max-width: 900px) {
+  .admin-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-sidebar {
+    position: relative !important;
+    min-height: auto !important;
+    padding: 16px 14px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(184, 150, 88, 0.18) !important;
+  }
+
+  .admin-sidebar .brand {
+    margin-bottom: 12px !important;
+  }
+
+  .admin-nav-btn {
+    display: inline-flex !important;
+    margin: 0 6px 8px 0 !important;
+  }
+
+  .admin-main {
+    height: auto !important;
+    min-height: 100vh !important;
+    padding: 0 14px 32px !important;
+  }
+
+  .admin-topbar {
+    padding: 16px 0 !important;
+  }
+
+  .admin-metric-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .admin-card,
+  .metric-box {
+    border-radius: 22px !important;
+  }
+}
