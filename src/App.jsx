@@ -2187,22 +2187,55 @@ ${areaText || "暂无区域"}
     );
   }
 
-  function submitCompleteUpload() {
-    if (!currentOrder) return;
-    updateOrder(
-      currentOrder.id,
-      (order) => {
-        const next = {
-          ...order,
-          completePhotos: completeForm,
-        };
-        return addTimeline(next, "员工提交完成照片和备注");
-      },
-      "完成照片已同步"
-    );
-    completeOrderByStaff(currentOrder.id);
-    setCurrentPage("orders");
+ function submitCompleteUpload() {
+  if (!currentOrder) return;
+
+  if (!["方案已确认", "执行中"].includes(currentOrder.status)) {
+    alert("需要商户确认方案后，员工才能完成订单。");
+    return;
   }
+
+  if (!window.confirm(`确认将「${currentOrder.customerName}」标记为已完成，并提交给商户归档吗？`)) {
+    return;
+  }
+
+  const completedTime = nowText();
+
+  updateOrder(
+    currentOrder.id,
+    (order) => {
+      const next = {
+        ...order,
+        status: "待商户归档",
+        planStatus: "待商户归档",
+        merchantArchiveStatus: "待归档",
+        deliveryStatus: "已到达",
+        executionStatus: "已完成服务",
+        completedAt: completedTime,
+        completePhotos: {
+          scenePhotos: Array.isArray(completeForm.scenePhotos) ? completeForm.scenePhotos : ["", "", ""],
+          plantPhotos: Array.isArray(completeForm.plantPhotos) ? completeForm.plantPhotos : ["", "", ""],
+          remark: completeForm.remark || "",
+          submittedAt: completedTime,
+        },
+        plan: order.plan
+          ? {
+              ...order.plan,
+              status: "待商户归档",
+              completedAt: completedTime,
+            }
+          : order.plan,
+      };
+
+      return addTimeline(next, "员工提交完成照片和备注，订单进入待商户归档");
+    },
+    "订单完成待归档已同步"
+  );
+
+  setActiveStaffTab("已完成");
+  setCurrentPage("orders");
+  setCompleteForm({ scenePhotos: ["", "", ""], plantPhotos: ["", "", ""], remark: "" });
+}
 
   function renderCompleteUploadPage() {
     if (!currentOrder) return null;
