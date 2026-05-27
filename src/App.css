@@ -1765,3 +1765,260 @@ button.danger,
   white-space: normal !important;
   padding: 12px !important;
 }
+/* ================= v4.0 稳定修复：商户端真实管理页 + 按钮兜底 ================= */
+
+.admin-data-panel {
+  overflow: hidden;
+}
+
+.admin-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.admin-section-head h2 {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.admin-section-head p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.admin-filter-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 180px;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-filter-row input,
+.admin-filter-row select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #cfd8e3;
+  border-radius: 10px;
+  padding: 0 12px;
+  background: #ffffff;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+}
+
+.admin-filter-row input:focus,
+.admin-filter-row select:focus {
+  border-color: #2f6fae;
+  box-shadow: 0 0 0 3px rgba(47, 111, 174, 0.12);
+}
+
+.admin-table {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.admin-table-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.8fr 0.7fr 0.7fr 1fr;
+  align-items: center;
+  gap: 12px;
+  min-height: 62px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef2f7;
+  color: #334155;
+  font-size: 13px;
+}
+
+.admin-table-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-table-head {
+  min-height: 44px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-table-row strong {
+  display: block;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.admin-table-row em {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
+}
+
+.admin-status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  border: 1px solid #bfd5ec;
+  border-radius: 999px;
+  padding: 0 9px;
+  background: #eaf2fb;
+  color: #245a8d;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.admin-status-chip.muted {
+  border-color: #d7dde6;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.admin-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-table-actions button,
+.admin-section-head button,
+.admin-toast-fixed button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  min-height: 36px !important;
+  border-radius: 8px !important;
+  padding: 0 12px !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+  box-shadow: none !important;
+}
+
+.admin-table-actions .ghost-button,
+.admin-section-head .ghost-button {
+  border: 1px solid #cfd8e3 !important;
+  background: #ffffff !important;
+  color: #2f6fae !important;
+}
+
+.admin-table-actions .primary-button,
+.admin-section-head .primary-button {
+  border: 1px solid #2f6fae !important;
+  background: #2f6fae !important;
+  color: #ffffff !important;
+}
+
+.admin-product-cell {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-product-cell i {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #eef2f7;
+  color: #64748b;
+  font-size: 22px;
+  font-style: normal;
+  overflow: hidden;
+}
+
+.admin-product-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-admin-table .admin-table-row {
+  grid-template-columns: 1.6fr 1fr 0.8fr 0.7fr 0.7fr 1fr;
+}
+
+.customer-admin-table .admin-table-row {
+  grid-template-columns: 1.2fr 1fr 1.4fr 0.7fr 1fr 1fr;
+}
+
+.admin-setting-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-setting-grid div {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  background: #f8fafc;
+}
+
+.admin-setting-grid strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.admin-setting-grid span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 防止新增管理页里的按钮继续出现“毛坯房”原生样式 */
+.admin-layout button {
+  font-family: inherit !important;
+}
+
+.admin-layout button:not(.admin-nav-btn) {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+/* 小屏幕下商户端表格允许横向滚动，避免挤爆 */
+@media (max-width: 900px) {
+  .admin-main {
+    padding: 0 14px 32px !important;
+  }
+
+  .admin-section-head {
+    display: grid;
+    gap: 12px;
+  }
+
+  .admin-filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-table {
+    overflow-x: auto;
+  }
+
+  .admin-table-row {
+    min-width: 860px;
+  }
+
+  .admin-setting-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
