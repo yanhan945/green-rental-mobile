@@ -5676,7 +5676,7 @@ input:focus {
   display: none !important;
 }
 
-/* 底部 Tab：参考微信逻辑，图标更清楚，文字更小更轻 */
+/* 底部 Tab：参考微信逻辑，图标清楚，文字更小 */
 .staff-bottom-tab {
   padding: 5px 14px 10px !important;
   gap: 4px !important;
@@ -5685,8 +5685,8 @@ input:focus {
 .staff-bottom-item {
   min-height: 42px !important;
   border-radius: 15px !important;
-  font-size: 8px !important;
-  font-weight: 720 !important;
+  font-size: 7px !important;
+  font-weight: 680 !important;
   gap: 2px !important;
   letter-spacing: -0.02em !important;
 }
@@ -5703,16 +5703,16 @@ input:focus {
 }
 
 .staff-bottom-item span:last-child {
-  transform: scale(0.88);
+  transform: scale(0.78);
   transform-origin: center;
   line-height: 1;
 }
 
 .staff-bottom-item.active {
-  background: rgba(237, 241, 231, 0.52) !important;
+  background: rgba(237, 241, 231, 0.48) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.62),
-    0 4px 10px rgba(49, 69, 47, 0.03) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    0 4px 10px rgba(49, 69, 47, 0.026) !important;
 }
 @media (max-width: 360px) {
   .garden-clean-task {
