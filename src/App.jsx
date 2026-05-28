@@ -4068,7 +4068,7 @@ ${areaText || "暂无区域"}
 </header>
 
     <main className="staff-app-main">
-  {staffAppTab === "首页" && (
+{staffAppTab === "首页" && (
           <>
             <section className="garden-clean-head">
               <div>
@@ -4087,7 +4087,6 @@ ${areaText || "暂无区域"}
                   <p className="garden-kicker">TODAY’S TASKS</p>
                   <h2>今日服务任务</h2>
                 </div>
-                {/* 紧急屏蔽：右上角容易误触的按钮换成了温和的文本提示，不再有 onClick */}
                 <span style={{ color: "#8a8070", fontSize: 12, fontWeight: 800 }}>仅预览</span>
               </div>
 
@@ -4127,7 +4126,6 @@ ${areaText || "暂无区域"}
                         : "done";
 
                       return (
-                        {/* 紧急屏蔽：把 button 改成 div，彻底拔掉了 onClick 事件，怎么点都不会再跳旧页面报错了 */}
                         <div key={order.id} className={`garden-clean-task ${tone}`}>
                           <span className="garden-clean-index">{index + 1}</span>
 
