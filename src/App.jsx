@@ -449,6 +449,14 @@ function getStaffStatuses(tab) {
   return ["待接单"];
 }
 
+function getStaffTabByOrderStatus(status) {
+  if (status === "待接单") return "待接单";
+  if (["配置中", "待商户确认"].includes(status)) return "做方案";
+  if (["方案已确认", "执行中"].includes(status)) return "执行中";
+  if (["待商户归档", "已完成"].includes(status)) return "已完成";
+  return "待接单";
+}
+
 function App() {
   const merchantListRef = useRef(null);
 
@@ -4124,11 +4132,9 @@ ${areaText || "暂无区域"}
                   key={order.id}
                   className={`garden-clean-task ${tone}`}
                   onClick={() => {
-                    if (order.status === "待接单") {
-                      setSelectedOrder(order);
-                      return;
-                    }
-
+  setActiveStaffTab(getStaffTabByOrderStatus(order.status));
+  setStaffAppTab("任务");
+}}
                     if (order.status === "执行中") {
                       setCurrentOrderId(order.id);
                       setCurrentPage("completeUpload");
