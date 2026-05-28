@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { GardenIcons } from "./GardenIcons";
 import "./App.css";
 
 const SUPABASE_URL = "https://kvdxgyymlfnnurdigtkj.supabase.co";
@@ -4405,22 +4406,28 @@ ${areaText || "暂无区域"}
 )}
 </main>
    
-    <nav className="staff-bottom-tab">
+ <nav className="staff-bottom-tab">
   {[
-    { key: "首页", icon: "home", label: "首页" },
-    { key: "任务", icon: "task", label: "任务" },
-    { key: "上报", icon: "report", label: "上报" },
-    { key: "我的", icon: "profile", label: "我的" },
-  ].map((item) => (
-    <button
-      key={item.key}
-      className={`staff-bottom-item ${staffAppTab === item.key ? "active" : ""}`}
-      onClick={() => setStaffAppTab(item.key)}
-    >
-      <i className={`staff-tab-icon ${item.icon}`} />
-      <span>{item.label}</span>
-    </button>
-  ))}
+    { key: "首页", Icon: GardenIcons.StaffHome, label: "首页" },
+    { key: "任务", Icon: GardenIcons.StaffTask, label: "任务" },
+    { key: "上报", Icon: GardenIcons.StaffReport, label: "上报" },
+    { key: "我的", Icon: GardenIcons.StaffMine, label: "我的" },
+  ].map((item) => {
+    const Icon = item.Icon;
+
+    return (
+      <button
+        key={item.key}
+        className={`staff-bottom-item ${staffAppTab === item.key ? "active" : ""}`}
+        onClick={() => setStaffAppTab(item.key)}
+      >
+        <span className="staff-tab-icon">
+          <Icon />
+        </span>
+        <span>{item.label}</span>
+      </button>
+    );
+  })}
 </nav>
 
       {selectedOrder && (
