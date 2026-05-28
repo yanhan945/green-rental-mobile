@@ -4138,7 +4138,29 @@ ${areaText || "暂无区域"}
     </button>
   ))}
 </section>
-     
+
+     {staffAppTab === "任务" && (
+  <>
+    <section className="staff-compact-header">
+      <div>
+        <p className="staff-kicker">TASK FLOW</p>
+        <h1>任务列表</h1>
+        <span>{autoSyncState}</span>
+      </div>
+      <button onClick={refreshOrdersFromCloud}>刷新</button>
+    </section>
+
+    <section className="staff-status-tabs">
+      {STAFF_TABS.map((tab) => (
+        <button
+          key={tab}
+          className={activeStaffTab === tab ? "active" : ""}
+          onClick={() => setActiveStaffTab(tab)}
+        >
+          {tab}
+        </button>
+      ))}
+    </section>
           <section className="staff-task-list">
             {filteredStaffOrders.length === 0 ? (
               <div className="staff-empty-card">
