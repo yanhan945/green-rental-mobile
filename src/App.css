@@ -1,5 +1,19 @@
 /* v3.5 融合版：保留完整业务功能，视觉更接近参考视频冷灰蓝工具风 */
+/* ================= 紧急破除 React 默认限制，实现真正的 SaaS 全屏铺满 ================= */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  height: 100%;
+}
 
+#root {
+  max-width: 100% !important; /* 打破默认的 1280px 限制 */
+  width: 100% !important;
+  margin: 0 !important;       /* 取消默认居中 */
+  padding: 0 !important;      /* 取消四周的白边 */
+  text-align: left !important;
+}
 :root {
   --page-bg: #f3f5f8;
   --card-bg: #ffffff;
@@ -1409,4 +1423,4309 @@ button.danger,
 .task-card button {
   appearance: none !important;
   -webkit-appearance: none !important;
+}
+/* v3.9 局部优化 02：定价与分享模块去原生按钮化 */
+
+.price-card {
+  display: block !important;
+  margin: 12px 0 86px !important;
+  padding: 14px !important;
+  border: 1px solid #dbe4ef !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 6px 18px rgba(30, 41, 59, 0.07) !important;
+  text-align: left !important;
+}
+
+.price-card h2,
+.price-card h3 {
+  margin: 0 0 8px !important;
+  color: #172033 !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+  text-align: left !important;
+}
+
+.price-card p {
+  margin: 0 0 12px !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+  text-align: left !important;
+}
+
+.price-card > div {
+  margin-top: 10px !important;
+}
+
+.price-card strong {
+  color: #172033 !important;
+  font-size: 16px !important;
+  font-weight: 900 !important;
+}
+
+.price-card input,
+.price-card select,
+.price-card textarea {
+  width: 100% !important;
+  min-height: 42px !important;
+  border: 1px solid #cfd8e3 !important;
+  border-radius: 10px !important;
+  padding: 9px 11px !important;
+  background: #f8fafc !important;
+  color: #172033 !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.price-card input:focus,
+.price-card select:focus,
+.price-card textarea:focus {
+  border-color: #2f6fae !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(47, 111, 174, 0.12) !important;
+}
+
+.price-card button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  min-height: 36px !important;
+  border: 1px solid #cfd8e3 !important;
+  border-radius: 10px !important;
+  padding: 8px 12px !important;
+  background: #f8fafc !important;
+  color: #2f5f91 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  line-height: 1.1 !important;
+  box-shadow: none !important;
+}
+
+.price-card button:hover {
+  background: #eef4fb !important;
+  border-color: #bfd5ec !important;
+}
+
+.price-card button.selected,
+.price-card button.active,
+.price-card button[aria-pressed="true"] {
+  border-color: #2f6fae !important;
+  background: #2f6fae !important;
+  color: #ffffff !important;
+}
+
+.price-card .price-input {
+  display: inline-flex !important;
+  width: auto !important;
+  min-width: 160px !important;
+  max-width: 100% !important;
+  margin-left: 6px !important;
+}
+
+.price-card .option-grid,
+.price-card .payment-grid,
+.price-card .plan-type-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 8px 0 10px !important;
+}
+
+.price-card .payment-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.price-card .rent-preview,
+.price-card .confirm-row {
+  display: grid !important;
+  grid-template-columns: 96px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 8px !important;
+  border-bottom: 1px solid #edf1f6 !important;
+  padding: 8px 0 !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+}
+
+.price-card .rent-preview:last-child,
+.price-card .confirm-row:last-child {
+  border-bottom: 0 !important;
+}
+
+.price-card .rent-preview span,
+.price-card .confirm-row span {
+  color: #8a96a6 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.price-card .rent-preview strong,
+.price-card .confirm-row strong {
+  color: #172033 !important;
+  font-size: 15px !important;
+  font-weight: 900 !important;
+}
+
+/* 底部固定操作栏也去掉原生按钮感 */
+.bottom-actions {
+  gap: 8px !important;
+  padding: 10px 10px 14px !important;
+  border-top: 1px solid #dbe4ef !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.bottom-actions button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  min-height: 42px !important;
+  border: 1px solid #cfd8e3 !important;
+  border-radius: 10px !important;
+  background: #f8fafc !important;
+  color: #2f5f91 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  box-shadow: none !important;
+}
+
+.bottom-actions .submit-plan-button,
+.bottom-actions button:last-child {
+  border-color: #2f6fae !important;
+  background: #2f6fae !important;
+  color: #ffffff !important;
+}
+/* ================= 电脑端（商户老板后台）百万级 SaaS 重构 ================= */
+.admin-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+  background: #f1f5f9;
+}
+
+/* 深色高级侧边栏 */
+.admin-sidebar {
+  background: #0f172a;
+  color: #94a3b8;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-right: 1px solid #1e293b;
+}
+.admin-sidebar .brand {
+  color: #fff;
+  margin-bottom: 32px;
+  padding-left: 12px;
+}
+.admin-nav-btn {
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  text-align: left;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.admin-nav-btn:hover { background: #1e293b; color: #fff; }
+.admin-nav-btn.active { background: #3b82f6; color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+
+/* 主工作区与顶部毛玻璃导航 */
+.admin-main {
+  padding: 0 32px 40px;
+  height: 100vh;
+  overflow-y: auto;
+}
+.admin-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(241, 245, 249, 0.85);
+  backdrop-filter: blur(12px);
+  padding: 24px 0;
+  margin-bottom: 24px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* 核心数据卡片（瘦身提取） */
+.admin-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+  border: 1px solid #e2e8f0;
+  margin-bottom: 24px;
+}
+.admin-metric-grid { 
+  display: grid; 
+  grid-template-columns: repeat(5, 1fr); 
+  gap: 16px; 
+  margin-bottom: 24px; 
+}
+.metric-box { 
+  background: #fff; 
+  padding: 20px; 
+  border-radius: 16px; 
+  border: 1px solid #e2e8f0; 
+  border-left: 5px solid #3b82f6; 
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02); 
+}
+.metric-box h3 { margin: 0 0 8px; font-size: 13px; color: #64748b; font-weight: 700; text-transform: uppercase; }
+.metric-box strong { font-size: 32px; color: #0f172a; display: block; line-height: 1.1; }
+
+/* 沉浸式左右分栏审核台 */
+.admin-review-desk {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* 商户端全局悬浮强提醒（解决视频痛点） */
+.admin-toast-fixed {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  background: #fff;
+  border-left: 6px solid #ef4444;
+  padding: 20px 24px;
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.15);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideInRight {
+  from { transform: translateX(120%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+/* ================= 紧急修复：商户端全局按钮样式 ================= */
+.admin-layout .primary-button,
+.admin-layout .ghost-button,
+.admin-layout .ghost-button.danger {
+  min-height: 40px !important;
+  padding: 8px 16px !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+/* 蓝色主操作按钮 */
+.admin-layout .primary-button {
+  background: #2f6fae !important;
+  color: #fff !important;
+  border: 1px solid #2f6fae !important;
+  box-shadow: 0 4px 10px rgba(47, 111, 174, 0.2) !important;
+}
+.admin-layout .primary-button:hover {
+  background: #245a8d !important;
+}
+
+/* 白色/灰色次要操作按钮 */
+.admin-layout .ghost-button {
+  background: #fff !important;
+  color: #2f6fae !important;
+  border: 1px solid #cfd8e3 !important;
+  box-shadow: none !important;
+}
+.admin-layout .ghost-button:hover {
+  background: #f8fafc !important;
+  border-color: #2f6fae !important;
+}
+
+/* 红色危险/打回按钮 */
+.admin-layout .ghost-button.danger {
+  background: #fef2f2 !important;
+  color: #ef4444 !important;
+  border: 1px solid #fecaca !important;
+}
+.admin-layout .ghost-button.danger:hover {
+  background: #fee2e2 !important;
+}
+
+/* 修复 Todo 紧急待办卡片里，蓝色按钮文字被挤压看不见的问题 */
+.admin-card .primary-button {
+  line-height: 1.4 !important;
+  height: auto !important;
+  white-space: normal !important;
+  padding: 12px !important;
+}
+/* ================= v4.0 稳定修复：商户端真实管理页 + 按钮兜底 ================= */
+
+.admin-data-panel {
+  overflow: hidden;
+}
+
+.admin-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.admin-section-head h2 {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.admin-section-head p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.admin-filter-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 180px;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-filter-row input,
+.admin-filter-row select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #cfd8e3;
+  border-radius: 10px;
+  padding: 0 12px;
+  background: #ffffff;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+}
+
+.admin-filter-row input:focus,
+.admin-filter-row select:focus {
+  border-color: #2f6fae;
+  box-shadow: 0 0 0 3px rgba(47, 111, 174, 0.12);
+}
+
+.admin-table {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.admin-table-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.8fr 0.7fr 0.7fr 1fr;
+  align-items: center;
+  gap: 12px;
+  min-height: 62px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef2f7;
+  color: #334155;
+  font-size: 13px;
+}
+
+.admin-table-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-table-head {
+  min-height: 44px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-table-row strong {
+  display: block;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.admin-table-row em {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
+}
+
+.admin-status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  border: 1px solid #bfd5ec;
+  border-radius: 999px;
+  padding: 0 9px;
+  background: #eaf2fb;
+  color: #245a8d;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.admin-status-chip.muted {
+  border-color: #d7dde6;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.admin-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-table-actions button,
+.admin-section-head button,
+.admin-toast-fixed button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  min-height: 36px !important;
+  border-radius: 8px !important;
+  padding: 0 12px !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+  box-shadow: none !important;
+}
+
+.admin-table-actions .ghost-button,
+.admin-section-head .ghost-button {
+  border: 1px solid #cfd8e3 !important;
+  background: #ffffff !important;
+  color: #2f6fae !important;
+}
+
+.admin-table-actions .primary-button,
+.admin-section-head .primary-button {
+  border: 1px solid #2f6fae !important;
+  background: #2f6fae !important;
+  color: #ffffff !important;
+}
+
+.admin-product-cell {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-product-cell i {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #eef2f7;
+  color: #64748b;
+  font-size: 22px;
+  font-style: normal;
+  overflow: hidden;
+}
+
+.admin-product-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-admin-table .admin-table-row {
+  grid-template-columns: 1.6fr 1fr 0.8fr 0.7fr 0.7fr 1fr;
+}
+
+.customer-admin-table .admin-table-row {
+  grid-template-columns: 1.2fr 1fr 1.4fr 0.7fr 1fr 1fr;
+}
+
+.admin-setting-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-setting-grid div {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  background: #f8fafc;
+}
+
+.admin-setting-grid strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.admin-setting-grid span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 防止新增管理页里的按钮继续出现“毛坯房”原生样式 */
+.admin-layout button {
+  font-family: inherit !important;
+}
+
+.admin-layout button:not(.admin-nav-btn) {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+/* 小屏幕下商户端表格允许横向滚动，避免挤爆 */
+@media (max-width: 900px) {
+  .admin-main {
+    padding: 0 14px 32px !important;
+  }
+
+  .admin-section-head {
+    display: grid;
+    gap: 12px;
+  }
+
+  .admin-filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-table {
+    overflow-x: auto;
+  }
+
+  .admin-table-row {
+    min-width: 860px;
+  }
+
+  .admin-setting-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+/* =========================================================
+   v4.1 GardenOS 南法庄园视觉基底版
+   iOS 质感 + 南法庭院 + 园林服务中台
+   只覆盖视觉，不改业务逻辑
+========================================================= */
+
+:root {
+  --garden-bg: #f7f1e7;
+  --garden-bg-soft: #fbf7ef;
+  --garden-card: rgba(255, 252, 246, 0.92);
+  --garden-card-solid: #fffaf2;
+  --garden-line: rgba(123, 108, 78, 0.16);
+  --garden-line-strong: rgba(105, 93, 66, 0.24);
+
+  --garden-olive: #31452f;
+  --garden-olive-2: #4d6845;
+  --garden-sage: #849579;
+  --garden-sage-soft: #edf1e7;
+
+  --garden-stone: #8f8471;
+  --garden-sand: #d8c5a2;
+  --garden-sand-soft: #f2e7d2;
+  --garden-gold: #b89658;
+  --garden-gold-soft: #f5ead2;
+
+  --garden-lavender: #8c829b;
+  --garden-lavender-soft: #eeeaf2;
+
+  --garden-ink: #1f241d;
+  --garden-text: #384235;
+  --garden-muted: #7c7a6f;
+
+  --garden-danger: #b8564d;
+  --garden-danger-soft: #fff1ed;
+
+  --garden-radius-xl: 28px;
+  --garden-radius-lg: 22px;
+  --garden-radius-md: 16px;
+  --garden-radius-sm: 12px;
+
+  --garden-shadow-card: 0 18px 48px rgba(58, 47, 30, 0.10);
+  --garden-shadow-soft: 0 10px 28px rgba(58, 47, 30, 0.08);
+  --garden-shadow-float: 0 26px 70px rgba(49, 69, 47, 0.18);
+}
+
+/* ---------- 全局底色：从冷后台变成南法庭院底色 ---------- */
+
+html,
+body {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(216, 197, 162, 0.34) 0%, transparent 32%),
+    radial-gradient(circle at 88% 8%, rgba(132, 149, 121, 0.20) 0%, transparent 34%),
+    linear-gradient(180deg, #fbf7ef 0%, #f4ecdf 48%, #efe3cf 100%) !important;
+  color: var(--garden-ink) !important;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
+    "Microsoft YaHei", sans-serif !important;
+}
+
+/* ---------- 通用按钮：iOS 胶囊质感，不再像网页按钮 ---------- */
+
+button {
+  font-family: inherit !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.primary-button,
+.submit-plan-button,
+.submit-sheet-button,
+.add-area-button,
+.product-bottom button,
+.bottom-actions .submit-plan-button,
+.bottom-actions button:last-child {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #31452f 0%, #4d6845 100%) !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.22) !important;
+}
+
+.ghost-button,
+.role-button,
+.back-button,
+.close-button,
+.bottom-actions button {
+  border: 1px solid rgba(123, 108, 78, 0.18) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  color: var(--garden-olive) !important;
+  box-shadow: 0 8px 22px rgba(58, 47, 30, 0.06) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.ghost-button.danger,
+.remove-item-button {
+  background: var(--garden-danger-soft) !important;
+  color: var(--garden-danger) !important;
+  border-color: rgba(184, 86, 77, 0.18) !important;
+}
+
+/* =========================================================
+   员工端：城市合伙人移动工作台
+========================================================= */
+
+.app {
+  max-width: 430px !important;
+  min-height: 100vh !important;
+  margin: 0 auto !important;
+  padding: 14px 14px 28px !important;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(184, 150, 88, 0.18) 0%, transparent 30%),
+    radial-gradient(circle at 88% 4%, rgba(140, 130, 155, 0.13) 0%, transparent 30%),
+    linear-gradient(180deg, #fbf7ef 0%, #f2e7d6 100%) !important;
+}
+
+.app-header,
+.plan-header {
+  margin: -14px -14px 14px !important;
+  padding: 16px 16px 14px !important;
+  border-bottom: 1px solid rgba(123, 108, 78, 0.12) !important;
+  background: rgba(255, 250, 242, 0.78) !important;
+  backdrop-filter: blur(22px) saturate(1.2) !important;
+  box-shadow: 0 10px 28px rgba(58, 47, 30, 0.05) !important;
+}
+
+.eyebrow {
+  color: var(--garden-gold) !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.12em !important;
+}
+
+h1 {
+  color: var(--garden-ink) !important;
+  font-size: 23px !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.04em !important;
+}
+
+.tabs {
+  gap: 8px !important;
+  padding: 6px 2px 14px !important;
+}
+
+.tab {
+  border: 1px solid rgba(123, 108, 78, 0.14) !important;
+  border-radius: 999px !important;
+  padding: 9px 14px !important;
+  background: rgba(255, 252, 246, 0.72) !important;
+  color: var(--garden-muted) !important;
+  box-shadow: 0 8px 22px rgba(58, 47, 30, 0.04) !important;
+}
+
+.tab.active {
+  border-color: rgba(49, 69, 47, 0.18) !important;
+  background: linear-gradient(135deg, #31452f 0%, #526f47 100%) !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 14px 34px rgba(49, 69, 47, 0.22) !important;
+}
+
+/* 员工端任务卡片：从工具卡片变成 iOS 服务卡片 */
+
+.order-card,
+.task-card,
+.plan-summary-card,
+.price-card,
+.empty-card,
+.area-card,
+.product-card,
+.empty-product-card,
+.sheet-block,
+.selected-product-row,
+.material-row {
+  border: 1px solid rgba(123, 108, 78, 0.13) !important;
+  border-radius: var(--garden-radius-lg) !important;
+  background: rgba(255, 252, 246, 0.86) !important;
+  box-shadow: var(--garden-shadow-card) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
+}
+
+.order-card,
+.task-card {
+  overflow: hidden !important;
+}
+
+.order-card-header,
+.task-card-header {
+  padding: 16px 16px 10px !important;
+}
+
+.order-card h2,
+.task-card h2,
+.area-card h3,
+.product-info h3,
+.section-title-row h2,
+.sheet-header h2 {
+  color: var(--garden-ink) !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.order-card-header p,
+.task-card-header p,
+.description,
+.dispatch-time,
+.area-card p,
+.product-info p,
+.empty-card span {
+  color: var(--garden-muted) !important;
+}
+
+/* 状态标签：香槟金 / 橄榄绿 / 薰衣草灰紫 */
+
+.area-size,
+.status-pill,
+.task-status {
+  border: 1px solid rgba(184, 150, 88, 0.22) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #f6ecd8 0%, #efe0bf 100%) !important;
+  color: #806132 !important;
+}
+
+.tag-list span,
+.selected-item-list span {
+  border: 1px solid rgba(132, 149, 121, 0.18) !important;
+  border-radius: 999px !important;
+  background: rgba(237, 241, 231, 0.88) !important;
+  color: var(--garden-olive-2) !important;
+}
+
+.info-row,
+.task-info-row,
+.plan-info-line {
+  border-color: rgba(123, 108, 78, 0.12) !important;
+  color: var(--garden-muted) !important;
+}
+
+.info-row strong,
+.task-info-row strong,
+.plan-info-line strong,
+.plan-summary-top strong,
+.price-card strong,
+.price-detail-card strong {
+  color: var(--garden-ink) !important;
+}
+
+/* 员工端底部操作栏：iOS 浮动工具栏 */
+
+.bottom-actions {
+  max-width: 430px !important;
+  border-top: 1px solid rgba(123, 108, 78, 0.14) !important;
+  padding: 10px 12px 16px !important;
+  background: rgba(255, 250, 242, 0.80) !important;
+  backdrop-filter: blur(24px) saturate(1.15) !important;
+  box-shadow: 0 -18px 44px rgba(58, 47, 30, 0.10) !important;
+}
+
+.bottom-actions button {
+  min-height: 42px !important;
+  border-radius: 999px !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+/* 弹窗：南法 iOS 抽屉 */
+
+.sheet-mask {
+  background: rgba(44, 53, 37, 0.38) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.bottom-sheet {
+  border-radius: 30px 30px 0 0 !important;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(216, 197, 162, 0.20) 0%, transparent 35%),
+    rgba(255, 250, 242, 0.96) !important;
+  box-shadow: 0 -26px 70px rgba(49, 69, 47, 0.22) !important;
+}
+
+.sheet-handle {
+  background: rgba(123, 108, 78, 0.24) !important;
+}
+
+/* 输入框：柔和石材边框 */
+
+.area-input,
+.price-input,
+.search-card input,
+textarea,
+select,
+input {
+  border: 1px solid rgba(123, 108, 78, 0.20) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 252, 246, 0.92) !important;
+  color: var(--garden-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+}
+
+.area-input:focus,
+.price-input:focus,
+.search-card input:focus,
+textarea:focus,
+select:focus,
+input:focus {
+  border-color: rgba(184, 150, 88, 0.62) !important;
+  box-shadow:
+    0 0 0 4px rgba(184, 150, 88, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+}
+
+/* 选品页：南法商品卡 */
+
+.search-card {
+  border-radius: 20px !important;
+  background: linear-gradient(135deg, #31452f 0%, #5b7450 100%) !important;
+  box-shadow: 0 16px 38px rgba(49, 69, 47, 0.22) !important;
+}
+
+.category-tabs,
+.material-tabs,
+.sub-category-list {
+  border: 1px solid rgba(123, 108, 78, 0.14) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  box-shadow: 0 10px 28px rgba(58, 47, 30, 0.06) !important;
+}
+
+.category-tabs button,
+.material-tabs button,
+.sub-category-list button {
+  color: var(--garden-muted) !important;
+  background: transparent !important;
+}
+
+.category-tabs button.active,
+.material-tabs button.active,
+.sub-category-list button.active {
+  color: var(--garden-olive) !important;
+  background: var(--garden-sage-soft) !important;
+  box-shadow: inset 0 -3px 0 var(--garden-gold) !important;
+}
+
+.product-image {
+  border-radius: 18px !important;
+  background: linear-gradient(135deg, #f4ead5 0%, #edf1e7 100%) !important;
+  color: var(--garden-olive) !important;
+}
+
+.product-bottom strong {
+  color: var(--garden-olive) !important;
+}
+
+/* =========================================================
+   商户端：总部园林服务驾驶舱
+========================================================= */
+
+.admin-layout {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(216, 197, 162, 0.28) 0%, transparent 32%),
+    radial-gradient(circle at 100% 0%, rgba(132, 149, 121, 0.18) 0%, transparent 34%),
+    linear-gradient(135deg, #f8f2e8 0%, #f3eadc 48%, #eee1cd 100%) !important;
+}
+
+/* 侧边栏：不再是普通深蓝后台，改为深橄榄庄园感 */
+
+.admin-sidebar {
+  border-right: 1px solid rgba(184, 150, 88, 0.18) !important;
+  background:
+    radial-gradient(circle at 30% 0%, rgba(184, 150, 88, 0.16) 0%, transparent 36%),
+    linear-gradient(180deg, #182118 0%, #263724 52%, #182118 100%) !important;
+  color: rgba(255, 250, 242, 0.72) !important;
+  box-shadow: 18px 0 60px rgba(49, 69, 47, 0.16) !important;
+}
+
+.admin-sidebar .brand {
+  margin-bottom: 30px !important;
+  padding: 16px 12px 18px !important;
+  border: 1px solid rgba(216, 197, 162, 0.16) !important;
+  border-radius: 24px !important;
+  background: rgba(255, 250, 242, 0.06) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.admin-sidebar .brand h2,
+.admin-sidebar h2 {
+  color: #fffaf2 !important;
+  letter-spacing: -0.03em !important;
+}
+
+.admin-sidebar .brand span,
+.admin-sidebar .eyebrow {
+  color: #d8c5a2 !important;
+}
+
+.admin-nav-btn {
+  border: 1px solid transparent !important;
+  border-radius: 18px !important;
+  color: rgba(255, 250, 242, 0.72) !important;
+  padding: 13px 15px !important;
+  font-weight: 850 !important;
+}
+
+.admin-nav-btn:hover {
+  background: rgba(255, 250, 242, 0.08) !important;
+  color: #fffaf2 !important;
+}
+
+.admin-nav-btn.active {
+  border-color: rgba(216, 197, 162, 0.28) !important;
+  background: linear-gradient(135deg, rgba(255, 250, 242, 0.18), rgba(184, 150, 88, 0.18)) !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16) !important;
+}
+
+/* 商户端主区域：更像总部驾驶舱 */
+
+.admin-main {
+  background: transparent !important;
+}
+
+.admin-topbar {
+  border-bottom: 1px solid rgba(123, 108, 78, 0.10) !important;
+  background: rgba(248, 242, 232, 0.74) !important;
+  backdrop-filter: blur(24px) saturate(1.12) !important;
+}
+
+.admin-topbar h1,
+.admin-main h1,
+.admin-card h2,
+.admin-section-head h2 {
+  color: var(--garden-ink) !important;
+  letter-spacing: -0.04em !important;
+}
+
+.admin-topbar span,
+.admin-section-head p,
+.admin-card p {
+  color: var(--garden-muted) !important;
+}
+
+/* 数据卡 / 内容卡：iOS + 庄园砂岩感 */
+
+.admin-card,
+.metric-box,
+.admin-data-panel {
+  border: 1px solid rgba(123, 108, 78, 0.13) !important;
+  border-radius: 26px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.94), rgba(255, 248, 237, 0.88)) !important;
+  box-shadow: var(--garden-shadow-card) !important;
+  backdrop-filter: blur(20px) saturate(1.08) !important;
+}
+
+.metric-box {
+  border-left: 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.metric-box::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  width: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #b89658, rgba(184, 150, 88, 0.12));
+}
+
+.metric-box h3 {
+  padding-top: 12px !important;
+  color: var(--garden-muted) !important;
+  letter-spacing: 0.08em !important;
+}
+
+.metric-box strong {
+  color: var(--garden-ink) !important;
+}
+
+/* 商户端表格：少一点冷硬，多一点高端系统感 */
+
+.admin-table {
+  border: 1px solid rgba(123, 108, 78, 0.14) !important;
+  border-radius: 22px !important;
+  background: rgba(255, 252, 246, 0.86) !important;
+  box-shadow: 0 12px 34px rgba(58, 47, 30, 0.06) !important;
+}
+
+.admin-table-row {
+  border-bottom: 1px solid rgba(123, 108, 78, 0.10) !important;
+  color: var(--garden-text) !important;
+}
+
+.admin-table-head {
+  background: rgba(242, 231, 210, 0.62) !important;
+  color: var(--garden-stone) !important;
+}
+
+.admin-table-row strong {
+  color: var(--garden-ink) !important;
+}
+
+.admin-table-row em {
+  color: var(--garden-muted) !important;
+}
+
+.admin-status-chip {
+  border: 1px solid rgba(184, 150, 88, 0.22) !important;
+  background: var(--garden-gold-soft) !important;
+  color: #806132 !important;
+}
+
+.admin-status-chip.muted {
+  border-color: rgba(123, 108, 78, 0.14) !important;
+  background: rgba(237, 241, 231, 0.82) !important;
+  color: var(--garden-sage) !important;
+}
+
+/* 商户端按钮统一为庄园系统按钮 */
+
+.admin-layout .primary-button,
+.admin-layout .submit-plan-button,
+.admin-layout .submit-sheet-button,
+.admin-table-actions .primary-button,
+.admin-section-head .primary-button {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #31452f 0%, #4d6845 100%) !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.20) !important;
+}
+
+.admin-layout .ghost-button,
+.admin-table-actions .ghost-button,
+.admin-section-head .ghost-button {
+  border: 1px solid rgba(123, 108, 78, 0.18) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  color: var(--garden-olive) !important;
+  box-shadow: 0 8px 22px rgba(58, 47, 30, 0.05) !important;
+}
+
+.admin-layout .ghost-button.danger {
+  background: var(--garden-danger-soft) !important;
+  color: var(--garden-danger) !important;
+}
+
+/* 商品 / 客户弹窗：南法面板 */
+
+.admin-product-cell i {
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, #f2e7d2 0%, #edf1e7 100%) !important;
+  color: var(--garden-olive) !important;
+}
+
+.admin-setting-grid div {
+  border: 1px solid rgba(123, 108, 78, 0.13) !important;
+  border-radius: 22px !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  box-shadow: var(--garden-shadow-soft) !important;
+}
+
+/* 右下角提醒：从红色警报改成高级待办提醒 */
+
+.admin-toast-fixed {
+  border-left: 0 !important;
+  border: 1px solid rgba(184, 150, 88, 0.22) !important;
+  border-radius: 24px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 252, 246, 0.96), rgba(245, 234, 210, 0.94)) !important;
+  box-shadow: var(--garden-shadow-float) !important;
+  backdrop-filter: blur(18px) !important;
+}
+
+.admin-toast-fixed::before {
+  content: "";
+  width: 8px;
+  align-self: stretch;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #b89658, #4d6845);
+}
+
+/* 审核台：更像园林方案评审室 */
+
+.admin-review-desk {
+  gap: 28px !important;
+}
+
+.admin-review-desk > * {
+  border-radius: 26px !important;
+}
+
+/* =========================================================
+   把 App.jsx 里残留的 inline 蓝色/绿色按钮压成 GardenOS
+   解决“神似形不似”和残留毛坯/蓝色问题
+========================================================= */
+
+.app button[style],
+.admin-layout button[style],
+.bottom-sheet button[style] {
+  border-radius: 999px !important;
+  font-family: inherit !important;
+  font-weight: 900 !important;
+}
+
+/* 员工端主操作 inline 按钮 */
+.app button[style*="background"],
+.bottom-sheet button[style*="background"] {
+  box-shadow: none;
+}
+
+/* 有色背景按钮统一改深橄榄，危险按钮另外被 danger 覆盖 */
+.app button[style*="#2f6fae"],
+.app button[style*="#3b82f6"],
+.app button[style*="videoBlue"],
+.admin-layout button[style*="#2f6fae"],
+.admin-layout button[style*="#3b82f6"] {
+  background: linear-gradient(135deg, #31452f 0%, #4d6845 100%) !important;
+  color: #fffaf2 !important;
+  border: 0 !important;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.20) !important;
+}
+
+/* 残留绿色高亮统一成南法橄榄 */
+.app [style*="#166534"],
+.admin-layout [style*="#166534"] {
+  color: var(--garden-olive) !important;
+}
+
+/* 残留蓝色文字统一成橄榄 */
+.app [style*="#2f6fae"],
+.app [style*="#3b82f6"],
+.admin-layout [style*="#2f6fae"],
+.admin-layout [style*="#3b82f6"] {
+  color: var(--garden-olive) !important;
+}
+
+/* =========================================================
+   移动端兼容：商户端在手机上可横向/纵向可用，员工端保持自然适配
+========================================================= */
+
+@media (max-width: 900px) {
+  .admin-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-sidebar {
+    position: relative !important;
+    min-height: auto !important;
+    padding: 16px 14px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(184, 150, 88, 0.18) !important;
+  }
+
+  .admin-sidebar .brand {
+    margin-bottom: 12px !important;
+  }
+
+  .admin-nav-btn {
+    display: inline-flex !important;
+    margin: 0 6px 8px 0 !important;
+  }
+
+  .admin-main {
+    height: auto !important;
+    min-height: 100vh !important;
+    padding: 0 14px 32px !important;
+  }
+
+  .admin-topbar {
+    padding: 16px 0 !important;
+  }
+
+  .admin-metric-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .admin-card,
+  .metric-box {
+    border-radius: 22px !important;
+  }
+}
+/* =========================================================
+   v4.2 员工端 App 化骨架
+   清理 STAFF TASKS · V3.5 旧视觉，建立 GardenOS 移动工作台
+========================================================= */
+
+.staff-app-shell {
+  --staff-bg: #f7f1e7;
+  --staff-card: rgba(255, 252, 246, 0.92);
+  --staff-ink: #20251d;
+  --staff-text: #3a4435;
+  --staff-muted: #827b6d;
+  --staff-olive: #31452f;
+  --staff-sage: #6f8063;
+  --staff-gold: #b89658;
+  --staff-sand: #eadcc3;
+  --staff-line: rgba(116, 102, 74, 0.16);
+  --staff-shadow: 0 18px 46px rgba(58, 47, 30, 0.10);
+
+  min-height: 100vh;
+  padding-bottom: 92px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(216, 197, 162, 0.36) 0%, transparent 32%),
+    radial-gradient(circle at 100% 0%, rgba(111, 128, 99, 0.18) 0%, transparent 34%),
+    linear-gradient(180deg, #fbf7ef 0%, #f4eadc 46%, #efe1cb 100%);
+  color: var(--staff-ink);
+}
+
+.staff-app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: 72px 1fr 72px;
+  align-items: center;
+  height: 58px;
+  padding: 0 14px;
+  border-bottom: 1px solid rgba(116, 102, 74, 0.12);
+  background: rgba(255, 250, 242, 0.82);
+  backdrop-filter: blur(22px) saturate(1.15);
+}
+
+.staff-app-topbar strong {
+  text-align: center;
+  color: var(--staff-ink);
+  font-size: 18px;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.staff-mini-button {
+  min-height: 36px;
+  border: 1px solid var(--staff-line);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.78);
+  color: var(--staff-olive);
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 8px 22px rgba(58, 47, 30, 0.06);
+}
+
+.staff-mini-button.merchant-switch {
+  color: #fffaf2;
+  background: linear-gradient(135deg, #31452f, #4d6845);
+}
+
+.staff-app-main {
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 14px 14px 0;
+}
+
+.staff-kicker {
+  margin: 0 0 8px;
+  color: var(--staff-gold);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+}
+
+.staff-hero-card,
+.staff-compact-header,
+.staff-report-card,
+.staff-profile-card,
+.staff-setting-list,
+.staff-empty-card {
+  border: 1px solid var(--staff-line);
+  border-radius: 28px;
+  background: var(--staff-card);
+  box-shadow: var(--staff-shadow);
+  backdrop-filter: blur(18px) saturate(1.08);
+}
+
+.staff-hero-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 20px;
+  min-height: 154px;
+  overflow: hidden;
+  position: relative;
+}
+
+.staff-hero-card::after {
+  content: "";
+  position: absolute;
+  right: -34px;
+  bottom: -54px;
+  width: 150px;
+  height: 150px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(184, 150, 88, 0.22), transparent 68%);
+}
+
+.staff-hero-card h1,
+.staff-compact-header h1 {
+  margin: 0;
+  color: var(--staff-ink);
+  font-size: 27px;
+  line-height: 1.12;
+  font-weight: 950;
+  letter-spacing: -0.06em;
+}
+
+.staff-hero-card span,
+.staff-compact-header span,
+.staff-hero-card p,
+.staff-section-head p,
+.staff-report-card p,
+.staff-profile-card p {
+  color: var(--staff-muted);
+}
+
+.staff-hero-card > button,
+.staff-compact-header > button {
+  position: relative;
+  z-index: 1;
+  min-height: 42px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 16px;
+  background: linear-gradient(135deg, #31452f, #4d6845);
+  color: #fffaf2;
+  font-size: 14px;
+  font-weight: 950;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.20);
+}
+
+.staff-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+  margin: 14px 0 18px;
+}
+
+.staff-overview-grid button {
+  min-height: 78px;
+  border: 1px solid var(--staff-line);
+  border-radius: 22px;
+  background: rgba(255, 252, 246, 0.80);
+  box-shadow: 0 12px 30px rgba(58, 47, 30, 0.06);
+}
+
+.staff-overview-grid span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--staff-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.staff-overview-grid strong {
+  color: var(--staff-ink);
+  font-size: 24px;
+  font-weight: 950;
+}
+
+.staff-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 2px 10px;
+}
+
+.staff-section-head h2 {
+  margin: 0 0 4px;
+  color: var(--staff-ink);
+  font-size: 19px;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.staff-section-head p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.staff-compact-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.staff-status-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.staff-status-tabs button {
+  min-height: 44px;
+  border: 1px solid var(--staff-line);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.78);
+  color: var(--staff-muted);
+  font-size: 14px;
+  font-weight: 950;
+  box-shadow: 0 8px 22px rgba(58, 47, 30, 0.04);
+}
+
+.staff-status-tabs button.active {
+  border-color: rgba(49, 69, 47, 0.18);
+  background: linear-gradient(135deg, #31452f, #4d6845);
+  color: #fffaf2;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.20);
+}
+
+.staff-task-list {
+  display: grid;
+  gap: 12px;
+}
+
+/* 新员工任务卡：覆盖旧 task-card / inline 旧蓝色问题 */
+
+.staff-task-card {
+  border: 1px solid var(--staff-line) !important;
+  border-radius: 28px !important;
+  padding: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(255, 248, 237, 0.90)) !important;
+  box-shadow: var(--staff-shadow) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
+  text-align: left !important;
+}
+
+.staff-task-top,
+.staff-task-title-row,
+.staff-task-actions,
+.staff-report-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.staff-order-id {
+  color: #a49a88;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.staff-status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.staff-status-chip.pending {
+  background: #edf1e7;
+  color: #4d6845;
+}
+
+.staff-status-chip.build {
+  background: #f8ead0;
+  color: #9a6b1f;
+}
+
+.staff-status-chip.execute {
+  background: #eeeaf2;
+  color: #74678b;
+}
+
+.staff-status-chip.archive,
+.staff-status-chip.done {
+  background: #f0eee8;
+  color: #766b58;
+}
+
+.staff-task-title-row {
+  align-items: flex-start;
+  margin-top: 14px;
+}
+
+.staff-task-title-row h2 {
+  margin: 0;
+  color: var(--staff-ink);
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 950;
+  letter-spacing: -0.05em;
+}
+
+.staff-task-title-row p {
+  margin: 6px 0 0;
+  color: var(--staff-muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.staff-price {
+  flex: 0 0 auto;
+  color: #b8564d;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.staff-task-info {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 9px 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(116, 102, 74, 0.18);
+}
+
+.staff-task-info span {
+  color: #9a9385;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.staff-task-info strong {
+  color: var(--staff-text);
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.staff-task-hint {
+  margin-top: 14px;
+  border: 1px solid rgba(116, 102, 74, 0.12);
+  border-radius: 18px;
+  padding: 12px;
+  background: rgba(247, 241, 231, 0.72);
+  color: var(--staff-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.staff-task-actions {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(116, 102, 74, 0.18);
+}
+
+.staff-task-actions button {
+  min-height: 46px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.staff-task-actions .staff-primary-action:only-child {
+  width: 100%;
+}
+
+.staff-ghost-action {
+  flex: 0.9;
+  border: 1px solid rgba(116, 102, 74, 0.18);
+  background: rgba(255, 252, 246, 0.76);
+  color: var(--staff-olive);
+}
+
+.staff-primary-action {
+  flex: 1.6;
+  border: 0;
+  background: linear-gradient(135deg, #31452f, #4d6845);
+  color: #fffaf2;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.20);
+}
+
+.staff-empty-card,
+.staff-empty-mini {
+  padding: 24px 18px;
+  text-align: center;
+}
+
+.staff-empty-card strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--staff-ink);
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.staff-empty-card span,
+.staff-empty-mini {
+  color: var(--staff-muted);
+  font-size: 14px;
+}
+
+.staff-report-card,
+.staff-profile-card,
+.staff-setting-list {
+  padding: 18px;
+}
+
+.staff-report-card h2,
+.staff-profile-card h2 {
+  margin: 0 0 8px;
+  color: var(--staff-ink);
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.staff-report-card p {
+  margin: 0 0 14px;
+  line-height: 1.65;
+}
+
+.staff-report-row {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid var(--staff-line);
+  border-radius: 18px;
+  padding: 0 14px;
+  margin-top: 10px;
+  background: rgba(255, 252, 246, 0.78);
+  color: var(--staff-text);
+}
+
+.staff-report-row span {
+  font-weight: 900;
+}
+
+.staff-report-row strong {
+  color: var(--staff-olive);
+  font-weight: 950;
+}
+
+.staff-profile-card {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.staff-avatar {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #31452f, #b89658);
+  color: #fffaf2;
+  font-size: 24px;
+  font-weight: 950;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.20);
+}
+
+.staff-setting-list {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+}
+
+.staff-setting-list div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid rgba(116, 102, 74, 0.12);
+}
+
+.staff-setting-list div:last-child {
+  border-bottom: 0;
+}
+
+.staff-setting-list span {
+  color: var(--staff-muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.staff-setting-list strong {
+  color: var(--staff-ink);
+  font-size: 14px;
+  font-weight: 950;
+  line-height: 1.45;
+}
+
+.staff-setting-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.staff-setting-actions button {
+  min-height: 46px;
+  border: 1px solid var(--staff-line);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.80);
+  color: var(--staff-olive);
+  font-weight: 950;
+}
+
+.staff-bottom-tab {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  width: 100%;
+  max-width: 430px;
+  transform: translateX(-50%);
+  padding: 10px 12px 16px;
+  border-top: 1px solid rgba(116, 102, 74, 0.12);
+  background: rgba(255, 250, 242, 0.86);
+  backdrop-filter: blur(24px) saturate(1.15);
+  box-shadow: 0 -18px 44px rgba(58, 47, 30, 0.10);
+}
+
+.staff-bottom-tab button {
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  color: #938a79;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.staff-bottom-tab button span {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.staff-bottom-tab button.active {
+  background: rgba(237, 241, 231, 0.92);
+  color: var(--staff-olive);
+}
+
+/* 强覆盖旧 v3.5 / v3.9 员工端蓝色残留 */
+.staff-app-shell .task-card,
+.staff-app-shell .order-card {
+  border-radius: 28px !important;
+}
+
+.staff-app-shell button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  font-family: inherit !important;
+}
+
+.staff-app-shell .primary-button,
+.staff-app-shell .submit-plan-button,
+.staff-app-shell .tab.active,
+.staff-app-shell .task-card .actions .primary-button {
+  background: linear-gradient(135deg, #31452f, #4d6845) !important;
+  color: #fffaf2 !important;
+  border-color: transparent !important;
+}
+
+@media (max-width: 360px) {
+  .staff-app-main {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .staff-overview-grid {
+    gap: 7px;
+  }
+
+  .staff-overview-grid button {
+    min-height: 70px;
+    border-radius: 18px;
+  }
+
+  .staff-task-title-row h2 {
+    font-size: 22px;
+  }
+}
+/* =========================================================
+   v4.3 GardenOS 员工端首页结构升级
+   参考第三张概念图：Today’s Tasks + Statistics + Week Progress
+========================================================= */
+
+.garden-dashboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 4px 14px;
+}
+
+.garden-user-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.garden-user-avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid rgba(184, 150, 88, 0.26);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 242, 0.96), rgba(237, 241, 231, 0.88));
+  color: #31452f;
+  font-size: 19px;
+  font-weight: 950;
+  box-shadow: 0 10px 24px rgba(58, 47, 30, 0.10);
+}
+
+.garden-user-line p {
+  margin: 0 0 2px;
+  color: #8a8070;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.garden-user-line h1 {
+  margin: 0;
+  color: #20251d;
+  font-size: 29px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.06em;
+}
+
+.garden-bell-button {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(116, 102, 74, 0.15);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.82);
+  color: #31452f;
+  font-size: 22px;
+  font-weight: 950;
+  box-shadow: 0 12px 30px rgba(58, 47, 30, 0.08);
+}
+
+.garden-today-card,
+.garden-status-card,
+.garden-progress-card {
+  position: relative;
+  margin-bottom: 18px;
+  border: 1px solid rgba(116, 102, 74, 0.16);
+  border-radius: 30px;
+  padding: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(255, 248, 237, 0.90));
+  box-shadow:
+    0 22px 54px rgba(58, 47, 30, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px) saturate(1.08);
+  overflow: hidden;
+}
+
+.garden-today-card::before,
+.garden-status-card::before,
+.garden-progress-card::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(184, 150, 88, 0.18);
+  border-radius: 24px;
+  pointer-events: none;
+}
+
+.garden-card-title-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.garden-kicker {
+  margin: 0 0 8px;
+  color: #b89658;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+}
+
+.garden-card-title-row h2 {
+  margin: 0;
+  color: #20251d;
+  font-size: 24px;
+  line-height: 1.12;
+  font-weight: 950;
+  letter-spacing: -0.05em;
+}
+
+.garden-card-title-row > button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(237, 241, 231, 0.86);
+  color: #31452f;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.garden-task-row {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 20px 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 70px;
+  border: 0;
+  border-top: 1px solid rgba(116, 102, 74, 0.12);
+  border-radius: 0;
+  padding: 12px 0;
+  background: transparent;
+  color: #20251d;
+  text-align: left;
+}
+
+.garden-task-row:first-of-type {
+  border-top: 0;
+}
+
+.garden-task-row.hot {
+  margin: 8px 0;
+  border: 1px solid rgba(184, 111, 76, 0.16);
+  border-radius: 20px;
+  padding: 12px;
+  background: rgba(201, 115, 80, 0.12);
+  box-shadow: 0 14px 34px rgba(201, 115, 80, 0.10);
+}
+
+.garden-task-index {
+  color: #a69c89;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.garden-task-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  background:
+    linear-gradient(135deg, rgba(237, 241, 231, 0.98), rgba(242, 231, 210, 0.92));
+  color: #4d6845;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.garden-task-main {
+  min-width: 0;
+}
+
+.garden-task-main strong {
+  display: block;
+  overflow: hidden;
+  color: #20251d;
+  font-size: 16px;
+  font-weight: 950;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.garden-task-main em {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: #827b6d;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.garden-task-side {
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+}
+
+.garden-task-side b {
+  display: inline-flex;
+  align-items: center;
+  min-height: 27px;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: #edf1e7;
+  color: #4d6845;
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.garden-task-side em {
+  color: #b8564d;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.garden-empty-row {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 6px;
+  padding: 18px 0 6px;
+  text-align: center;
+}
+
+.garden-empty-row strong {
+  color: #20251d;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.garden-empty-row span {
+  color: #827b6d;
+  font-size: 13px;
+}
+
+.garden-status-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.garden-status-grid button {
+  min-height: 94px;
+  border: 1px solid rgba(116, 102, 74, 0.13);
+  border-radius: 24px;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.92), rgba(242, 231, 210, 0.50));
+  box-shadow: 0 14px 34px rgba(58, 47, 30, 0.07);
+  text-align: left;
+}
+
+.garden-status-grid span {
+  display: block;
+  margin-bottom: 10px;
+  color: #827b6d;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.garden-status-grid strong {
+  color: #20251d;
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.garden-sync-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 0 11px;
+  background: rgba(237, 241, 231, 0.88);
+  color: #4d6845;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.garden-progress-body {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  align-items: end;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.garden-bars {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  height: 118px;
+  gap: 9px;
+  padding: 0 4px;
+}
+
+.garden-bars i {
+  display: block;
+  width: 100%;
+  max-width: 26px;
+  height: var(--h);
+  border-radius: 999px 999px 10px 10px;
+  background: linear-gradient(180deg, #d8c5a2, #efe2ca);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.garden-bars i:nth-child(2),
+.garden-bars i:nth-child(5) {
+  background: linear-gradient(180deg, #c97350, #e8c0a7);
+}
+
+.garden-bars i:nth-child(4),
+.garden-bars i:nth-child(7) {
+  background: linear-gradient(180deg, #6f8063, #b9c5ae);
+}
+
+.garden-progress-number {
+  display: grid;
+  justify-items: end;
+}
+
+.garden-progress-number strong {
+  color: #20251d;
+  font-size: 52px;
+  line-height: 0.9;
+  font-weight: 950;
+  letter-spacing: -0.08em;
+}
+
+.garden-progress-number span {
+  margin-top: 10px;
+  color: #827b6d;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.garden-sync-text {
+  position: relative;
+  z-index: 1;
+  margin: 16px 0 0;
+  color: #827b6d;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+/* 让 v4.3 首页盖过 v4.2 的大 Hero 和旧概览卡气质 */
+.staff-app-shell .garden-today-card button,
+.staff-app-shell .garden-status-card button,
+.staff-app-shell .garden-progress-card button,
+.staff-app-shell .garden-bell-button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  font-family: inherit !important;
+}
+
+@media (max-width: 360px) {
+  .garden-today-card,
+  .garden-status-card,
+  .garden-progress-card {
+    border-radius: 26px;
+    padding: 16px;
+  }
+
+  .garden-task-row {
+    grid-template-columns: 18px 38px minmax(0, 1fr);
+  }
+
+  .garden-task-side {
+    grid-column: 3;
+    justify-items: start;
+  }
+
+  .garden-progress-body {
+    grid-template-columns: 1fr;
+  }
+
+  .garden-progress-number {
+    justify-items: start;
+  }
+}
+/* =========================================================
+   v4.4 员工端精修：头像入口 / 高级底部 Tab / 折叠设置
+========================================================= */
+
+.staff-avatar-entry {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(116, 102, 74, 0.16);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 252, 246, 0.96), rgba(237, 241, 231, 0.88));
+  box-shadow: 0 10px 24px rgba(58, 47, 30, 0.10);
+}
+
+.staff-avatar-entry span {
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #31452f, #b89658);
+  color: #fffaf2;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.staff-profile-hero {
+  border: 1px solid rgba(116, 102, 74, 0.16);
+  border-radius: 30px;
+  padding: 22px;
+  margin-bottom: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(255, 248, 237, 0.90));
+  box-shadow: 0 22px 54px rgba(58, 47, 30, 0.12);
+}
+
+.staff-profile-hero h1 {
+  margin: 0 0 8px;
+  color: #20251d;
+  font-size: 30px;
+  line-height: 1.1;
+  font-weight: 950;
+  letter-spacing: -0.06em;
+}
+
+.staff-profile-hero span {
+  color: #827b6d;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.staff-profile-card.refined {
+  grid-template-columns: 64px 1fr;
+  margin-bottom: 14px;
+}
+
+.staff-avatar.large {
+  width: 64px;
+  height: 64px;
+  border-radius: 24px;
+}
+
+.staff-login-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin-top: 10px;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: rgba(237, 241, 231, 0.92);
+  color: #31452f;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.staff-visible-info,
+.staff-setting-accordion {
+  display: grid;
+  gap: 12px;
+}
+
+.staff-visible-info {
+  margin-bottom: 14px;
+}
+
+.staff-visible-info > div,
+.staff-setting-accordion details {
+  border: 1px solid rgba(116, 102, 74, 0.16);
+  border-radius: 24px;
+  padding: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.94), rgba(255, 248, 237, 0.88));
+  box-shadow: 0 16px 40px rgba(58, 47, 30, 0.08);
+}
+
+.staff-visible-info span {
+  display: block;
+  margin-bottom: 8px;
+  color: #b89658;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+}
+
+.staff-visible-info strong {
+  display: block;
+  color: #20251d;
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 950;
+}
+
+.staff-visible-info em {
+  display: block;
+  margin-top: 8px;
+  color: #827b6d;
+  font-size: 13px;
+  line-height: 1.55;
+  font-style: normal;
+}
+
+.staff-setting-accordion details {
+  overflow: hidden;
+}
+
+.staff-setting-accordion summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.staff-setting-accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.staff-setting-accordion summary span {
+  color: #20251d;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.staff-setting-accordion summary strong {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: rgba(237, 241, 231, 0.88);
+  color: #4d6845;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.staff-detail-content {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(116, 102, 74, 0.16);
+}
+
+.staff-detail-content p {
+  margin: 0 0 10px;
+  color: #827b6d;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.staff-detail-content button,
+.staff-detail-actions button {
+  min-height: 40px;
+  border: 1px solid rgba(116, 102, 74, 0.16);
+  border-radius: 999px;
+  padding: 0 14px;
+  margin: 4px 8px 4px 0;
+  background: rgba(255, 252, 246, 0.84);
+  color: #31452f;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.staff-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 底部 Tab：更接近 iOS，而不是临时符号按钮 */
+.staff-bottom-tab {
+  gap: 4px;
+  padding: 9px 12px 16px;
+  background: rgba(255, 250, 242, 0.90);
+}
+
+.staff-bottom-item {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  min-height: 56px;
+  border: 0;
+  border-radius: 22px;
+  background: transparent;
+  color: #8d8678;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.staff-bottom-item.active {
+  background: rgba(237, 241, 231, 0.96);
+  color: #31452f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
+.staff-tab-icon {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+
+.staff-tab-icon.home::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 8px;
+  width: 12px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-top: 0;
+  border-radius: 3px;
+}
+
+.staff-tab-icon.home::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  border-left: 2px solid currentColor;
+  border-top: 2px solid currentColor;
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+
+.staff-tab-icon.task::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 2px solid currentColor;
+  border-radius: 5px;
+}
+
+.staff-tab-icon.task::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 10px;
+  width: 7px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.staff-tab-icon.report::before,
+.staff-tab-icon.report::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 4px;
+  width: 2px;
+  height: 14px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.staff-tab-icon.report::after {
+  left: 4px;
+  top: 10px;
+  width: 14px;
+  height: 2px;
+}
+
+.staff-tab-icon.profile::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 3px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+}
+
+.staff-tab-icon.profile::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  bottom: 3px;
+  width: 14px;
+  height: 8px;
+  border: 2px solid currentColor;
+  border-radius: 999px 999px 6px 6px;
+}
+/* =========================================================
+   v4.5 GardenOS 双端质感精修版
+   员工端：iOS Tab / 卡片比例精修
+   商户端：参考第三张概念图，浅石材 + 浅木质 + 南法总部驾驶舱
+   只改视觉，不动业务逻辑
+========================================================= */
+
+/* =========================
+   1. 员工端继续精修：更接近 iOS App
+========================= */
+
+.staff-app-shell {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(236, 219, 188, 0.38) 0%, transparent 30%),
+    radial-gradient(circle at 96% 10%, rgba(111, 128, 99, 0.14) 0%, transparent 32%),
+    linear-gradient(180deg, #fbf7ef 0%, #f2e7d6 50%, #eadcc5 100%) !important;
+}
+
+.staff-app-main {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+
+/* 顶部更轻、更像系统导航 */
+.staff-app-topbar {
+  height: 54px !important;
+  padding: 0 14px !important;
+  background: rgba(255, 250, 242, 0.88) !important;
+  border-bottom: 1px solid rgba(116, 102, 74, 0.08) !important;
+  box-shadow: 0 8px 22px rgba(58, 47, 30, 0.04) !important;
+}
+
+.staff-app-topbar strong {
+  font-size: 19px !important;
+  letter-spacing: -0.045em !important;
+}
+
+/* 左上头像再精致一点 */
+.staff-avatar-entry {
+  width: 39px !important;
+  height: 39px !important;
+  border-color: rgba(184, 150, 88, 0.24) !important;
+  background: rgba(255, 252, 246, 0.88) !important;
+  box-shadow:
+    0 8px 18px rgba(58, 47, 30, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.70) !important;
+}
+
+.staff-avatar-entry span {
+  width: 29px !important;
+  height: 29px !important;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 250, 242, 0.28), transparent 34%),
+    linear-gradient(135deg, #31452f 0%, #7b6f3d 100%) !important;
+}
+
+/* 首页卡片略微收紧，少一点网页大卡感 */
+.garden-today-card,
+.garden-status-card,
+.garden-progress-card,
+.staff-profile-hero,
+.staff-profile-card,
+.staff-visible-info > div,
+.staff-setting-accordion details,
+.staff-report-card,
+.staff-compact-header,
+.staff-empty-card {
+  border-radius: 25px !important;
+  border-color: rgba(116, 102, 74, 0.12) !important;
+  box-shadow:
+    0 16px 36px rgba(58, 47, 30, 0.085),
+    inset 0 1px 0 rgba(255, 255, 255, 0.70) !important;
+}
+
+.garden-today-card,
+.garden-status-card,
+.garden-progress-card {
+  padding: 17px !important;
+  margin-bottom: 14px !important;
+}
+
+.garden-today-card::before,
+.garden-status-card::before,
+.garden-progress-card::before {
+  inset: 8px !important;
+  border-radius: 20px !important;
+  border-color: rgba(184, 150, 88, 0.14) !important;
+}
+
+.garden-dashboard-head {
+  padding: 13px 3px 10px !important;
+}
+
+.garden-user-line h1 {
+  font-size: 26px !important;
+}
+
+.garden-card-title-row {
+  margin-bottom: 12px !important;
+}
+
+.garden-card-title-row h2 {
+  font-size: 21px !important;
+}
+
+.garden-task-row {
+  min-height: 62px !important;
+  padding-top: 9px !important;
+  padding-bottom: 9px !important;
+}
+
+.garden-task-icon {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 14px !important;
+}
+
+.garden-task-main strong {
+  font-size: 15px !important;
+}
+
+.garden-status-grid {
+  gap: 10px !important;
+}
+
+.garden-status-grid button {
+  min-height: 82px !important;
+  border-radius: 20px !important;
+  padding: 12px !important;
+}
+
+.garden-status-grid strong {
+  font-size: 27px !important;
+}
+
+.garden-progress-body {
+  margin-top: 8px !important;
+}
+
+.garden-bars {
+  height: 104px !important;
+}
+
+.garden-progress-number strong {
+  font-size: 48px !important;
+}
+
+/* 底部 Tab：更像 iOS，降低厚重感 */
+.staff-bottom-tab {
+  max-width: 430px !important;
+  gap: 4px !important;
+  padding: 7px 12px 13px !important;
+  border-top: 1px solid rgba(116, 102, 74, 0.08) !important;
+  background: rgba(255, 250, 242, 0.92) !important;
+  backdrop-filter: blur(26px) saturate(1.18) !important;
+  box-shadow:
+    0 -14px 34px rgba(58, 47, 30, 0.075),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+}
+
+.staff-bottom-item {
+  min-height: 50px !important;
+  border-radius: 19px !important;
+  color: rgba(83, 78, 67, 0.72) !important;
+  font-size: 11px !important;
+  letter-spacing: -0.02em !important;
+}
+
+.staff-bottom-item.active {
+  background:
+    linear-gradient(180deg, rgba(237, 241, 231, 0.96), rgba(227, 234, 221, 0.90)) !important;
+  color: #31452f !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    0 8px 18px rgba(49, 69, 47, 0.08) !important;
+}
+
+.staff-tab-icon {
+  width: 20px !important;
+  height: 20px !important;
+  opacity: 0.92;
+}
+
+.staff-tab-icon.home::before,
+.staff-tab-icon.task::before,
+.staff-tab-icon.profile::before,
+.staff-tab-icon.profile::after {
+  border-width: 1.7px !important;
+}
+
+.staff-tab-icon.home::after {
+  border-left-width: 1.7px !important;
+  border-top-width: 1.7px !important;
+}
+
+.staff-tab-icon.report::before,
+.staff-tab-icon.report::after,
+.staff-tab-icon.task::after {
+  opacity: 0.92;
+}
+
+/* 我的页：卡片再轻一点 */
+.staff-profile-hero {
+  padding: 19px !important;
+  margin-bottom: 13px !important;
+}
+
+.staff-profile-hero h1 {
+  font-size: 27px !important;
+}
+
+.staff-profile-card.refined {
+  padding: 15px !important;
+}
+
+.staff-visible-info > div,
+.staff-setting-accordion details {
+  padding: 14px !important;
+}
+
+
+/* =========================
+   2. 商户端：第三张概念图方向
+   浅石材主面板 + 浅木质侧栏 + 南法总部驾驶舱
+========================= */
+
+.admin-layout {
+  grid-template-columns: 228px minmax(0, 1fr) !important;
+  min-height: 100vh !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(216, 197, 162, 0.24) 0%, transparent 30%),
+    radial-gradient(circle at 100% 0%, rgba(111, 128, 99, 0.14) 0%, transparent 34%),
+    linear-gradient(135deg, #f6efe2 0%, #f8f4ec 48%, #ede1cd 100%) !important;
+}
+
+/* 浅木质侧边栏：不再深蓝 */
+.admin-sidebar {
+  position: relative !important;
+  overflow: hidden !important;
+  padding: 22px 14px !important;
+  border-right: 1px solid rgba(116, 102, 74, 0.16) !important;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 18%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(123, 91, 52, 0.055) 0px,
+      rgba(123, 91, 52, 0.055) 1px,
+      transparent 1px,
+      transparent 18px
+    ),
+    linear-gradient(180deg, #e5d5b5 0%, #d9c49e 45%, #cbb489 100%) !important;
+  color: #4f4a38 !important;
+  box-shadow:
+    16px 0 44px rgba(58, 47, 30, 0.09),
+    inset -1px 0 0 rgba(255, 255, 255, 0.35) !important;
+}
+
+.admin-sidebar::before {
+  content: "M";
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 22px;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 250, 242, 0.28), transparent 34%),
+    linear-gradient(135deg, #31452f, #7b6f3d);
+  color: #fffaf2;
+  font-size: 28px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  box-shadow: 0 16px 36px rgba(49, 69, 47, 0.22);
+}
+
+.admin-sidebar .brand {
+  margin: 0 0 18px !important;
+  padding: 0 8px 18px !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(89, 78, 53, 0.16) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: center !important;
+}
+
+.admin-sidebar .brand .eyebrow,
+.admin-sidebar .brand p {
+  color: rgba(76, 70, 48, 0.62) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.12em !important;
+}
+
+.admin-sidebar .brand h2 {
+  color: #263222 !important;
+  font-size: 18px !important;
+  letter-spacing: -0.04em !important;
+}
+
+.admin-sidebar .brand span {
+  color: #7d6c43 !important;
+}
+
+/* 商户端导航：更像高端侧栏 */
+.admin-nav-btn {
+  min-height: 42px !important;
+  border: 1px solid transparent !important;
+  border-radius: 14px !important;
+  padding: 0 13px !important;
+  background: transparent !important;
+  color: rgba(45, 51, 37, 0.74) !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  text-align: left !important;
+  box-shadow: none !important;
+}
+
+.admin-nav-btn:hover {
+  border-color: rgba(89, 78, 53, 0.12) !important;
+  background: rgba(255, 250, 242, 0.32) !important;
+  color: #263222 !important;
+}
+
+.admin-nav-btn.active {
+  border-color: rgba(89, 78, 53, 0.15) !important;
+  background:
+    linear-gradient(135deg, rgba(49, 69, 47, 0.18), rgba(255, 250, 242, 0.38)) !important;
+  color: #263222 !important;
+  box-shadow:
+    inset 3px 0 0 #31452f,
+    0 10px 24px rgba(58, 47, 30, 0.08) !important;
+}
+
+/* 侧栏底部切换按钮 */
+.admin-sidebar .admin-nav-btn[style] {
+  border-color: rgba(89, 78, 53, 0.16) !important;
+  background: rgba(255, 250, 242, 0.32) !important;
+  color: #263222 !important;
+}
+
+/* 主工作区：石材白背景，不再冷灰 */
+.admin-main {
+  height: 100vh !important;
+  padding: 0 28px 38px !important;
+  background:
+    radial-gradient(circle at 82% 0%, rgba(255, 255, 255, 0.62) 0%, transparent 28%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.70), rgba(247, 241, 231, 0.42)) !important;
+}
+
+/* 顶部栏：白石材 + 搜索框气质 */
+.admin-topbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  margin: 0 -28px 22px !important;
+  padding: 18px 28px !important;
+  border-bottom: 1px solid rgba(116, 102, 74, 0.10) !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  backdrop-filter: blur(24px) saturate(1.15) !important;
+  box-shadow: 0 8px 24px rgba(58, 47, 30, 0.04) !important;
+}
+
+.admin-topbar .eyebrow {
+  color: #b89658 !important;
+}
+
+.admin-topbar h1 {
+  color: #20251d !important;
+  font-size: 27px !important;
+  letter-spacing: -0.055em !important;
+}
+
+.admin-topbar span {
+  color: #7d7567 !important;
+}
+
+/* 商户端数据卡：像第三张里的小统计牌 */
+.admin-metric-grid {
+  grid-template-columns: repeat(5, minmax(130px, 1fr)) !important;
+  gap: 14px !important;
+  margin-bottom: 20px !important;
+}
+
+.metric-box {
+  position: relative !important;
+  overflow: hidden !important;
+  min-height: 116px !important;
+  border: 1px solid rgba(116, 102, 74, 0.13) !important;
+  border-left: 0 !important;
+  border-radius: 20px !important;
+  padding: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(245, 237, 222, 0.90)) !important;
+  box-shadow:
+    0 16px 36px rgba(58, 47, 30, 0.085),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+.metric-box::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  height: 7px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, #8d4e38 0%, #8d4e38 58%, rgba(116, 102, 74, 0.13) 58%, rgba(116, 102, 74, 0.13) 100%);
+}
+
+.metric-box:nth-child(2)::before,
+.metric-box:nth-child(4)::before {
+  background:
+    linear-gradient(90deg, #31452f 0%, #31452f 62%, rgba(116, 102, 74, 0.13) 62%, rgba(116, 102, 74, 0.13) 100%);
+}
+
+.metric-box h3 {
+  margin: 0 0 8px !important;
+  color: #7d7567 !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.08em !important;
+}
+
+.metric-box strong {
+  color: #7b392a !important;
+  font-size: 32px !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-weight: 700 !important;
+}
+
+.metric-box span,
+.metric-box p {
+  color: #8a8070 !important;
+}
+
+/* 商户端内容卡：白石材面板 */
+.admin-card,
+.admin-data-panel {
+  border: 1px solid rgba(116, 102, 74, 0.13) !important;
+  border-radius: 24px !important;
+  padding: 22px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(255, 248, 237, 0.92)) !important;
+  box-shadow:
+    0 18px 44px rgba(58, 47, 30, 0.085),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+.admin-card h2,
+.admin-section-head h2 {
+  color: #20251d !important;
+  font-size: 21px !important;
+  letter-spacing: -0.045em !important;
+}
+
+.admin-card p,
+.admin-section-head p,
+.admin-card span {
+  color: #7d7567 !important;
+}
+
+/* Todo 区域和 area-card 从冷蓝边框转为南法卡片 */
+.admin-card .area-card {
+  border: 1px solid rgba(116, 102, 74, 0.13) !important;
+  border-radius: 20px !important;
+  background: rgba(255, 252, 246, 0.76) !important;
+  box-shadow: 0 12px 28px rgba(58, 47, 30, 0.06) !important;
+}
+
+/* 商户端按钮：取消蓝色主调 */
+.admin-layout .primary-button,
+.admin-table-actions .primary-button,
+.admin-section-head .primary-button {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #31452f 0%, #4d6845 100%) !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 12px 26px rgba(49, 69, 47, 0.18) !important;
+}
+
+.admin-layout .primary-button:hover {
+  background: linear-gradient(135deg, #263922 0%, #405c38 100%) !important;
+}
+
+.admin-layout .ghost-button,
+.admin-table-actions .ghost-button,
+.admin-section-head .ghost-button {
+  border: 1px solid rgba(116, 102, 74, 0.16) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 252, 246, 0.84) !important;
+  color: #31452f !important;
+  box-shadow: 0 8px 18px rgba(58, 47, 30, 0.05) !important;
+}
+
+.admin-layout .ghost-button.danger {
+  border-color: rgba(176, 74, 60, 0.22) !important;
+  background: rgba(255, 241, 237, 0.92) !important;
+  color: #9f4a3c !important;
+}
+
+/* 表格更像第三张中间面板 */
+.admin-table {
+  border: 1px solid rgba(116, 102, 74, 0.13) !important;
+  border-radius: 20px !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  box-shadow: 0 14px 34px rgba(58, 47, 30, 0.06) !important;
+}
+
+.admin-table-head {
+  background: rgba(232, 218, 193, 0.52) !important;
+  color: #6f654f !important;
+}
+
+.admin-table-row {
+  border-bottom-color: rgba(116, 102, 74, 0.10) !important;
+}
+
+.admin-table-row strong {
+  color: #20251d !important;
+}
+
+.admin-table-row em {
+  color: #7d7567 !important;
+}
+
+/* 状态标签：陶土 / 橄榄，替代蓝色 */
+.admin-status-chip {
+  border: 1px solid rgba(141, 78, 56, 0.18) !important;
+  background: rgba(242, 219, 205, 0.78) !important;
+  color: #8d4e38 !important;
+}
+
+.admin-status-chip.muted {
+  border-color: rgba(116, 102, 74, 0.12) !important;
+  background: rgba(237, 241, 231, 0.82) !important;
+  color: #4d6845 !important;
+}
+
+/* 浮窗提醒：南法待办纸条，而不是红色警报 */
+.admin-toast-fixed {
+  right: 28px !important;
+  bottom: 28px !important;
+  border: 1px solid rgba(141, 78, 56, 0.18) !important;
+  border-left: 0 !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 252, 246, 0.98), rgba(245, 234, 210, 0.96)) !important;
+  box-shadow: 0 20px 52px rgba(58, 47, 30, 0.15) !important;
+}
+
+.admin-toast-fixed button {
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #8d4e38, #b66b4d) !important;
+  box-shadow: 0 12px 24px rgba(141, 78, 56, 0.22) !important;
+}
+
+/* 审核台也跟随商户端风格 */
+.admin-review-desk {
+  gap: 22px !important;
+}
+
+.admin-review-desk .admin-card {
+  border-radius: 24px !important;
+}
+
+/* 压住 JSX 里残留的蓝色 inline style */
+.admin-layout [style*="#3b82f6"],
+.admin-layout [style*="#2f6fae"],
+.admin-layout [style*="#1e3a8a"] {
+  color: #31452f !important;
+}
+
+.admin-layout [style*="#f8fafc"],
+.admin-layout [style*="#f1f5f9"] {
+  background: rgba(255, 252, 246, 0.84) !important;
+}
+
+.admin-layout [style*="#bfdbfe"],
+.admin-layout [style*="#e2e8f0"] {
+  border-color: rgba(116, 102, 74, 0.13) !important;
+}
+
+/* 响应式：商户端窄屏不崩 */
+@media (max-width: 1100px) {
+  .admin-layout {
+    grid-template-columns: 190px minmax(0, 1fr) !important;
+  }
+
+  .admin-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-layout {
+    display: block !important;
+  }
+
+  .admin-sidebar {
+    min-height: auto !important;
+    padding: 14px !important;
+  }
+
+  .admin-sidebar::before {
+    margin: 0 0 12px !important;
+  }
+
+  .admin-nav-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    margin: 0 6px 8px 0 !important;
+  }
+
+  .admin-main {
+    height: auto !important;
+    padding: 0 14px 32px !important;
+  }
+
+  .admin-topbar {
+    margin: 0 -14px 16px !important;
+    padding: 14px !important;
+  }
+}
+/* =========================================================
+   v4.6 员工端首页活化版
+   任务行有业务含义 / 服务流转轨道 / 底部 Tab 更克制
+========================================================= */
+
+/* 顶部：减少重复大标题感，变成真实 App 首页头部 */
+.garden-live-head {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 2px 12px;
+}
+
+.garden-head-avatar,
+.garden-head-refresh {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(116, 102, 74, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.86);
+  color: #31452f;
+  font-weight: 950;
+  box-shadow:
+    0 10px 22px rgba(58, 47, 30, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.70);
+}
+
+.garden-head-avatar {
+  background:
+    radial-gradient(circle at 32% 24%, rgba(255, 250, 242, 0.32), transparent 34%),
+    linear-gradient(135deg, #31452f, #7b6f3d);
+  color: #fffaf2;
+}
+
+.garden-live-head p {
+  margin: 0 0 2px;
+  color: #8a8070;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.garden-live-head h1 {
+  margin: 0;
+  color: #20251d;
+  font-size: 25px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.055em;
+}
+
+.garden-live-head span {
+  display: block;
+  margin-top: 4px;
+  color: #8a8070;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* 首页模块：更轻、更紧凑 */
+.garden-live-tasks-card,
+.garden-flow-card,
+.garden-live-progress-card {
+  position: relative;
+  margin-bottom: 13px;
+  border: 1px solid rgba(116, 102, 74, 0.12);
+  border-radius: 24px;
+  padding: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(255, 248, 237, 0.90));
+  box-shadow:
+    0 14px 32px rgba(58, 47, 30, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  overflow: hidden;
+}
+
+.garden-live-tasks-card::before,
+.garden-flow-card::before,
+.garden-live-progress-card::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1px solid rgba(184, 150, 88, 0.12);
+  border-radius: 19px;
+  pointer-events: none;
+}
+
+.garden-live-title-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.garden-live-title-row h2 {
+  margin: 0;
+  color: #20251d;
+  font-size: 21px;
+  line-height: 1.14;
+  font-weight: 950;
+  letter-spacing: -0.05em;
+}
+
+.garden-live-title-row > button,
+.garden-live-title-row > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 11px;
+  background: rgba(237, 241, 231, 0.86);
+  color: #31452f;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+/* 今日任务：删除无意义菱形，改成有业务含义的状态图标 */
+.garden-live-task-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+}
+
+.garden-live-task-row {
+  display: grid;
+  grid-template-columns: 18px 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 62px;
+  border: 0;
+  border-top: 1px solid rgba(116, 102, 74, 0.10);
+  padding: 10px 0;
+  background: transparent;
+  color: #20251d;
+  text-align: left;
+}
+
+.garden-live-task-row:first-child {
+  border-top: 0;
+}
+
+.garden-live-task-row.run,
+.garden-live-task-row.archive {
+  margin: 5px 0;
+  border: 1px solid rgba(141, 78, 56, 0.12);
+  border-radius: 18px;
+  padding: 10px;
+  background: rgba(201, 115, 80, 0.10);
+}
+
+.garden-live-index {
+  color: #a49a88;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.garden-live-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.garden-live-icon.new {
+  background: rgba(237, 241, 231, 0.90);
+  color: #4d6845;
+}
+
+.garden-live-icon.plan {
+  background: rgba(245, 234, 210, 0.92);
+  color: #9a6b1f;
+}
+
+.garden-live-icon.run {
+  background: rgba(238, 234, 242, 0.92);
+  color: #74678b;
+}
+
+.garden-live-icon.archive {
+  background: rgba(242, 219, 205, 0.88);
+  color: #8d4e38;
+}
+
+.garden-live-icon.done {
+  background: rgba(240, 238, 232, 0.92);
+  color: #766b58;
+}
+
+.garden-live-main {
+  min-width: 0;
+}
+
+.garden-live-main strong {
+  display: block;
+  overflow: hidden;
+  color: #20251d;
+  font-size: 15px;
+  line-height: 1.24;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.garden-live-main em {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: #827b6d;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.garden-live-side {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+}
+
+.garden-live-side b {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  border-radius: 999px;
+  padding: 0 9px;
+  background: rgba(237, 241, 231, 0.88);
+  color: #31452f;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.garden-live-side em {
+  color: #7d7567;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.garden-live-side small {
+  color: #b8564d;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.garden-live-empty {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 6px;
+  padding: 18px 0 8px;
+  text-align: center;
+}
+
+.garden-live-empty strong {
+  color: #20251d;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.garden-live-empty span {
+  color: #827b6d;
+  font-size: 13px;
+}
+
+/* 服务流转：从死方块改成流程轨道 */
+.garden-flow-track {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  margin-top: 4px;
+}
+
+.garden-flow-track button {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+  color: #8a8070;
+  min-height: 76px;
+  padding: 8px 0;
+}
+
+.garden-flow-track button i {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(116, 102, 74, 0.13);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.86);
+  color: #8a8070;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 950;
+  box-shadow: 0 8px 18px rgba(58, 47, 30, 0.06);
+}
+
+.garden-flow-track button.active i {
+  border-color: rgba(49, 69, 47, 0.16);
+  background: linear-gradient(135deg, #31452f, #4d6845);
+  color: #fffaf2;
+  box-shadow: 0 12px 24px rgba(49, 69, 47, 0.18);
+}
+
+.garden-flow-track button span {
+  color: inherit;
+  font-size: 11px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.garden-flow-track button em {
+  position: absolute;
+  left: calc(50% + 20px);
+  top: 27px;
+  width: calc(100% - 40px);
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(116, 102, 74, 0.12);
+}
+
+.garden-flow-track button.active em {
+  background: rgba(49, 69, 47, 0.22);
+}
+
+.garden-flow-note {
+  position: relative;
+  z-index: 1;
+  margin: 8px 0 0;
+  color: #827b6d;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+/* 交付节奏继续缩紧 */
+.garden-live-progress-body {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 82px;
+  align-items: end;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.garden-live-bars {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  height: 96px;
+  gap: 8px;
+}
+
+.garden-live-bars i {
+  display: block;
+  width: 100%;
+  max-width: 24px;
+  height: var(--h);
+  border-radius: 999px 999px 10px 10px;
+  background: linear-gradient(180deg, #d8c5a2, #efe2ca);
+}
+
+.garden-live-bars i:nth-child(2),
+.garden-live-bars i:nth-child(5) {
+  background: linear-gradient(180deg, #c97350, #e8c0a7);
+}
+
+.garden-live-bars i:nth-child(4),
+.garden-live-bars i:nth-child(7) {
+  background: linear-gradient(180deg, #6f8063, #b9c5ae);
+}
+
+.garden-live-number {
+  display: grid;
+  justify-items: end;
+}
+
+.garden-live-number strong {
+  color: #20251d;
+  font-size: 44px;
+  line-height: 0.9;
+  font-weight: 950;
+  letter-spacing: -0.08em;
+}
+
+.garden-live-number span {
+  margin-top: 8px;
+  color: #827b6d;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.garden-live-progress-card > p {
+  position: relative;
+  z-index: 1;
+  margin: 12px 0 0;
+  color: #827b6d;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+/* 底部 Tab 再压小一档，避免大块头 */
+.staff-bottom-tab {
+  padding: 6px 13px 12px !important;
+}
+
+.staff-bottom-item {
+  min-height: 46px !important;
+  border-radius: 17px !important;
+  font-size: 10.5px !important;
+  font-weight: 900 !important;
+}
+
+.staff-tab-icon {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.staff-bottom-item.active {
+  background: rgba(237, 241, 231, 0.82) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 6px 14px rgba(49, 69, 47, 0.06) !important;
+}
+
+/* 让旧首页模块不再影响 v4.6 新首页 */
+.staff-app-shell .garden-today-card,
+.staff-app-shell .garden-status-card,
+.staff-app-shell .garden-progress-card {
+  display: none;
+}
+
+@media (max-width: 360px) {
+  .garden-flow-track button span {
+    font-size: 10px;
+  }
+
+  .garden-live-task-row {
+    grid-template-columns: 16px 34px minmax(0, 1fr);
+  }
+
+  .garden-live-side {
+    grid-column: 3;
+    justify-items: start;
+  }
+}
+/* =========================================================
+   v4.7 商户端自然融合修复版
+   修复：左右切割太硬 / 假木纹太黄 / 火 emoji 和红色警报低级感
+========================================================= */
+
+/* 商户端整体：让左侧和右侧共享同一个南法浅底，不再像两块页面硬拼 */
+.admin-layout {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(216, 197, 162, 0.18) 0%, transparent 30%),
+    radial-gradient(circle at 100% 0%, rgba(111, 128, 99, 0.10) 0%, transparent 34%),
+    linear-gradient(135deg, #f5efe4 0%, #f8f4ec 44%, #efe4d1 100%) !important;
+}
+
+/* 左侧：从偏黄木板，降成“浅砂岩木饰面” */
+.admin-sidebar {
+  position: relative !important;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 250, 242, 0.42) 0%, transparent 34%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.28), transparent 22%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(108, 92, 58, 0.026) 0px,
+      rgba(108, 92, 58, 0.026) 1px,
+      transparent 1px,
+      transparent 24px
+    ),
+    linear-gradient(180deg, #e9dfc9 0%, #dfd1b5 48%, #d7c7a5 100%) !important;
+  border-right: 0 !important;
+  box-shadow:
+    18px 0 42px rgba(78, 63, 39, 0.055),
+    inset -1px 0 0 rgba(255, 255, 255, 0.34) !important;
+}
+
+/* 让左右交界自然过渡，不是硬切线 */
+.admin-sidebar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -28px;
+  width: 56px;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(216, 202, 173, 0.34) 0%,
+    rgba(245, 239, 228, 0.18) 42%,
+    rgba(245, 239, 228, 0) 100%
+  );
+}
+
+/* 左侧 Logo 更像徽章，别像硬贴上去 */
+.admin-sidebar::before {
+  width: 50px !important;
+  height: 50px !important;
+  margin-bottom: 20px !important;
+  border-radius: 19px !important;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 250, 242, 0.30), transparent 34%),
+    linear-gradient(135deg, #31452f 0%, #6f6640 100%) !important;
+  box-shadow:
+    0 14px 30px rgba(49, 69, 47, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
+
+/* 左侧文字整体降噪 */
+.admin-sidebar .brand {
+  border-bottom-color: rgba(90, 78, 52, 0.11) !important;
+}
+
+.admin-sidebar .brand h2 {
+  color: #2b3325 !important;
+}
+
+.admin-sidebar .brand span,
+.admin-sidebar .brand p,
+.admin-sidebar .brand .eyebrow {
+  color: rgba(86, 76, 52, 0.58) !important;
+}
+
+/* 菜单按钮：选中态更自然，不要像硬高亮 */
+.admin-nav-btn {
+  color: rgba(45, 51, 37, 0.68) !important;
+  border-radius: 16px !important;
+  font-weight: 820 !important;
+}
+
+.admin-nav-btn:hover {
+  background: rgba(255, 250, 242, 0.26) !important;
+  color: #253020 !important;
+}
+
+.admin-nav-btn.active {
+  border-color: rgba(49, 69, 47, 0.10) !important;
+  background:
+    linear-gradient(90deg, rgba(255, 250, 242, 0.58), rgba(255, 250, 242, 0.22)) !important;
+  color: #253020 !important;
+  box-shadow:
+    inset 3px 0 0 rgba(49, 69, 47, 0.82),
+    0 8px 20px rgba(58, 47, 30, 0.055) !important;
+}
+
+/* 主区域稍微带一点同色暖调，跟左侧融起来 */
+.admin-main {
+  background:
+    radial-gradient(circle at 74% 0%, rgba(255, 255, 255, 0.58) 0%, transparent 30%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.72), rgba(246, 238, 224, 0.42)) !important;
+}
+
+/* 顶部栏跟整体更融合 */
+.admin-topbar {
+  background: rgba(255, 252, 246, 0.76) !important;
+  border-bottom-color: rgba(116, 102, 74, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(58, 47, 30, 0.035) !important;
+}
+
+/* 工作台待办卡：去掉“火警报”感觉，改成运营待办卡 */
+.admin-card h2 {
+  color: #20251d !important;
+}
+
+/* 如果 h2 内还残留 emoji，至少用整体样式压住低级感 */
+.admin-card h2:first-child {
+  letter-spacing: -0.035em !important;
+}
+
+/* 待办区域里的订单小卡更高级 */
+.admin-card .order-card,
+.admin-card .empty-card,
+.admin-card .area-card {
+  border-color: rgba(116, 102, 74, 0.12) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.94), rgba(255, 248, 237, 0.88)) !important;
+  box-shadow:
+    0 12px 28px rgba(58, 47, 30, 0.055),
+    inset 0 1px 0 rgba(255, 255, 255, 0.70) !important;
+}
+
+/* 覆盖红色“待商户确认”这种刺眼标签 */
+.admin-layout [style*="#ef4444"],
+.admin-layout [style*="239, 68, 68"],
+.admin-layout [style*="#fee2e2"],
+.admin-layout [style*="#fef2f2"] {
+  background: rgba(242, 219, 205, 0.92) !important;
+  color: #8d4e38 !important;
+  border-color: rgba(141, 78, 56, 0.18) !important;
+  box-shadow: none !important;
+}
+
+/* 状态胶囊：待确认用陶土，不用警报红 */
+.admin-status-chip,
+.area-size,
+.status-pill {
+  border: 1px solid rgba(141, 78, 56, 0.16) !important;
+  background: rgba(242, 219, 205, 0.74) !important;
+  color: #8d4e38 !important;
+  box-shadow: none !important;
+}
+
+/* 已确认/普通状态可以更柔和 */
+.admin-status-chip.muted {
+  border-color: rgba(116, 102, 74, 0.12) !important;
+  background: rgba(237, 241, 231, 0.84) !important;
+  color: #4d6845 !important;
+}
+
+/* 待办按钮不要红色警报，也不要蓝色 */
+.admin-layout .primary-button,
+.admin-card .primary-button,
+.admin-toast-fixed button {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #31452f 0%, #4d6845 100%) !important;
+  color: #fffaf2 !important;
+  box-shadow:
+    0 12px 24px rgba(49, 69, 47, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+}
+
+/* 打回/危险按钮从红色降为陶土色，不刺眼 */
+.admin-layout .ghost-button.danger {
+  border-color: rgba(141, 78, 56, 0.20) !important;
+  background: rgba(255, 246, 239, 0.94) !important;
+  color: #8d4e38 !important;
+}
+
+/* 右下角提醒：保留逻辑，改成高级便签 */
+.admin-toast-fixed {
+  right: 26px !important;
+  bottom: 26px !important;
+  border: 1px solid rgba(116, 102, 74, 0.14) !important;
+  border-left: 0 !important;
+  border-radius: 24px !important;
+  padding: 18px 20px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 252, 246, 0.98), rgba(246, 235, 215, 0.96)) !important;
+  box-shadow:
+    0 22px 54px rgba(58, 47, 30, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+  gap: 16px !important;
+}
+
+/* 用细竖条替代警报红 */
+.admin-toast-fixed::before {
+  content: "";
+  width: 6px;
+  align-self: stretch;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #8d4e38 0%, #b89658 100%);
+}
+
+/* 右下角提醒文字 */
+.admin-toast-fixed strong {
+  color: #20251d !important;
+}
+
+.admin-toast-fixed span {
+  color: #756d5f !important;
+}
+
+/* 去掉旧蓝色残留：商户端整体不再出现工具蓝 */
+.admin-layout [style*="#3b82f6"],
+.admin-layout [style*="#2f6fae"],
+.admin-layout [style*="#1e3a8a"],
+.admin-layout [style*="#bfdbfe"] {
+  color: #31452f !important;
+  border-color: rgba(116, 102, 74, 0.13) !important;
+}
+
+.admin-layout [style*="#f8fafc"],
+.admin-layout [style*="#f1f5f9"] {
+  background: rgba(255, 252, 246, 0.86) !important;
+}
+
+/* 左下角“切换至员工手机视角”更像系统切换入口 */
+.admin-sidebar .admin-nav-btn[style] {
+  border-color: rgba(90, 78, 52, 0.14) !important;
+  background: rgba(255, 250, 242, 0.34) !important;
+  color: #2b3325 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36) !important;
+}
+
+/* 小屏保底 */
+@media (max-width: 760px) {
+  .admin-sidebar::after {
+    display: none !important;
+  }
+
+  .admin-sidebar {
+    background:
+      linear-gradient(180deg, #e9dfc9 0%, #ded0b4 100%) !important;
+  }
+}
+/* =========================================================
+   v4.8 员工端回收优化版
+   回收：去掉“行/案”字块，服务流转回到卡片式，底部 Tab 继续克制
+========================================================= */
+
+.garden-clean-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 2px 12px;
+}
+
+.garden-clean-head p {
+  margin: 0 0 2px;
+  color: #8a8070;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.garden-clean-head h1 {
+  margin: 0;
+  color: #20251d;
+  font-size: 25px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.055em;
+}
+
+.garden-clean-head span {
+  display: block;
+  margin-top: 4px;
+  color: #8a8070;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.garden-clean-card {
+  position: relative;
+  margin-bottom: 13px;
+  border: 1px solid rgba(116, 102, 74, 0.12);
+  border-radius: 24px;
+  padding: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(255, 248, 237, 0.90));
+  box-shadow:
+    0 14px 32px rgba(58, 47, 30, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  overflow: hidden;
+}
+
+.garden-clean-card::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1px solid rgba(184, 150, 88, 0.12);
+  border-radius: 19px;
+  pointer-events: none;
+}
+
+.garden-clean-title {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.garden-clean-title h2 {
+  margin: 0;
+  color: #20251d;
+  font-size: 21px;
+  line-height: 1.14;
+  font-weight: 950;
+  letter-spacing: -0.05em;
+}
+
+.garden-clean-title > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 11px;
+  background: rgba(237, 241, 231, 0.86);
+  color: #31452f;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+/* 今日任务：更干净，不再塞无意义图标 */
+.garden-clean-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+}
+
+.garden-clean-task {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 62px;
+  border: 0;
+  border-top: 1px solid rgba(116, 102, 74, 0.10);
+  padding: 11px 0;
+  background: transparent;
+  color: #20251d;
+  text-align: left;
+}
+
+.garden-clean-task:first-child {
+  border-top: 0;
+}
+
+.garden-clean-task.run,
+.garden-clean-task.archive {
+  margin: 5px 0;
+  border: 1px solid rgba(141, 78, 56, 0.11);
+  border-radius: 18px;
+  padding: 11px 12px;
+  background: rgba(201, 115, 80, 0.08);
+}
+
+.garden-clean-index {
+  color: #a49a88;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.garden-clean-main {
+  min-width: 0;
+}
+
+.garden-clean-main strong {
+  display: block;
+  overflow: hidden;
+  color: #20251d;
+  font-size: 15px;
+  line-height: 1.24;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.garden-clean-main em {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: #827b6d;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.garden-clean-meta {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+}
+
+.garden-clean-meta b {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  border-radius: 999px;
+  padding: 0 9px;
+  background: rgba(237, 241, 231, 0.88);
+  color: #31452f;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.garden-clean-task.plan .garden-clean-meta b {
+  background: rgba(245, 234, 210, 0.92);
+  color: #8d682c;
+}
+
+.garden-clean-task.run .garden-clean-meta b {
+  background: rgba(238, 234, 242, 0.92);
+  color: #74678b;
+}
+
+.garden-clean-task.archive .garden-clean-meta b {
+  background: rgba(242, 219, 205, 0.88);
+  color: #8d4e38;
+}
+
+.garden-clean-meta em {
+  color: #7d7567;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.garden-clean-meta small {
+  color: #b8564d;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.garden-clean-empty {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 6px;
+  padding: 18px 0 8px;
+  text-align: center;
+}
+
+.garden-clean-empty strong {
+  color: #20251d;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.garden-clean-empty span {
+  color: #827b6d;
+  font-size: 13px;
+}
+
+/* 服务流转：轻流程提示 + 小卡片，回收上一版更舒服的卡片感 */
+.garden-flow-hint {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr auto 1fr auto;
+  align-items: center;
+  gap: 7px;
+  margin: 2px 0 13px;
+  padding: 9px 10px;
+  border-radius: 999px;
+  background: rgba(237, 241, 231, 0.48);
+}
+
+.garden-flow-hint span {
+  color: #5f6f58;
+  font-size: 11px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.garden-flow-hint i {
+  height: 1px;
+  border-radius: 999px;
+  background: rgba(116, 102, 74, 0.16);
+}
+
+.garden-flow-cards {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.garden-flow-cards button {
+  min-height: 82px;
+  border: 1px solid rgba(116, 102, 74, 0.12);
+  border-radius: 20px;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.92), rgba(242, 231, 210, 0.42));
+  box-shadow:
+    0 10px 24px rgba(58, 47, 30, 0.055),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  text-align: left;
+}
+
+.garden-flow-cards span {
+  display: block;
+  margin-bottom: 8px;
+  color: #827b6d;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.garden-flow-cards strong {
+  display: block;
+  color: #20251d;
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.06em;
+}
+
+.garden-flow-cards em {
+  display: block;
+  margin-top: 7px;
+  color: #9a9284;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+/* 保留交付节奏高级感，确保旧首页卡片不再露出来 */
+.staff-app-shell .garden-today-card,
+.staff-app-shell .garden-status-card,
+.staff-app-shell .garden-progress-card,
+.staff-app-shell .garden-live-tasks-card,
+.staff-app-shell .garden-flow-card {
+  display: none !important;
+}
+
+/* 底部 Tab：参考微信逻辑，图标清楚，文字更小 */
+.staff-bottom-tab {
+  padding: 5px 14px 10px !important;
+  gap: 4px !important;
+}
+
+.staff-bottom-item {
+  min-height: 42px !important;
+  border-radius: 15px !important;
+  font-size: 7px !important;
+  font-weight: 680 !important;
+  gap: 2px !important;
+  letter-spacing: -0.02em !important;
+}
+
+.staff-tab-icon {
+  width: 21px !important;
+  height: 21px !important;
+}
+
+.staff-tab-icon svg {
+  width: 21px !important;
+  height: 21px !important;
+  stroke-width: 1.75 !important;
+}
+
+.staff-bottom-item span:last-child {
+  transform: scale(0.78);
+  transform-origin: center;
+  line-height: 1;
+}
+
+.staff-bottom-item.active {
+  background: rgba(237, 241, 231, 0.48) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    0 4px 10px rgba(49, 69, 47, 0.026) !important;
+}
+@media (max-width: 360px) {
+  .garden-clean-task {
+    grid-template-columns: 20px minmax(0, 1fr);
+  }
+
+  .garden-clean-meta {
+    grid-column: 2;
+    justify-items: start;
+    margin-top: 3px;
+  }
+
+  .garden-flow-cards {
+    grid-template-columns: 1fr;
+  }
 }
