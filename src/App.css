@@ -5370,7 +5370,7 @@ input:focus {
 
 .garden-clean-head {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  grid-template-columns: minmax(0, 1fr) 42px;
   align-items: center;
   gap: 12px;
   padding: 14px 2px 12px;
