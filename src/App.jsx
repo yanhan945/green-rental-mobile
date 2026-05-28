@@ -4051,9 +4051,9 @@ ${areaText || "暂无区域"}
 </header>
 
     <main className="staff-app-main">
-    {staffAppTab === "首页" && (
+  {staffAppTab === "首页" && (
   <>
-    <section className="garden-live-head">
+    <section className="garden-clean-head">
       <button className="garden-head-avatar" onClick={() => setStaffAppTab("我的")}>
         G
       </button>
@@ -4069,8 +4069,8 @@ ${areaText || "暂无区域"}
       </button>
     </section>
 
-    <section className="garden-live-tasks-card">
-      <div className="garden-live-title-row">
+    <section className="garden-clean-card">
+      <div className="garden-clean-title">
         <div>
           <p className="garden-kicker">TODAY’S TASKS</p>
           <h2>今日服务任务</h2>
@@ -4087,7 +4087,7 @@ ${areaText || "暂无区域"}
 
         if (homeTasks.length === 0) {
           return (
-            <div className="garden-live-empty">
+            <div className="garden-clean-empty">
               <strong>今日暂无待处理任务</strong>
               <span>订单变化会自动同步，也可以点击右上角刷新。</span>
             </div>
@@ -4095,25 +4095,38 @@ ${areaText || "暂无区域"}
         }
 
         return (
-          <div className="garden-live-task-list">
+          <div className="garden-clean-list">
             {homeTasks.map((order, index) => {
               const stats = getPlanStats(order.plan);
 
-              const statusMeta =
+              const actionText =
                 order.status === "待接单"
-                  ? { icon: "新", tone: "new", action: "接单" }
+                  ? "接单"
                   : ["配置中", "待商户确认"].includes(order.status)
-                    ? { icon: "案", tone: "plan", action: "方案" }
+                    ? "方案"
+                    : order.status === "执行中"
+                      ? "完成"
+                      : order.status === "方案已确认"
+                        ? "执行"
+                        : order.status === "待商户归档"
+                          ? "归档"
+                          : "查看";
+
+              const tone =
+                order.status === "待接单"
+                  ? "new"
+                  : ["配置中", "待商户确认"].includes(order.status)
+                    ? "plan"
                     : ["方案已确认", "执行中"].includes(order.status)
-                      ? { icon: "行", tone: "run", action: order.status === "执行中" ? "完成" : "执行" }
+                      ? "run"
                       : order.status === "待商户归档"
-                        ? { icon: "归", tone: "archive", action: "归档" }
-                        : { icon: "成", tone: "done", action: "查看" };
+                        ? "archive"
+                        : "done";
 
               return (
                 <button
                   key={order.id}
-                  className={`garden-live-task-row ${statusMeta.tone}`}
+                  className={`garden-clean-task ${tone}`}
                   onClick={() => {
                     if (order.status === "待接单") {
                       setSelectedOrder(order);
@@ -4129,19 +4142,15 @@ ${areaText || "暂无区域"}
                     openPlanForOrder(order);
                   }}
                 >
-                  <span className="garden-live-index">{index + 1}</span>
+                  <span className="garden-clean-index">{index + 1}</span>
 
-                  <span className={`garden-live-icon ${statusMeta.tone}`}>
-                    {statusMeta.icon}
-                  </span>
-
-                  <span className="garden-live-main">
+                  <span className="garden-clean-main">
                     <strong>{order.customerName}</strong>
                     <em>{order.address || "地址待确认"}</em>
                   </span>
 
-                  <span className="garden-live-side">
-                    <b>{statusMeta.action}</b>
+                  <span className="garden-clean-meta">
+                    <b>{actionText}</b>
                     <em>{order.status}</em>
                     {order.plan && <small>¥ {money(stats.finalRent)}</small>}
                   </span>
@@ -4153,61 +4162,50 @@ ${areaText || "暂无区域"}
       })()}
     </section>
 
-    <section className="garden-flow-card">
-      <div className="garden-live-title-row">
+    <section className="garden-clean-card">
+      <div className="garden-clean-title">
         <div>
-          <p className="garden-kicker">SERVICE FLOW</p>
+          <p className="garden-kicker">SERVICE STATUS</p>
           <h2>服务流转</h2>
         </div>
         <button onClick={() => setStaffAppTab("任务")}>进入</button>
       </div>
 
-      <div className="garden-flow-track">
-        {[
-          {
-            key: "待接单",
-            count: orders.filter((order) => order.status === "待接单").length,
-            tab: "待接单",
-          },
-          {
-            key: "做方案",
-            count: orders.filter((order) => ["配置中", "待商户确认"].includes(order.status)).length,
-            tab: "做方案",
-          },
-          {
-            key: "执行中",
-            count: orders.filter((order) => ["方案已确认", "执行中"].includes(order.status)).length,
-            tab: "执行中",
-          },
-          {
-            key: "待归档",
-            count: orders.filter((order) => order.status === "待商户归档").length,
-            tab: "已完成",
-          },
-          {
-            key: "已完成",
-            count: orders.filter((order) => order.status === "已完成").length,
-            tab: "已完成",
-          },
-        ].map((item, index, list) => (
-          <button
-            key={item.key}
-            className={item.count > 0 ? "active" : ""}
-            onClick={() => {
-              setStaffAppTab("任务");
-              setActiveStaffTab(item.tab);
-            }}
-          >
-            <i>{item.count}</i>
-            <span>{item.key}</span>
-            {index < list.length - 1 && <em />}
-          </button>
-        ))}
+      <div className="garden-flow-hint">
+        <span>接单</span>
+        <i />
+        <span>方案</span>
+        <i />
+        <span>执行</span>
+        <i />
+        <span>归档</span>
       </div>
 
-      <p className="garden-flow-note">
-        订单会按照接单、方案、执行、归档逐步流转，商户确认后进入下一阶段。
-      </p>
+      <div className="garden-flow-cards">
+        <button onClick={() => { setStaffAppTab("任务"); setActiveStaffTab("待接单"); }}>
+          <span>待接单</span>
+          <strong>{orders.filter((order) => order.status === "待接单").length}</strong>
+          <em>等待员工接收</em>
+        </button>
+
+        <button onClick={() => { setStaffAppTab("任务"); setActiveStaffTab("做方案"); }}>
+          <span>做方案</span>
+          <strong>{orders.filter((order) => ["配置中", "待商户确认"].includes(order.status)).length}</strong>
+          <em>方案配置 / 待确认</em>
+        </button>
+
+        <button onClick={() => { setStaffAppTab("任务"); setActiveStaffTab("执行中"); }}>
+          <span>执行中</span>
+          <strong>{orders.filter((order) => ["方案已确认", "执行中"].includes(order.status)).length}</strong>
+          <em>现场服务推进中</em>
+        </button>
+
+        <button onClick={() => { setStaffAppTab("任务"); setActiveStaffTab("已完成"); }}>
+          <span>归档 / 完成</span>
+          <strong>{orders.filter((order) => ["待商户归档", "已完成"].includes(order.status)).length}</strong>
+          <em>等待确认或已完成</em>
+        </button>
+      </div>
     </section>
 
     <section className="garden-live-progress-card">
