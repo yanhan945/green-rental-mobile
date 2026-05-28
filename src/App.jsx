@@ -638,6 +638,22 @@ function App() {
     if (showProductSheet && !currentArea) setShowProductSheet(false);
   }, [currentPage, currentOrder, showProductSheet, currentArea]);
 
+    useEffect(() => {
+    if (activeRole !== "staff") return;
+    if (!["plan", "completeUpload"].includes(currentPage)) return;
+
+    const targetOrder =
+      currentOrder || orders.find((order) => order.id === currentOrderId) || null;
+
+    if (targetOrder) {
+      setActiveStaffTab(getStaffTabByOrderStatus(targetOrder.status));
+    }
+
+    setStaffAppTab("任务");
+    setCurrentPage("orders");
+    setShowDetailBlock(false);
+  }, [activeRole, currentPage, currentOrder, currentOrderId, orders]);
+
   useEffect(() => {
     silentRefreshFromCloud("启动自动同步");
 
