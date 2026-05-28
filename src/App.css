@@ -5676,29 +5676,37 @@ input:focus {
   display: none !important;
 }
 
-/* 底部 Tab：再小一点、轻一点，不要大块头 */
+/* 底部 Tab：小一号、轻一点，更像真实 App */
 .staff-bottom-tab {
-  padding: 5px 13px 11px !important;
+  padding: 4px 14px 9px !important;
+  gap: 4px !important;
 }
 
 .staff-bottom-item {
-  min-height: 43px !important;
-  border-radius: 16px !important;
-  font-size: 10px !important;
-  font-weight: 880 !important;
-  gap: 2px !important;
+  min-height: 38px !important;
+  border-radius: 14px !important;
+  font-size: 9px !important;
+  font-weight: 820 !important;
+  gap: 1px !important;
+  letter-spacing: -0.03em !important;
 }
 
 .staff-tab-icon {
-  width: 17px !important;
-  height: 17px !important;
+  width: 15px !important;
+  height: 15px !important;
+}
+
+.staff-tab-icon svg {
+  width: 15px !important;
+  height: 15px !important;
+  stroke-width: 1.8 !important;
 }
 
 .staff-bottom-item.active {
-  background: rgba(237, 241, 231, 0.72) !important;
+  background: rgba(237, 241, 231, 0.58) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.68),
-    0 5px 12px rgba(49, 69, 47, 0.045) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 4px 10px rgba(49, 69, 47, 0.035) !important;
 }
 
 @media (max-width: 360px) {
