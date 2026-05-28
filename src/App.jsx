@@ -4127,17 +4127,34 @@ ${areaText || "暂无区域"}
                         ? "archive"
                         : "done";
 
-   <section className="staff-status-tabs">
-  {STAFF_TABS.map((tab) => (
-    <button
-      key={tab}
-      className={activeStaffTab === tab ? "active" : ""}
-      onClick={() => setActiveStaffTab(tab)}
-    >
-      {tab}
-    </button>
-  ))}
-</section>
+                 return (
+                <button
+                  key={order.id}
+                  className={`garden-clean-task ${tone}`}
+                  onClick={() => {
+                    setActiveStaffTab(getStaffTabByOrderStatus(order.status));
+                    setStaffAppTab("任务");
+                  }}
+                >
+                  <span className="garden-clean-index">{index + 1}</span>
+
+                  <span className="garden-clean-main">
+                    <strong>{order.customerName}</strong>
+                    <em>{order.address || "地址待确认"}</em>
+                  </span>
+
+                  <span className="garden-clean-meta">
+                    <b>{actionText}</b>
+                    <em>{order.status}</em>
+                    {order.plan && <small>¥ {money(stats.finalRent)}</small>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        );
+      })()}
+    </section>
 
      {staffAppTab === "任务" && (
   <>
