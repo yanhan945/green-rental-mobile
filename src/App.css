@@ -5676,39 +5676,44 @@ input:focus {
   display: none !important;
 }
 
-/* 底部 Tab：小一号、轻一点，更像真实 App */
+/* 底部 Tab：参考微信逻辑，图标更清楚，文字更小更轻 */
 .staff-bottom-tab {
-  padding: 4px 14px 9px !important;
+  padding: 5px 14px 10px !important;
   gap: 4px !important;
 }
 
 .staff-bottom-item {
-  min-height: 38px !important;
-  border-radius: 14px !important;
-  font-size: 9px !important;
-  font-weight: 820 !important;
-  gap: 1px !important;
-  letter-spacing: -0.03em !important;
+  min-height: 42px !important;
+  border-radius: 15px !important;
+  font-size: 8px !important;
+  font-weight: 720 !important;
+  gap: 2px !important;
+  letter-spacing: -0.02em !important;
 }
 
 .staff-tab-icon {
-  width: 15px !important;
-  height: 15px !important;
+  width: 21px !important;
+  height: 21px !important;
 }
 
 .staff-tab-icon svg {
-  width: 15px !important;
-  height: 15px !important;
-  stroke-width: 1.8 !important;
+  width: 21px !important;
+  height: 21px !important;
+  stroke-width: 1.75 !important;
+}
+
+.staff-bottom-item span:last-child {
+  transform: scale(0.88);
+  transform-origin: center;
+  line-height: 1;
 }
 
 .staff-bottom-item.active {
-  background: rgba(237, 241, 231, 0.58) !important;
+  background: rgba(237, 241, 231, 0.52) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.62),
-    0 4px 10px rgba(49, 69, 47, 0.035) !important;
+    0 4px 10px rgba(49, 69, 47, 0.03) !important;
 }
-
 @media (max-width: 360px) {
   .garden-clean-task {
     grid-template-columns: 20px minmax(0, 1fr);
