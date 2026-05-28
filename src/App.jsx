@@ -4054,22 +4054,17 @@ ${areaText || "暂无区域"}
     <main className="staff-app-main">
   {staffAppTab === "首页" && (
   <>
-    <section className="garden-clean-head">
-      <button className="garden-head-avatar" onClick={() => setStaffAppTab("我的")}>
-        G
-      </button>
+   <section className="garden-clean-head">
+  <div>
+    <p>Good evening,</p>
+    <h1>GardenOS</h1>
+    <span>城市园林服务交付台</span>
+  </div>
 
-      <div>
-        <p>Good evening,</p>
-        <h1>GardenOS</h1>
-        <span>城市园林服务交付台</span>
-      </div>
-
-      <button className="garden-head-refresh" onClick={refreshOrdersFromCloud}>
-        ↻
-      </button>
-    </section>
-
+  <button className="garden-head-refresh" onClick={refreshOrdersFromCloud}>
+    ↻
+  </button>
+</section>
     <section className="garden-clean-card">
       <div className="garden-clean-title">
         <div>
