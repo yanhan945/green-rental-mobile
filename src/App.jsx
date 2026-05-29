@@ -770,6 +770,56 @@ function getStaffStatuses(tab) {
   return ["待接单"];
 }
 
+function getStaffTabByOrderStatus(status) {
+  const normalized = String(status || "").toLowerCase();
+
+  if (
+    normalized.includes("待接") ||
+    normalized.includes("pending") ||
+    normalized.includes("wait") ||
+    normalized.includes("new")
+  ) {
+    return "待接单";
+  }
+
+  if (
+    normalized.includes("配置") ||
+    normalized.includes("做方案") ||
+    normalized.includes("待商户确认") ||
+    normalized.includes("plan") ||
+    normalized.includes("draft") ||
+    normalized.includes("confirm")
+  ) {
+    return "做方案";
+  }
+
+  if (
+    normalized.includes("方案已确认") ||
+    normalized.includes("执行") ||
+    normalized.includes("施工") ||
+    normalized.includes("进行") ||
+    normalized.includes("现场推进") ||
+    normalized.includes("progress") ||
+    normalized.includes("execut") ||
+    normalized.includes("service")
+  ) {
+    return "执行中";
+  }
+
+  if (
+    normalized.includes("完成") ||
+    normalized.includes("归档") ||
+    normalized.includes("完工待验") ||
+    normalized.includes("done") ||
+    normalized.includes("complete") ||
+    normalized.includes("archive")
+  ) {
+    return "已完成";
+  }
+
+  return "做方案";
+}
+
 function getMerchantStatusClass(status) {
   if (status === "待接单") return "is-waiting";
   if (["配置中", "待商户确认", "方案已确认"].includes(status)) return "is-plan";
