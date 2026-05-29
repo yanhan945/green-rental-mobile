@@ -8967,6 +8967,13 @@ button:disabled,
   gap: 16px !important;
 }
 
+.merchant-project-summary-column,
+.project-profile-column {
+  position: sticky !important;
+  top: 18px !important;
+  align-self: start !important;
+}
+
 .merchant-project-summary-card .plan-info-line {
   grid-template-columns: 82px minmax(0, 1fr) !important;
 }
@@ -9266,5 +9273,231 @@ button:disabled,
 @media (max-width: 420px) {
   .staff-legacy-page .bottom-actions {
     grid-template-columns: 1fr !important;
+  }
+}
+
+/* Scoped structure polish for current acceptance round */
+.staff-plan-page .staff-material-card-flow {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+  overflow: visible !important;
+  border: 0 !important;
+}
+
+.staff-plan-page .staff-material-card {
+  display: grid !important;
+  grid-template-columns: 54px minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+  align-items: center !important;
+  border: 1px solid rgba(102, 93, 70, 0.12) !important;
+  border-radius: 18px !important;
+  padding: 10px !important;
+  background: rgba(255, 252, 246, 0.74) !important;
+  box-shadow: 0 10px 22px rgba(65, 55, 33, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+.staff-plan-page .staff-material-thumb {
+  display: grid !important;
+  place-items: center !important;
+  width: 54px !important;
+  height: 54px !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  background: rgba(237, 241, 231, 0.7) !important;
+  color: var(--estate-olive-deep, #31452f) !important;
+  font-size: 24px !important;
+}
+
+.staff-plan-page .staff-material-thumb img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.staff-plan-page .staff-material-info {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 3px !important;
+}
+
+.staff-plan-page .staff-material-info strong,
+.staff-plan-page .staff-material-info small {
+  color: var(--estate-ink, #20251d) !important;
+  font-weight: 900 !important;
+}
+
+.staff-plan-page .staff-material-info em {
+  color: var(--estate-muted, #746e61) !important;
+  font-style: normal !important;
+  font-size: 12px !important;
+}
+
+.staff-plan-page .staff-material-controls {
+  display: grid !important;
+  grid-template-columns: 58px 36px !important;
+  gap: 6px !important;
+  align-items: center !important;
+  justify-items: end !important;
+}
+
+.staff-plan-page .staff-material-stock {
+  grid-column: 1 / -1 !important;
+  justify-self: end !important;
+  min-height: 24px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  border-radius: 999px !important;
+  padding: 0 9px !important;
+  background: rgba(95, 113, 86, 0.12) !important;
+  color: var(--estate-olive-deep, #31452f) !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.staff-plan-page .staff-material-controls input {
+  width: 58px !important;
+  min-height: 34px !important;
+  text-align: center !important;
+}
+
+.staff-plan-page .staff-material-remove {
+  min-height: 34px !important;
+  padding: 0 10px !important;
+  border-color: rgba(141, 78, 56, 0.2) !important;
+  background: rgba(242, 219, 205, 0.56) !important;
+  color: #8d4e38 !important;
+}
+
+.staff-plan-page .maintenance-package-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+}
+
+.staff-plan-page .maintenance-package-grid button {
+  min-height: 112px !important;
+}
+
+.staff-plan-page .plan-summary-top strong,
+.staff-plan-page [style*="#2f6fb3"] {
+  color: var(--estate-ink, #20251d) !important;
+}
+
+.merchant-create-order-dialog {
+  background:
+    var(--estate-texture-limestone, none),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(241, 234, 220, 0.94)) !important;
+  border: 1px solid rgba(102, 93, 70, 0.14) !important;
+}
+
+.merchant-create-stage-grid {
+  align-items: stretch !important;
+}
+
+.merchant-create-stage {
+  border-radius: 24px !important;
+  border-color: rgba(102, 93, 70, 0.13) !important;
+  background:
+    var(--estate-texture-limestone, none),
+    linear-gradient(145deg, rgba(255, 252, 246, 0.94), rgba(245, 239, 226, 0.84)) !important;
+  background-size: 260px 260px, cover !important;
+  box-shadow: 0 14px 32px rgba(65, 55, 33, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
+}
+
+.merchant-create-stage .sheet-block {
+  background: rgba(255, 252, 246, 0.62) !important;
+  border-color: rgba(102, 93, 70, 0.12) !important;
+}
+
+.merchant-create-stage .area-input,
+.merchant-create-stage select,
+.merchant-create-stage textarea {
+  border-color: rgba(102, 93, 70, 0.14) !important;
+  background: rgba(255, 252, 246, 0.78) !important;
+  color: var(--estate-ink, #20251d) !important;
+}
+
+.merchant-create-order-dialog [style*="#2f6fae"],
+.merchant-create-order-dialog [style*="#2f6fb3"],
+.admin-review-main [style*="#2f6fae"],
+.admin-review-main [style*="#2f6fb3"],
+.admin-review-main [style*="#3b82f6"],
+.admin-review-main [style*="#1e3a8a"] {
+  color: var(--estate-olive-deep, #31452f) !important;
+  border-color: rgba(83, 95, 68, 0.18) !important;
+}
+
+.merchant-create-order-dialog button[style*="#2f6fae"],
+.merchant-create-order-dialog .submit-plan-button,
+.merchant-create-order-dialog .submit-sheet-button,
+.admin-review-main .primary-button {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 45%),
+    linear-gradient(135deg, #31472c, #657a52) !important;
+  border-color: rgba(83, 95, 68, 0.24) !important;
+  color: #fffaf0 !important;
+}
+
+.admin-review-main .admin-card,
+.admin-review-main .area-card,
+.admin-review-main .metric-box {
+  border-color: rgba(102, 93, 70, 0.13) !important;
+  background:
+    var(--estate-texture-limestone, none),
+    linear-gradient(145deg, rgba(255, 252, 246, 0.94), rgba(245, 239, 226, 0.84)) !important;
+  box-shadow: 0 14px 32px rgba(65, 55, 33, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
+}
+
+.merchant-staff-editor-mask {
+  position: fixed !important;
+  inset: 0 !important;
+}
+
+.merchant-staff-drawer-body {
+  grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.15fr) !important;
+  align-items: start !important;
+}
+
+.merchant-staff-section {
+  min-width: 0 !important;
+}
+
+.merchant-staff-section:first-child {
+  position: sticky !important;
+  top: 0 !important;
+}
+
+.merchant-staff-section:nth-child(n + 2) {
+  grid-column: 2 !important;
+}
+
+@media (max-width: 900px) {
+  .merchant-create-stage-grid,
+  .merchant-staff-drawer-body {
+    grid-template-columns: 1fr !important;
+  }
+
+  .merchant-staff-section:first-child {
+    position: static !important;
+  }
+
+  .merchant-project-summary-column,
+  .project-profile-column {
+    position: static !important;
+  }
+
+  .merchant-staff-section:nth-child(n + 2) {
+    grid-column: auto !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .staff-plan-page .staff-material-card {
+    grid-template-columns: 50px minmax(0, 1fr) !important;
+  }
+
+  .staff-plan-page .staff-material-controls {
+    grid-column: 1 / -1 !important;
+    grid-template-columns: 1fr 76px 76px !important;
+    width: 100% !important;
   }
 }
