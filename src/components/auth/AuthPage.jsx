@@ -118,7 +118,7 @@ export function AuthPage({ session, onSignedOut }) {
           </div>
         )}
 
-        <p className="auth-note">统一使用邮箱 + 密码登录；正式版会从 profiles 表读取 role、organizationId、staffNo 和 name。</p>
+        <p className="auth-note">统一使用邮箱 + 密码登录。登录后会进入对应工作台。</p>
       </section>
     </main>
   );
