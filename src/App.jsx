@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ImageUploader } from "./components/common/ImageUploader";
+import { AuthPage } from "./components/auth/AuthPage";
 import { GardenIcons } from "./GardenIcons";
-import { StaffHome } from "./components/staff/StaffHome";
+import { StaffMobile } from "./components/staff/StaffMobile";
+import { supabase } from "./lib/supabaseClient";
 import "./App.css";
 
 const SUPABASE_URL = "https://kvdxgyymlfnnurdigtkj.supabase.co";
@@ -10,9 +13,10 @@ const ORDERS_API = `${SUPABASE_URL}/rest/v1/orders`;
 const STORAGE_KEY = "green-rental-mobile-v24";
 const PRODUCT_STORAGE_KEY = "green-rental-products-v29";
 const CUSTOMER_STORAGE_KEY = "green-rental-customers-v31";
+const STAFF_AVATAR_STORAGE_KEY = "green-rental-staff-avatar-v1";
+const CURRENT_STAFF_STORAGE_KEY = "green-rental-current-staff-v1";
 const PRODUCT_CLOUD_ID = 999999001;
 
-const STAFF_TABS = ["待接单", "做方案", "执行中", "已完成"];
 const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "待商户归档", "已完成"];
 const MERCHANT_STATUS_TABS = ["全部", ...ORDER_STATUS];
 
@@ -21,6 +25,91 @@ const DELIVERY_STATUS = ["未出发", "前往中", "已到达"];
 const EXECUTION_STATUS = ["待联系", "已联系", "已出发", "已到达", "已完成服务"];
 const CUSTOMER_CONFIRM_STATUS = ["待确认", "已确认", "有异议"];
 const PLAN_LINK_STATUS = ["未生成", "已复制", "已发送"];
+
+const organizations = [
+  {
+    id: "org-001",
+    name: "绿植租赁总部",
+    city: "杭州",
+    status: "active",
+  },
+];
+
+const staffMembers = [
+  {
+    id: "staff-001",
+    staffNo: "YG001",
+    name: "张三",
+    email: "zhangsan@example.com",
+    phone: "13800000001",
+    role: "staff",
+    status: "active",
+    organizationId: "org-001",
+    area: "杭州 / 滨江",
+    createdAt: "2026-05-01 09:00",
+    lastLoginAt: "2026-05-29 09:20",
+  },
+  {
+    id: "staff-002",
+    staffNo: "YG002",
+    name: "李四",
+    email: "lisi@example.com",
+    phone: "13800000002",
+    role: "manager",
+    status: "active",
+    organizationId: "org-001",
+    area: "杭州 / 上城",
+    createdAt: "2026-05-03 10:15",
+    lastLoginAt: "2026-05-28 18:40",
+  },
+  {
+    id: "staff-003",
+    staffNo: "YG003",
+    name: "王五",
+    email: "wangwu@example.com",
+    phone: "13800000003",
+    role: "staff",
+    status: "paused",
+    organizationId: "org-001",
+    area: "杭州 / 西湖",
+    createdAt: "2026-05-06 14:20",
+    lastLoginAt: "2026-05-22 11:10",
+  },
+];
+
+const merchantUsers = [
+  {
+    id: "user-owner-001",
+    name: "老板账号",
+    email: "owner@example.com",
+    role: "owner",
+    organizationId: "org-001",
+    status: "active",
+  },
+  {
+    id: "user-admin-001",
+    name: "运营管理员",
+    email: "admin@example.com",
+    role: "admin",
+    organizationId: "org-001",
+    status: "active",
+  },
+];
+
+const ROLE_LABELS = {
+  owner: "老板 / 超级管理员",
+  admin: "管理员",
+  manager: "店长 / 经理",
+  staff: "普通员工",
+};
+
+const ACCOUNT_STATUS_LABELS = {
+  active: "启用",
+  paused: "停用账号",
+  disabled: "停用",
+};
+
+const DEFAULT_STAFF_ID = "staff-001";
 
 const productCategories = ["室内绿植", "室外植物", "月租套餐", "仿真植物"];
 const subCategories = ["大型植物", "中型植物", "小型植物", "水培植物", "盆景植物"];
@@ -56,6 +145,9 @@ const initialOrders = [
     description: "客户希望办公室和门口都摆放绿植，偏好大气、好养护的植物。",
     dispatchTime: "2026-05-24 21:30",
     source: "商户派单",
+    assignedStaffId: "staff-001",
+    assignedStaffName: "张三",
+    assignedStaffEmail: "zhangsan@example.com",
     staffLocation: null,
     distanceText: "待定位",
     etaText: "待定位",
@@ -83,6 +175,9 @@ const initialOrders = [
     description: "需要为前台、会议室、开放办公区配置绿植方案。",
     dispatchTime: "2026-05-24 19:10",
     source: "客户预约",
+    assignedStaffId: "staff-001",
+    assignedStaffName: "张三",
+    assignedStaffEmail: "zhangsan@example.com",
     staffLocation: null,
     distanceText: "待定位",
     etaText: "待定位",
@@ -104,6 +199,58 @@ function nowText() {
   return `${y}-${m}-${day} ${h}:${min}`;
 }
 
+function getStaffMemberById(staffId) {
+  return staffMembers.find((member) => member.id === staffId) || null;
+}
+
+function getOrganizationById(organizationId) {
+  return organizations.find((organization) => organization.id === organizationId) || null;
+}
+
+function getDefaultAssignedStaff() {
+  return getStaffMemberById(DEFAULT_STAFF_ID) || staffMembers[0] || null;
+}
+
+function resolveAuthAccountByEmail(email) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!normalizedEmail) return null;
+
+  // 本地开发阶段临时映射；正式版应从 profiles 表读取 role、organizationId、staffNo、name。
+  if (normalizedEmail === "1464155122@qq.com") {
+    return {
+      id: "user-dev-owner-1464155122",
+      name: "测试商户账号",
+      email: normalizedEmail,
+      role: "owner",
+      status: "active",
+      organizationId: "org-001",
+      userType: "merchant",
+    };
+  }
+
+  const merchantUser = merchantUsers.find((user) => user.email.toLowerCase() === normalizedEmail);
+  if (merchantUser) return { ...merchantUser, userType: "merchant" };
+
+  const staffMember = staffMembers.find((member) => member.email.toLowerCase() === normalizedEmail);
+  if (staffMember) {
+    return {
+      ...staffMember,
+      userType: staffMember.role === "staff" ? "staff" : "merchant",
+    };
+  }
+
+  // 正式版应从 profiles 表读取 role、organizationId、staffNo、name，再决定进入员工端或商户端。
+  return {
+    id: "auth-unknown",
+    name: normalizedEmail,
+    email: normalizedEmail,
+    role: "staff",
+    status: "active",
+    organizationId: "org-001",
+    userType: "staff",
+  };
+}
+
 function cloudHeaders(extra = {}) {
   return {
     apikey: SUPABASE_KEY,
@@ -114,6 +261,7 @@ function cloudHeaders(extra = {}) {
 }
 
 function ensureOrderDefaults(order) {
+  const assignedStaff = getStaffMemberById(order.assignedStaffId) || getDefaultAssignedStaff();
   return {
     deliveryStatus: "未出发",
     executionStatus: "待联系",
@@ -126,6 +274,21 @@ function ensureOrderDefaults(order) {
     contactName: order.contactName || "待确认",
     phone: order.phone || "",
     source: order.source || "商户派单",
+    assignedStaffId: order.assignedStaffId || assignedStaff?.id || "",
+    assignedStaffName: order.assignedStaffName || assignedStaff?.name || "",
+    assignedStaffEmail: order.assignedStaffEmail || assignedStaff?.email || "",
+    communicationQrUrl: order.communicationQrUrl || "",
+    serviceType: order.serviceType || "租赁",
+    planType: order.planType || "",
+    areaType: order.areaType || "",
+    hasRentedBefore: Boolean(order.hasRentedBefore),
+    needComparePrice: Boolean(order.needComparePrice),
+    urgent: Boolean(order.urgent),
+    importantCustomer: Boolean(order.importantCustomer),
+    plannedPlantCount: order.plannedPlantCount || "",
+    budget: order.budget || "",
+    merchantNote: order.merchantNote || "",
+    areaNote: order.areaNote || "",
     fieldNote: order.fieldNote || "",
     internalNote: order.internalNote || "",
     revisionReason: order.revisionReason || "",
@@ -216,7 +379,42 @@ function getProductImage(product) {
 }
 
 function isImageUrl(value) {
-  return /^https?:\/\//i.test(String(value || "").trim());
+  return /^(https?:\/\/|data:image\/|blob:)/i.test(String(value || "").trim());
+}
+
+function loadStaffAvatarFromLocalStore() {
+  try {
+    return localStorage.getItem(STAFF_AVATAR_STORAGE_KEY) || "";
+  } catch (error) {
+    console.error("读取员工头像失败：", error);
+    return "";
+  }
+}
+
+function persistStaffAvatarToLocalStore(staffAvatar) {
+  try {
+    localStorage.setItem(STAFF_AVATAR_STORAGE_KEY, staffAvatar || "");
+  } catch (error) {
+    console.error("保存员工头像失败：", error);
+  }
+}
+
+function loadCurrentStaffIdFromLocalStore() {
+  try {
+    const stored = localStorage.getItem(CURRENT_STAFF_STORAGE_KEY);
+    return getStaffMemberById(stored) ? stored : DEFAULT_STAFF_ID;
+  } catch (error) {
+    console.error("读取当前员工失败：", error);
+    return DEFAULT_STAFF_ID;
+  }
+}
+
+function persistCurrentStaffIdToLocalStore(currentStaffId) {
+  try {
+    localStorage.setItem(CURRENT_STAFF_STORAGE_KEY, currentStaffId || DEFAULT_STAFF_ID);
+  } catch (error) {
+    console.error("保存当前员工失败：", error);
+  }
 }
 
 function normalizeCustomers(data) {
@@ -400,15 +598,65 @@ function getAreaDailyRent(area) {
   }, 0);
 }
 
+const MAINTENANCE_PACKAGES = [
+  {
+    name: "基础养护",
+    scene: "适合少量办公室绿植 / 家庭绿植",
+    frequency: "每月 1 次",
+    content: "浇水、修剪、清洁、基础状态检查",
+    cycle: "3 个月",
+  },
+  {
+    name: "标准养护",
+    scene: "适合办公室 / 店铺 / 小型空间",
+    frequency: "每月 2 次",
+    content: "浇水、修剪、清洁、病虫检查、简单更换建议",
+    cycle: "6 个月",
+  },
+  {
+    name: "深度养护",
+    scene: "适合绿植较多、展示要求高、客户重视形象的空间",
+    frequency: "每周 1 次或按约定",
+    content: "精细修剪、叶面清洁、病虫处理、状态记录、替换建议",
+    cycle: "按项目约定",
+  },
+];
+
+const STAFF_PLAN_TYPES = ["租赁方案", "零售方案", "养护服务"];
+
+function getInitialPlanTypeForOrder(order) {
+  if (STAFF_PLAN_TYPES.includes(order?.planType)) return order.planType;
+  if (order?.serviceType === "养护") return "养护服务";
+  if (order?.serviceType === "零售") return "零售方案";
+  return "租赁方案";
+}
+
+function getMaintenancePackage(name = "标准养护") {
+  return MAINTENANCE_PACKAGES.find((item) => item.name === name) || MAINTENANCE_PACKAGES[1];
+}
+
+function getMaintenancePlanFields(name = "标准养护") {
+  const pack = getMaintenancePackage(name);
+  return {
+    maintenancePackage: pack.name,
+    maintenanceScene: pack.scene,
+    maintenanceFrequency: pack.frequency,
+    maintenanceContent: pack.content,
+    maintenanceCycle: pack.cycle,
+  };
+}
+
 function getPlanStats(plan) {
   const areas = safeAreas(plan);
   const areaCount = areas.length;
   const productCount = areas.reduce((sum, area) => sum + getAreaProductCount(area), 0);
   const dailyRent = areas.reduce((sum, area) => sum + getAreaDailyRent(area), 0);
   const leaseMonths = Number(plan?.leaseMonths || 12);
-  const systemTotalRent = dailyRent * leaseMonths * 30;
+  const isRetailPlan = plan?.planType === "零售方案";
+  const isMaintenancePlan = plan?.planType === "养护服务";
+  const systemTotalRent = isMaintenancePlan ? 0 : isRetailPlan ? dailyRent : dailyRent * leaseMonths * 30;
 
-  const customFinalRent = plan?.customFinalRent;
+  const customFinalRent = isMaintenancePlan ? plan?.maintenanceFinalPrice : plan?.customFinalRent;
   const hasCustomFinalRent =
     customFinalRent !== "" &&
     customFinalRent !== null &&
@@ -420,12 +668,16 @@ function getPlanStats(plan) {
     productCount,
     dailyRent,
     leaseMonths,
+    isRetailPlan,
+    isMaintenancePlan,
     systemTotalRent,
     finalRent: hasCustomFinalRent ? Number(customFinalRent) : systemTotalRent,
   };
 }
 
 function createEmptyPlan(order, planType = "租赁方案") {
+  const maintenanceFields = getMaintenancePlanFields("标准养护");
+
   return {
     id: `plan-${order.id}-${Date.now()}`,
     planType,
@@ -433,6 +685,12 @@ function createEmptyPlan(order, planType = "租赁方案") {
     paymentMethod: "月付",
     needDeposit: true,
     customFinalRent: "",
+    includedMaintenance: "基础养护",
+    retailNeedsMaintenance: false,
+    retailMaintenanceNote: "",
+    maintenanceFinalPrice: "",
+    maintenanceInternalNote: "",
+    ...maintenanceFields,
     areas: [],
     createdAt: nowText(),
     updatedAt: nowText(),
@@ -440,6 +698,39 @@ function createEmptyPlan(order, planType = "租赁方案") {
     merchantConfirmedAt: "",
     completedAt: "",
   };
+}
+
+function getOrderSignalTags(order) {
+  const rawTags = Array.isArray(order?.tags) ? order.tags.filter(Boolean) : [];
+  const normalized = rawTags.join(" ");
+  const sourceText = [
+    order?.source,
+    order?.areaType,
+    order?.planType,
+    order?.serviceType,
+    normalized,
+  ].filter(Boolean).join(" ");
+  const signals = [];
+
+  const addSignal = (label) => {
+    if (!signals.includes(label)) signals.push(label);
+  };
+
+  if (order?.needComparePrice || /比价|竞价|报价/.test(sourceText)) addSignal("需比价");
+  if (order?.hasRentedBefore || /租过|复租|老客户|续租/.test(sourceText)) addSignal("租过绿植");
+  if (/室外|户外|门口|露台|庭院/.test(sourceText)) addSignal("室外");
+  else if (/室内|办公室|前台|会议室/.test(sourceText)) addSignal("室内");
+  if (/零售|买断|购买|售卖/.test(sourceText)) addSignal("零售");
+  else if (/租赁|长租|短租|月租/.test(sourceText)) addSignal("租赁");
+  if (/养护|维护|修剪|病虫|清洁/.test(sourceText)) addSignal("养护");
+  if (order?.urgent || /急|紧急|加急|今天|明天/.test(sourceText)) addSignal("急单");
+  if (order?.importantCustomer || /重点|VIP|大客户|重要/.test(sourceText)) addSignal("重点客户");
+
+  rawTags.forEach((tag) => {
+    if (signals.length < 8 && !signals.includes(tag)) signals.push(tag);
+  });
+
+  return signals.slice(0, 8);
 }
 
 function getStaffStatuses(tab) {
@@ -450,10 +741,22 @@ function getStaffStatuses(tab) {
   return ["待接单"];
 }
 
+function getMerchantStatusClass(status) {
+  if (status === "待接单") return "is-waiting";
+  if (["配置中", "待商户确认", "方案已确认"].includes(status)) return "is-plan";
+  if (status === "执行中") return "is-running";
+  if (status === "待商户归档") return "is-warning";
+  if (status === "已完成") return "is-done";
+  return "is-muted";
+}
+
 function App() {
   const merchantListRef = useRef(null);
 
   const [activeRole, setActiveRole] = useState("staff");
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authRole, setAuthRole] = useState("staff");
   const [activeStaffTab, setActiveStaffTab] = useState("待接单");
   const [staffAppTab, setStaffAppTab] = useState("首页");
   const [merchantTab, setMerchantTab] = useState("工作台");
@@ -466,12 +769,14 @@ function App() {
   const [orders, setOrders] = useState(() => loadOrdersFromLocalStore());
   const [merchantProducts, setMerchantProducts] = useState(() => loadProductsFromLocalStore());
   const [merchantCustomers, setMerchantCustomers] = useState(() => loadCustomersFromLocalStore());
+  const [staffDirectory, setStaffDirectory] = useState(staffMembers);
 
   const [currentPage, setCurrentPage] = useState("orders");
   const [currentOrderId, setCurrentOrderId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
   const [merchantViewingOrder, setMerchantViewingOrder] = useState(null);
+  const [editingStaffId, setEditingStaffId] = useState(null);
 
   const [planType, setPlanType] = useState("租赁方案");
 
@@ -500,6 +805,9 @@ function App() {
 
   const [showDetailBlock, setShowDetailBlock] = useState(false);
   const [completeForm, setCompleteForm] = useState({ scenePhotos: ["", "", ""], plantPhotos: ["", "", ""], remark: "" });
+  const [staffAvatar, setStaffAvatar] = useState(() => loadStaffAvatarFromLocalStore());
+  const [currentStaffId, setCurrentStaffId] = useState(() => loadCurrentStaffIdFromLocalStore());
+  const [qrPreviewOrder, setQrPreviewOrder] = useState(null);
 
   const [newOrderForm, setNewOrderForm] = useState({
     customerName: "",
@@ -511,6 +819,23 @@ function App() {
     description: "",
     tagsText: "办公室,长期租赁",
     source: "商户派单",
+    serviceType: "租赁",
+    leaseMonths: "12",
+    paymentMethod: "月付",
+    needDeposit: true,
+    budget: "",
+    plannedPlantCount: "",
+    areaNote: "",
+    merchantNote: "",
+    retailNeedsMaintenance: false,
+    maintenancePackage: "标准养护",
+    maintenanceCycle: "6 个月",
+    maintenanceFrequency: "每月 2 次",
+    maintenanceContent: "浇水、修剪、清洁、病虫检查、简单更换建议",
+    maintenanceFinalPrice: "",
+    maintenanceInternalNote: "",
+    assignedStaffId: DEFAULT_STAFF_ID,
+    communicationQrUrl: "",
   });
 
   const [newCustomerForm, setNewCustomerForm] = useState({
@@ -541,11 +866,21 @@ function App() {
   const planAreas = safeAreas(currentPlan);
   const currentArea = planAreas.find((area) => area.id === currentAreaId) || null;
   const currentStats = getPlanStats(currentPlan);
+  const authUserEmail = session?.user?.email || "";
+  const authAccount = useMemo(() => resolveAuthAccountByEmail(authUserEmail), [authUserEmail]);
+  const currentStaff = staffDirectory.find((member) => member.id === currentStaffId) || getStaffMemberById(currentStaffId) || (authAccount?.userType === "staff" ? authAccount : null) || getDefaultAssignedStaff();
+  const currentOrganization = getOrganizationById(currentStaff?.organizationId);
+  const currentMerchantUser = authAccount?.userType === "merchant" ? authAccount : merchantUsers[0];
+  const canUseMerchant = ["owner", "admin", "manager"].includes(authRole);
+
+  const staffScopedOrders = useMemo(() => {
+    return orders.filter((order) => order.assignedStaffId === currentStaff?.id);
+  }, [orders, currentStaff?.id]);
 
   const filteredStaffOrders = useMemo(() => {
     const statuses = getStaffStatuses(activeStaffTab);
-    return orders.filter((order) => statuses.includes(order.status));
-  }, [orders, activeStaffTab]);
+    return staffScopedOrders.filter((order) => statuses.includes(order.status));
+  }, [staffScopedOrders, activeStaffTab]);
 
   const merchantOrders = useMemo(() => {
     const keyword = merchantSearchText.trim();
@@ -635,6 +970,52 @@ function App() {
   }, [merchantCustomers]);
 
   useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setSession(data?.session || null);
+      setAuthLoading(false);
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setAuthLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      data?.subscription?.unsubscribe?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+
+    const account = resolveAuthAccountByEmail(session.user?.email);
+    const nextRole = account?.role || "staff";
+    setAuthRole(nextRole);
+
+    if (account?.userType === "merchant" || ["owner", "admin", "manager"].includes(nextRole)) {
+      setActiveRole("merchant");
+      return;
+    }
+
+    setActiveRole("staff");
+    if (account?.id && getStaffMemberById(account.id)) {
+      setCurrentStaffId(account.id);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    persistStaffAvatarToLocalStore(staffAvatar);
+  }, [staffAvatar]);
+
+  useEffect(() => {
+    persistCurrentStaffIdToLocalStore(currentStaffId);
+  }, [currentStaffId]);
+
+  useEffect(() => {
     if (currentPage === "plan" && !currentOrder) setCurrentPage("orders");
     if (showProductSheet && !currentArea) setShowProductSheet(false);
   }, [currentPage, currentOrder, showProductSheet, currentArea]);
@@ -651,7 +1032,6 @@ function App() {
     }
 
     setStaffAppTab("任务");
-    setCurrentPage("orders");
     setShowDetailBlock(false);
   }, [activeRole, currentPage, currentOrder, currentOrderId, orders]);
 
@@ -720,11 +1100,37 @@ function App() {
       });
 
       if (changedOrder) {
-        window.setTimeout(() => syncOneOrder(changedOrder, cloudMessage), 0);
+        window.setTimeout(() => {
+          syncOneOrder(changedOrder, cloudMessage);
+          setSelectedOrder((order) => (order?.id === orderId ? changedOrder : order));
+          setSelectedOrderDetail((order) => (order?.id === orderId ? changedOrder : order));
+          setMerchantViewingOrder((order) => (order?.id === orderId ? changedOrder : order));
+          setQrPreviewOrder((order) => (order?.id === orderId ? changedOrder : order));
+        }, 0);
       }
 
       return nextOrders;
     });
+  }
+
+  function assignOrderToStaff(orderId, staffId) {
+    const staff = staffDirectory.find((member) => member.id === staffId) || getStaffMemberById(staffId) || getDefaultAssignedStaff();
+    if (!staff) return;
+
+    updateOrder(
+      orderId,
+      (order) =>
+        addTimeline(
+          {
+            ...order,
+            assignedStaffId: staff.id,
+            assignedStaffName: staff.name,
+            assignedStaffEmail: staff.email,
+          },
+          `商户将订单分配给 ${staff.name}`
+        ),
+      "订单派单员工已同步"
+    );
   }
 
   function replaceAllOrders(nextOrders) {
@@ -861,7 +1267,13 @@ function App() {
       });
 
       if (changedOrder) {
-        window.setTimeout(() => syncOneOrder(changedOrder, cloudMessage), 0);
+        window.setTimeout(() => {
+          syncOneOrder(changedOrder, cloudMessage);
+          setSelectedOrder((order) => (order?.id === orderId ? changedOrder : order));
+          setSelectedOrderDetail((order) => (order?.id === orderId ? changedOrder : order));
+          setMerchantViewingOrder((order) => (order?.id === orderId ? changedOrder : order));
+          setQrPreviewOrder((order) => (order?.id === orderId ? changedOrder : order));
+        }, 0);
       }
 
       return nextOrders;
@@ -906,7 +1318,17 @@ function App() {
   }
 
   function switchRole(role) {
+    // 开发测试阶段允许前端视图自由切换；正式版应由 profiles.role 决定入口并关闭此捷径。
     setActiveRole(role);
+    setCurrentPage("orders");
+    setCurrentOrderId(null);
+    resetSheets();
+  }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    setSession(null);
+    setActiveRole("staff");
     setCurrentPage("orders");
     setCurrentOrderId(null);
     resetSheets();
@@ -1021,6 +1443,8 @@ function App() {
           merchantConfirmStatus: "未提交",
           executionStatus: "已联系",
           acceptedAt: order.acceptedAt || nowText(),
+          planType,
+          serviceType: planType === "养护服务" ? "养护" : planType === "零售方案" ? "零售" : "租赁",
           plan: order.plan || createEmptyPlan(order, planType),
         };
 
@@ -1038,7 +1462,8 @@ function App() {
 
   function openPlanForOrder(order) {
     if (!order.plan) {
-      updateOrder(order.id, { plan: createEmptyPlan(order, "租赁方案") }, "方案已创建");
+      const initialPlanType = getInitialPlanTypeForOrder(order);
+      updateOrder(order.id, { planType: initialPlanType, plan: createEmptyPlan(order, initialPlanType) }, "方案已创建");
     }
 
     setCurrentOrderId(order.id);
@@ -1131,6 +1556,57 @@ function App() {
         }),
       }),
       "商品已同步"
+    );
+  }
+
+  function setProductQuantityInCurrentArea(product, rawQuantity) {
+    if (!currentOrder || !currentAreaId) return;
+
+    const nextQuantity = Math.max(0, Math.floor(Number(rawQuantity || 0)));
+
+    updateOrderPlan(
+      currentOrder.id,
+      (plan) => ({
+        ...plan,
+        areas: safeAreas(plan).map((area) => {
+          if (area.id !== currentAreaId) return area;
+
+          const items = safeItems(area);
+          const existed = items.some((item) => item.productId === product.id);
+
+          if (nextQuantity <= 0) {
+            return {
+              ...area,
+              items: items.filter((item) => item.productId !== product.id),
+            };
+          }
+
+          if (existed) {
+            return {
+              ...area,
+              items: items.map((item) =>
+                item.productId === product.id
+                  ? { ...item, quantity: nextQuantity }
+                  : item
+              ),
+            };
+          }
+
+          return {
+            ...area,
+            items: [
+              ...items,
+              {
+                productId: product.id,
+                name: product.name,
+                pricePerDay: Number(product.pricePerDay || 0),
+                quantity: nextQuantity,
+              },
+            ],
+          };
+        }),
+      }),
+      "数量已同步"
     );
   }
 
@@ -1239,6 +1715,12 @@ function App() {
   }
 
   function merchantConfirmPlan(orderId) {
+    const targetOrder = orders.find((order) => order.id === orderId);
+    if (targetOrder?.plan?.planType === "养护服务" && !Number(targetOrder.plan.maintenanceFinalPrice || 0)) {
+      alert("请先填写养护服务最终报价");
+      return;
+    }
+
     updateOrder(
       orderId,
       (order) => {
@@ -1410,9 +1892,31 @@ function App() {
       .filter(Boolean);
 
     const time = nowText();
+    const orderId = Date.now();
+    const serviceType = newOrderForm.serviceType || "租赁";
+    const planType = serviceType === "养护" ? "养护服务" : serviceType === "零售" ? "零售方案" : "租赁方案";
+    const planDraft = {
+      ...createEmptyPlan({ id: orderId }, planType),
+      leaseMonths: Number(newOrderForm.leaseMonths || 12),
+      paymentMethod: newOrderForm.paymentMethod || "月付",
+      needDeposit: Boolean(newOrderForm.needDeposit),
+      customFinalRent: newOrderForm.budget || "",
+      retailNeedsMaintenance: Boolean(newOrderForm.retailNeedsMaintenance),
+      maintenanceInternalNote: newOrderForm.maintenanceInternalNote || "",
+      maintenanceFinalPrice: newOrderForm.maintenanceFinalPrice || "",
+      ...getMaintenancePlanFields(newOrderForm.maintenancePackage || "标准养护"),
+      maintenanceCycle: newOrderForm.maintenanceCycle || getMaintenancePackage(newOrderForm.maintenancePackage).cycle,
+      maintenanceFrequency: newOrderForm.maintenanceFrequency || getMaintenancePackage(newOrderForm.maintenancePackage).frequency,
+      maintenanceContent: newOrderForm.maintenanceContent || getMaintenancePackage(newOrderForm.maintenancePackage).content,
+      merchantDraft: true,
+      merchantDraftNote: newOrderForm.merchantNote || "",
+      areas: newOrderForm.areaNote.trim()
+        ? [{ id: `area-${orderId}`, name: newOrderForm.areaNote.trim(), items: [] }]
+        : [],
+    };
 
     const newOrder = ensureOrderDefaults({
-      id: Date.now(),
+      id: orderId,
       customerName: newOrderForm.customerName.trim(),
       contactName: newOrderForm.contactName.trim() || "待确认",
       phone: newOrderForm.phone.trim(),
@@ -1432,11 +1936,21 @@ function App() {
       description: newOrderForm.description.trim() || "暂无详细需求，待员工现场确认。",
       dispatchTime: time,
       source: newOrderForm.source || "商户派单",
+      serviceType,
+      planType,
+      plannedPlantCount: newOrderForm.plannedPlantCount.trim(),
+      budget: newOrderForm.budget.trim(),
+      merchantNote: newOrderForm.merchantNote.trim(),
+      areaNote: newOrderForm.areaNote.trim(),
+      assignedStaffId: newOrderForm.assignedStaffId || DEFAULT_STAFF_ID,
+      assignedStaffName: getStaffMemberById(newOrderForm.assignedStaffId)?.name || "",
+      assignedStaffEmail: getStaffMemberById(newOrderForm.assignedStaffId)?.email || "",
+      communicationQrUrl: newOrderForm.communicationQrUrl || "",
       fieldNote: "",
       internalNote: "",
       revisionReason: "",
       timeline: [{ time, action: "商户创建并派发订单" }],
-      plan: null,
+      plan: planDraft,
     });
 
     setOrders((prevOrders) => [newOrder, ...prevOrders]);
@@ -1453,6 +1967,23 @@ function App() {
       description: "",
       tagsText: "办公室,长期租赁",
       source: "商户派单",
+      serviceType: "租赁",
+      leaseMonths: "12",
+      paymentMethod: "月付",
+      needDeposit: true,
+      budget: "",
+      plannedPlantCount: "",
+      areaNote: "",
+      merchantNote: "",
+      retailNeedsMaintenance: false,
+      maintenancePackage: "标准养护",
+      maintenanceCycle: "6 个月",
+      maintenanceFrequency: "每月 2 次",
+      maintenanceContent: "浇水、修剪、清洁、病虫检查、简单更换建议",
+      maintenanceFinalPrice: "",
+      maintenanceInternalNote: "",
+      assignedStaffId: DEFAULT_STAFF_ID,
+      communicationQrUrl: "",
     });
 
     setShowCreateOrderSheet(false);
@@ -1460,6 +1991,20 @@ function App() {
     setIsCreateOrderInputFocused(false);
     setMerchantTab("工作台");
     setMerchantStatusFilter("全部");
+  }
+
+  function toggleNewOrderTag(tag) {
+    setNewOrderForm((form) => {
+      const tags = form.tagsText
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const nextTags = tags.includes(tag)
+        ? tags.filter((item) => item !== tag)
+        : [...tags, tag];
+
+      return { ...form, tagsText: nextTags.join(",") };
+    });
   }
 
   function resetNewProductForm() {
@@ -1498,6 +2043,7 @@ function App() {
       subCategory: newProductForm.subCategory || "大型植物",
       description: newProductForm.description.trim() || "暂无描述，后续可在商品库补充。",
       pricePerDay: price,
+      // 正式版接 Supabase Storage / 腾讯云 COS / 阿里云 OSS 后，这里应写入上传后的远程图片 URL。
       imageUrl: newProductForm.imageUrl.trim(),
       image: newProductForm.image || "🪴",
       stock: newProductForm.stock || "充足",
@@ -1664,18 +2210,39 @@ function App() {
   function buildPlanText(order) {
     const plan = order?.plan;
     const stats = getPlanStats(plan);
+    const isRetailPlan = plan?.planType === "零售方案";
+    const isMaintenancePlan = plan?.planType === "养护服务";
 
     const areaText = safeAreas(plan)
       .map((area) => {
         const items = safeItems(area)
-          .map((item) => `- ${item.name} × ${item.quantity}（¥${item.pricePerDay}/天）`)
+          .map((item) => `- ${item.name} × ${item.quantity}（¥${item.pricePerDay}${isRetailPlan ? "/件" : "/天"}）`)
           .join("\n");
 
         return `【${area.name}】\n${items || "- 暂无商品"}`;
       })
       .join("\n\n");
 
-    return `绿植租赁方案
+    const rentalText = isMaintenancePlan
+      ? `养护套餐：${plan?.maintenancePackage || "标准养护"}
+适合场景：${plan?.maintenanceScene || "-"}
+服务频次：${plan?.maintenanceFrequency || "-"}
+服务周期：${plan?.maintenanceCycle || "-"}
+服务内容：${plan?.maintenanceContent || "-"}
+最终报价：¥${money(stats.finalRent)}`
+      : isRetailPlan
+        ? `商品金额：¥${money(stats.dailyRent)}
+后续养护：${plan?.retailNeedsMaintenance ? `需要，${plan?.retailMaintenanceNote || "待确认"}` : "暂不需要"}
+最终报价：¥${money(stats.finalRent)}`
+      : `日租金：¥${money(stats.dailyRent)}
+租期：${plan?.leaseMonths || 12}月
+系统总租金：¥${money(stats.systemTotalRent)}
+最终报价：¥${money(stats.finalRent)}
+支付方式：${plan?.paymentMethod || "月付"}
+押金：${plan?.needDeposit ? "需要" : "不需要"}
+基础养护：已包含`;
+
+    return `${plan?.planType || "绿植租赁方案"}
 项目 / 客户：${order?.customerName || "-"}
 联系人：${order?.contactName || "-"}
 电话：${order?.phone || "-"}
@@ -1687,14 +2254,9 @@ function App() {
 客户确认：${order?.customerConfirmStatus || "-"}
 
 方案明细：
-${areaText || "暂无区域"}
+${isMaintenancePlan ? "养护服务不展示商品明细" : areaText || "暂无区域"}
 
-日租金：¥${money(stats.dailyRent)}
-租期：${plan?.leaseMonths || 12}月
-系统总租金：¥${money(stats.systemTotalRent)}
-最终报价：¥${money(stats.finalRent)}
-支付方式：${plan?.paymentMethod || "月付"}
-押金：${plan?.needDeposit ? "需要" : "不需要"}`;
+${rentalText}`;
   }
 
   function SyncInfoCard({ compact = false }) {
@@ -1749,6 +2311,7 @@ ${areaText || "暂无区域"}
   const isPending = order.status === "待接单";
   const canBuild = ["配置中", "待商户确认"].includes(order.status);
   const canExecute = ["方案已确认", "执行中"].includes(order.status);
+  const orderSignals = getOrderSignalTags(order);
 
   const statusClass = isPending
     ? "pending"
@@ -1777,7 +2340,23 @@ ${areaText || "暂无区域"}
         )}
       </div>
 
+      {orderSignals.length > 0 && (
+        <div className="staff-order-tags" aria-label="订单标签">
+          {orderSignals.map((tag) => (
+            <span key={tag} className={`staff-order-tag ${tag === "急单" ? "urgent" : tag === "需比价" ? "compare" : ""}`}>
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="staff-task-info">
+        <span>方案类型</span>
+        <strong>{order.plan?.planType || order.planType || getInitialPlanTypeForOrder(order)}</strong>
+
+        <span>面积 / 数量</span>
+        <strong>{order.areaSize || "面积待确认"} · {order.plannedPlantCount || `${stats.productCount || 0} 件商品`}</strong>
+
         <span>任务地址</span>
         <strong>{order.address || "暂无地址"}</strong>
 
@@ -1788,20 +2367,44 @@ ${areaText || "暂无区域"}
 
         <span>预约时间</span>
         <strong>{order.expectedDate || "待确认"}</strong>
+
+        <span>客户描述</span>
+        <strong>{order.description || "暂无描述"}</strong>
+
+        <span>商户备注</span>
+        <strong>{order.merchantNote || order.plan?.merchantDraftNote || "暂无备注"}</strong>
       </div>
 
       {hint && <div className="staff-task-hint">{hint}</div>}
 
       <div className="staff-task-actions">
         {isPending ? (
-          <button className="staff-primary-action" onClick={() => setSelectedOrder(order)}>
-            立即接单
-          </button>
+          <>
+            <button className="staff-ghost-action" onClick={() => openRouteNavigation(order.address)}>
+              导航
+            </button>
+            {order.communicationQrUrl && (
+              <button className="staff-ghost-action" onClick={() => setQrPreviewOrder(order)}>
+                查看二维码
+              </button>
+            )}
+            <button className="staff-primary-action" onClick={() => {
+              setPlanType(getInitialPlanTypeForOrder(order));
+              setSelectedOrder(order);
+            }}>
+              确认接单
+            </button>
+          </>
         ) : (
           <>
             <button className="staff-ghost-action" onClick={() => openRouteNavigation(order.address)}>
               导航
             </button>
+            {order.communicationQrUrl && (
+              <button className="staff-ghost-action" onClick={() => setQrPreviewOrder(order)}>
+                查看二维码
+              </button>
+            )}
             <button
               className="staff-primary-action"
               onClick={() => {
@@ -1813,7 +2416,7 @@ ${areaText || "暂无区域"}
                 openPlanForOrder(order);
               }}
             >
-              {order.status === "执行中" ? "完成任务" : canBuild ? "编辑方案" : "查看详情"}
+              {order.status === "执行中" ? "完成任务" : canBuild ? (order.plan ? "查看 / 修改方案" : "现场创建方案") : "查看详情"}
             </button>
           </>
         )}
@@ -2145,6 +2748,13 @@ ${areaText || "暂无区域"}
     }));
   }
 
+  function updateCompletePhotos(group, values) {
+    setCompleteForm((form) => ({
+      ...form,
+      [group]: values.slice(0, 3),
+    }));
+  }
+
   function renderPhotoUploadBlock(title, group, tip) {
     const values = completeForm[group] || ["", "", ""];
     return (
@@ -2158,24 +2768,15 @@ ${areaText || "暂无区域"}
         </div>
         <div className="empty-card" style={{ textAlign: "left", marginBottom: 12 }}>
           <p>{tip}</p>
-          <span>当前先用图片链接模拟上传，后面接 Supabase Storage 后会改成真正选择照片上传。</span>
+          <span>点击上传按钮选择照片，当前先保存为本地预览数据。</span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-          {values.map((url, index) => (
-            <div key={`${group}-${index}`} style={{ border: "1px solid rgba(39,92,61,.14)", borderRadius: 18, padding: 10, background: "#f7fbf7" }}>
-              <div style={{ aspectRatio: "1 / 1", borderRadius: 14, background: "#eef6ee", display: "grid", placeItems: "center", overflow: "hidden", marginBottom: 8 }}>
-                {isImageUrl(url) ? <img src={url} alt="上传预览" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <strong style={{ fontSize: 28, color: "#2b7a4b" }}>＋</strong>}
-              </div>
-              <input
-                className="area-input"
-                value={url}
-                onChange={(e) => updateCompletePhoto(group, index, e.target.value)}
-                placeholder={`图片链接 ${index + 1}`}
-                style={{ padding: "10px 12px", fontSize: 13 }}
-              />
-            </div>
-          ))}
-        </div>
+        <ImageUploader
+          values={values}
+          max={3}
+          label={title}
+          helper="支持手机拍照或从相册选择，每组最多 3 张。"
+          onChange={(nextValues) => updateCompletePhotos(group, nextValues)}
+        />
       </section>
     );
   }
@@ -2249,7 +2850,7 @@ ${areaText || "暂无区域"}
           </div>
           <div className="empty-card" style={{ marginTop: 12, textAlign: "left" }}>
             <p>提交前补充现场资料</p>
-            <span>先按视频逻辑搭建：大场景图、植物状态图，每组最多 3 张。后续再接真实上传。</span>
+            <span>大场景图、植物状态图均支持本地照片选择和即时预览，每组最多 3 张。</span>
           </div>
         </section>
 
@@ -2292,6 +2893,8 @@ ${areaText || "暂无区域"}
     }
 
     const stats = getPlanStats(customerViewOrder.plan);
+    const isRetailPlan = customerViewOrder.plan?.planType === "零售方案";
+    const isMaintenancePlan = customerViewOrder.plan?.planType === "养护服务";
 
     return (
       <div className="app">
@@ -2306,14 +2909,46 @@ ${areaText || "暂无区域"}
         <StatusSummaryCard order={customerViewOrder} />
 
         <section className="price-card price-detail-card">
-          <div><span>日租金</span><strong>¥ {money(stats.dailyRent)}</strong></div>
-          <div><span>租期</span><strong>{customerViewOrder.plan?.leaseMonths || 12} 月</strong></div>
-          <div><span>系统预计总租金</span><strong>¥ {money(stats.systemTotalRent)}</strong></div>
+          {isMaintenancePlan ? (
+            <>
+              <div><span>养护套餐</span><strong>{customerViewOrder.plan?.maintenancePackage || "标准养护"}</strong></div>
+              <div><span>服务频次</span><strong>{customerViewOrder.plan?.maintenanceFrequency || "-"}</strong></div>
+              <div><span>服务周期</span><strong>{customerViewOrder.plan?.maintenanceCycle || "-"}</strong></div>
+            </>
+          ) : (
+            <>
+              <div><span>{isRetailPlan ? "商品金额" : "日租金"}</span><strong>¥ {money(stats.dailyRent)}</strong></div>
+              {!isRetailPlan && <div><span>租期</span><strong>{customerViewOrder.plan?.leaseMonths || 12} 月</strong></div>}
+              <div><span>{isRetailPlan ? "系统建议总价" : "系统预计总租金"}</span><strong>¥ {money(stats.systemTotalRent)}</strong></div>
+            </>
+          )}
           <div><span>最终报价</span><strong>¥ {money(stats.finalRent)}</strong></div>
-          <div><span>支付方式</span><strong>{customerViewOrder.plan?.paymentMethod || "月付"}</strong></div>
-          <div><span>押金</span><strong>{customerViewOrder.plan?.needDeposit ? "需要" : "不需要"}</strong></div>
+          {!isRetailPlan && !isMaintenancePlan && <div><span>支付方式</span><strong>{customerViewOrder.plan?.paymentMethod || "月付"}</strong></div>}
+          {!isRetailPlan && !isMaintenancePlan && <div><span>押金</span><strong>{customerViewOrder.plan?.needDeposit ? "需要" : "不需要"}</strong></div>}
         </section>
 
+        {isMaintenancePlan ? (
+          <section className="area-section">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Maintenance</p>
+                <h2>服务内容</h2>
+              </div>
+            </div>
+            <article className="area-card">
+              <div>
+                <h3>{customerViewOrder.plan?.maintenancePackage || "标准养护"}</h3>
+                <p>{customerViewOrder.plan?.maintenanceScene || "-"}</p>
+                <div className="selected-product-row">
+                  <div>
+                    <strong>{customerViewOrder.plan?.maintenanceFrequency || "-"}</strong>
+                    <span>{customerViewOrder.plan?.maintenanceContent || "-"}</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+        ) : (
         <section className="area-section">
           <div className="section-title-row">
             <div>
@@ -2327,7 +2962,7 @@ ${areaText || "暂无区域"}
               <div>
                 <h3>{area.name}</h3>
                 <p>
-                  已选商品：{getAreaProductCount(area)} 件｜区域日租金：¥{" "}
+                  已选商品：{getAreaProductCount(area)} 件｜{isRetailPlan ? "区域金额" : "区域日租金"}：¥{" "}
                   {money(getAreaDailyRent(area))}
                 </p>
 
@@ -2335,7 +2970,7 @@ ${areaText || "暂无区域"}
                   <div className="selected-product-row" key={item.productId}>
                     <div>
                       <strong>{item.name}</strong>
-                      <span>¥ {item.pricePerDay}/天 × {item.quantity}</span>
+                      <span>¥ {item.pricePerDay}{isRetailPlan ? "/件" : "/天"} × {item.quantity}</span>
                     </div>
                   </div>
                 ))}
@@ -2343,6 +2978,7 @@ ${areaText || "暂无区域"}
             </article>
           ))}
         </section>
+        )}
       </div>
     );
   }
@@ -2354,6 +2990,8 @@ ${areaText || "暂无区域"}
     const selectedRows = planAreas.flatMap((area) =>
       safeItems(area).map((item) => ({ ...item, areaId: area.id, areaName: area.name }))
     );
+    const isRetailPlan = currentPlan?.planType === "零售方案";
+    const isMaintenancePlan = currentPlan?.planType === "养护服务";
 
     const pageStyle = {
       minHeight: "100vh",
@@ -2438,6 +3076,7 @@ ${areaText || "暂无区域"}
           </section>
         )}
 
+        {!isMaintenancePlan && (
         <section style={cardStyle}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid #e7edf4", marginBottom: 12 }}>
             <button style={tabStyle(true)}>植物</button>
@@ -2486,7 +3125,7 @@ ${areaText || "暂无区域"}
                     <tr key={`${item.areaId}-${item.productId}`} style={{ borderTop: "1px solid #edf1f5" }}>
                       <td style={{ padding: 10 }}><strong style={{ color: "#223247" }}>{item.name}</strong><br/><span style={{ color: "#8a96a8" }}>{item.areaName}</span></td>
                       <td style={{ padding: 10, textAlign: "center" }}><span style={{ width: 42, height: 42, borderRadius: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#f2f5f8", overflow: "hidden" }}>{isImageUrl(image) ? <img src={image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : image}</span></td>
-                      <td style={{ padding: 10, textAlign: "right", fontWeight: 800 }}>¥ {item.pricePerDay}/天</td>
+                      <td style={{ padding: 10, textAlign: "right", fontWeight: 800 }}>¥ {item.pricePerDay}{currentPlan?.planType === "零售方案" ? "/件" : "/天"}</td>
                       <td style={{ padding: 10, textAlign: "center" }}><span style={{ borderRadius: 6, background: "#eaf2fb", color: "#2f6fae", padding: "4px 8px", fontWeight: 800 }}>有货</span></td>
                       <td style={{ padding: 10, textAlign: "center" }}><input inputMode="numeric" type="number" value={item.quantity} min="1" style={{ width: 56, height: 34, border: "1px solid #d8e1ec", borderRadius: 8, textAlign: "center", fontWeight: 800 }} onChange={(e) => {
                         const nextQty = Math.max(1, Number(e.target.value || 1));
@@ -2506,8 +3145,72 @@ ${areaText || "暂无区域"}
             </table>
           </div>
         </section>
+        )}
 
-    
+        {isMaintenancePlan && (
+          <section style={cardStyle} className="maintenance-plan-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Maintenance</p>
+                <h2>养护服务套餐</h2>
+              </div>
+            </div>
+
+            <div className="maintenance-package-grid">
+              {MAINTENANCE_PACKAGES.map((pack) => {
+                const selected = currentPlan.maintenancePackage === pack.name;
+                return (
+                  <button
+                    key={pack.name}
+                    className={selected ? "selected" : ""}
+                    onClick={() =>
+                      updateOrderPlan(
+                        currentOrder.id,
+                        (plan) => ({ ...plan, ...getMaintenancePlanFields(pack.name) }),
+                        "养护套餐已同步"
+                      )
+                    }
+                  >
+                    <strong>{pack.name}</strong>
+                    <span>{pack.frequency}</span>
+                    <small>{pack.scene}</small>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="maintenance-detail-grid">
+              <div className="sheet-block">
+                <p className="sheet-label">适合场景</p>
+                <input className="area-input" value={currentPlan.maintenanceScene || ""} onChange={(e) => updateCurrentPlanField("maintenanceScene", e.target.value)} />
+              </div>
+              <div className="sheet-block">
+                <p className="sheet-label">服务频次</p>
+                <input className="area-input" value={currentPlan.maintenanceFrequency || ""} onChange={(e) => updateCurrentPlanField("maintenanceFrequency", e.target.value)} />
+              </div>
+              <div className="sheet-block">
+                <p className="sheet-label">服务周期</p>
+                <input className="area-input" value={currentPlan.maintenanceCycle || ""} onChange={(e) => updateCurrentPlanField("maintenanceCycle", e.target.value)} placeholder="例如：3 个月 / 6 个月 / 按项目约定" />
+              </div>
+              <div className="sheet-block">
+                <p className="sheet-label">最终报价</p>
+                <input className="area-input" type="number" value={currentPlan.maintenanceFinalPrice || ""} disabled placeholder="由商户审核时手动填写" />
+              </div>
+            </div>
+
+            <div className="sheet-block">
+              <p className="sheet-label">服务内容</p>
+              <textarea className="area-input maintenance-textarea" value={currentPlan.maintenanceContent || ""} onChange={(e) => updateCurrentPlanField("maintenanceContent", e.target.value)} />
+            </div>
+
+            <div className="empty-card">
+              <p>客户侧只展示套餐、频次、周期、服务内容和最终报价。</p>
+              <span>按次、按月、按面积、按盆数、上门费和特殊植物加价等复杂因素仅作为内部报价参考。</span>
+            </div>
+          </section>
+        )}
+
+        {!isMaintenancePlan && (
         <section style={{
           background: "#fff",
           border: "1px solid #e4eaf2",
@@ -2522,7 +3225,7 @@ ${areaText || "暂无区域"}
           {/* 1. 核心数据 */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
             <div style={{ background: "#f6f8fb", borderRadius: 10, padding: 12 }}>
-              <span style={{ color: "#7b899a", fontSize: 12, fontWeight: 700 }}>预估日租金</span>
+              <span style={{ color: "#7b899a", fontSize: 12, fontWeight: 700 }}>{currentPlan?.planType === "零售方案" ? "商品金额" : "预估日租金"}</span>
               <strong style={{ display: "block", marginTop: 4, fontSize: 18, color: "#182536" }}>¥ {money(currentStats.dailyRent)}</strong>
             </div>
             <div style={{ background: "#f6f8fb", borderRadius: 10, padding: 12 }}>
@@ -2531,8 +3234,34 @@ ${areaText || "暂无区域"}
             </div>
           </div>
 
+          {currentPlan?.planType === "租赁方案" && (
+            <div className="empty-card" style={{ marginBottom: 18 }}>
+              <p>租赁方案默认包含基础养护</p>
+              <span>长期租摆报价中已包含基础浇水、修剪、清洁和状态检查，不需要客户额外再选养护订单。</span>
+            </div>
+          )}
+
+          {currentPlan?.planType === "零售方案" && (
+            <div className="sheet-block">
+              <p className="sheet-label">是否需要后续养护</p>
+              <div className="option-grid payment-grid">
+                <button className={currentPlan.retailNeedsMaintenance ? "selected" : ""} onClick={() => updateCurrentPlanField("retailNeedsMaintenance", true)}>需要后续养护</button>
+                <button className={!currentPlan.retailNeedsMaintenance ? "selected" : ""} onClick={() => updateCurrentPlanField("retailNeedsMaintenance", false)}>暂不需要</button>
+              </div>
+              {currentPlan.retailNeedsMaintenance && (
+                <input
+                  className="area-input"
+                  value={currentPlan.retailMaintenanceNote || ""}
+                  onChange={(e) => updateCurrentPlanField("retailMaintenanceNote", e.target.value)}
+                  placeholder="例如：客户希望交付后每月巡检一次"
+                  style={{ marginTop: 10 }}
+                />
+              )}
+            </div>
+          )}
+
           {/* 2. 租期选择 */}
-          <div style={{ marginBottom: 18 }}>
+          <div style={{ marginBottom: 18, display: currentPlan?.planType === "零售方案" ? "none" : "block" }}>
             <span style={{ display: "block", color: "#647286", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>选择租期</span>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
               {[6, 12, 24, 36].map((m) => {
@@ -2559,7 +3288,7 @@ ${areaText || "暂无区域"}
           </div>
 
           {/* 3. 支付方式 */}
-          <div style={{ marginBottom: 18 }}>
+          <div style={{ marginBottom: 18, display: currentPlan?.planType === "零售方案" ? "none" : "block" }}>
             <span style={{ display: "block", color: "#647286", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>支付方式</span>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
               {["月付", "季付", "半年付", "年付"].map((method) => {
@@ -2586,7 +3315,7 @@ ${areaText || "暂无区域"}
           </div>
 
           {/* 4. 押金设置 */}
-          <div style={{ marginBottom: 18 }}>
+          <div style={{ marginBottom: 18, display: currentPlan?.planType === "零售方案" ? "none" : "block" }}>
             <span style={{ display: "block", color: "#647286", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>是否需要押金</span>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <button
@@ -2635,6 +3364,7 @@ ${areaText || "暂无区域"}
             </label>
           </div>
         </section>
+        )}
 
     
         <nav style={{
@@ -2823,15 +3553,40 @@ ${areaText || "暂无区域"}
                 const selectedQuantity = selected ? Number(selected.quantity || 0) : 0;
                 const image = getProductImage(product);
                 return (
-                  <button key={product.id} onClick={() => addProductToArea(product)} style={{ width: "100%", display: "grid", gridTemplateColumns: "54px 1fr auto", gap: 10, alignItems: "center", background: "#fff", border: "1px solid #e4eaf2", borderRadius: 12, padding: 10, marginBottom: 10, textAlign: "left", boxShadow: "0 4px 12px rgba(31,58,88,.04)" }}>
+                  <article key={product.id} className={selectedQuantity > 0 ? "staff-product-picker-card selected" : "staff-product-picker-card"} onClick={() => setProductQuantityInCurrentArea(product, selectedQuantity + 1)}>
                     <span style={{ width: 54, height: 54, borderRadius: 8, background: "#f2f5f8", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", fontSize: 24 }}>{isImageUrl(image) ? <img src={image} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : image}</span>
                     <span style={{ minWidth: 0 }}>
                       <strong style={{ display: "block", color: "#182536", fontSize: 15, marginBottom: 4 }}>{product.name}</strong>
                       <small style={{ display: "block", color: "#7b899a", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{product.description}</small>
-                      <b style={{ display: "block", color: videoBlue, marginTop: 5 }}>¥ {product.pricePerDay}/天</b>
+                      <b style={{ display: "block", color: videoBlue, marginTop: 5 }}>{currentPlan?.planType === "零售方案" ? `¥ ${product.pricePerDay}/件` : `¥ ${product.pricePerDay}/天`}</b>
                     </span>
-                    <span style={{ borderRadius: 8, background: selectedQuantity > 0 ? "#eaf2fb" : videoBlue, color: selectedQuantity > 0 ? "#2f6fae" : "#fff", padding: "8px 9px", fontWeight: 900, fontSize: 12, whiteSpace: "nowrap" }}>{selectedQuantity > 0 ? `已选${selectedQuantity}` : "添加"}</span>
-                  </button>
+                    <div className="staff-product-stepper" onClick={(event) => event.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="staff-stepper-button"
+                        disabled={selectedQuantity <= 0}
+                        onClick={() => setProductQuantityInCurrentArea(product, selectedQuantity - 1)}
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        value={selectedQuantity}
+                        onChange={(event) => setProductQuantityInCurrentArea(product, event.target.value)}
+                        onFocus={(event) => event.target.select()}
+                        aria-label={`${product.name}数量`}
+                      />
+                      <button
+                        type="button"
+                        className="staff-stepper-button add"
+                        onClick={() => setProductQuantityInCurrentArea(product, selectedQuantity + 1)}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </article>
                 );
               })}
             </section>
@@ -2839,7 +3594,7 @@ ${areaText || "暂无区域"}
 
           <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 60, background: "rgba(255,255,255,.98)", borderTop: "1px solid #e4eaf2", padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
             <button style={{ border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 12px", fontSize: 16 }} onClick={() => setShowProductSheet(false)}>
-              已选 {getAreaProductCount(currentArea)} 件｜日租金 ¥ {money(getAreaDailyRent(currentArea))}｜完成选品
+              已选 {getAreaProductCount(currentArea)} 件｜{currentPlan?.planType === "零售方案" ? "商品金额" : "日租金"} ¥ {money(getAreaDailyRent(currentArea))}｜完成选品
             </button>
             <button style={{ border: "1px solid #f0c7c2", borderRadius: 10, background: "#fff7f6", color: "#b44a3e", fontWeight: 800, padding: "10px 12px" }} onClick={clearCurrentAreaItems}>清空当前场景物料</button>
           </div>
@@ -2859,6 +3614,50 @@ ${areaText || "暂无区域"}
             boxShadow: "0 10px 24px rgba(58, 117, 196, 0.22)",
           }
         : {};
+
+    if (currentPlan?.planType === "养护服务") {
+      return (
+        <div className="sheet-mask" onClick={() => setShowPaymentSheet(false)}>
+          <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <div><p className="eyebrow">Maintenance</p><h2>养护服务报价</h2></div>
+              <button className="close-button" onClick={() => setShowPaymentSheet(false)}>×</button>
+            </div>
+
+            <div className="empty-card">
+              <p>养护服务只展示套餐与最终报价。</p>
+              <span>复杂报价因素仅作为商户内部备注，不展示给客户。</span>
+            </div>
+
+            <div className="rent-preview"><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
+            <button className="submit-sheet-button" onClick={() => setShowPaymentSheet(false)}>保存养护报价</button>
+          </section>
+        </div>
+      );
+    }
+
+    if (currentPlan?.planType === "零售方案") {
+      return (
+        <div className="sheet-mask" onClick={() => setShowPaymentSheet(false)}>
+          <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-header">
+              <div><p className="eyebrow">Retail Plan</p><h2>零售方案报价</h2></div>
+              <button className="close-button" onClick={() => setShowPaymentSheet(false)}>×</button>
+            </div>
+
+            <div className="empty-card">
+              <p>零售方案不需要租期、支付周期和押金设置。</p>
+              <span>当前按商品单价 × 数量统计，后续可以再接正式销售价目表。</span>
+            </div>
+
+            <div className="rent-preview"><span>商品金额</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
+            <button className="submit-sheet-button" onClick={() => setShowPaymentSheet(false)}>保存零售报价</button>
+          </section>
+        </div>
+      );
+    }
 
     return (
       <div className="sheet-mask" onClick={() => setShowPaymentSheet(false)}>
@@ -2931,6 +3730,8 @@ ${areaText || "暂无区域"}
   }
 
   function renderPriceSheet() {
+    const isMaintenancePlan = currentPlan?.planType === "养护服务";
+
     return (
       <div className="sheet-mask" onClick={() => setShowPriceSheet(false)}>
         <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
@@ -2941,18 +3742,24 @@ ${areaText || "暂无区域"}
           </div>
 
           <div className="sheet-block">
-            <p className="sheet-label">系统预计总租金</p>
-            <div className="price-preview-line"><span>按当前商品和租期自动计算</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
+            <p className="sheet-label">{isMaintenancePlan ? "养护服务报价" : "系统预计总租金"}</p>
+            <div className="price-preview-line"><span>{isMaintenancePlan ? "最终报价由商户手动填写" : "按当前商品和租期自动计算"}</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
           </div>
 
           <div className="sheet-block">
             <p className="sheet-label">最终报价</p>
-            <input className="price-input" type="number" value={currentPlan.customFinalRent || ""} onChange={(e) => updateCurrentPlanField("customFinalRent", e.target.value)} placeholder="不填则使用系统预计总租金" />
+            <input
+              className="price-input"
+              type="number"
+              value={isMaintenancePlan ? currentPlan.maintenanceFinalPrice || "" : currentPlan.customFinalRent || ""}
+              onChange={(e) => updateCurrentPlanField(isMaintenancePlan ? "maintenanceFinalPrice" : "customFinalRent", e.target.value)}
+              placeholder={isMaintenancePlan ? "请输入养护服务最终报价" : "不填则使用系统预计总租金"}
+            />
           </div>
 
           <div className="quick-price-list">
             {[money(currentStats.systemTotalRent), 1980, 2880, 3880].map((price) => (
-              <button key={price} onClick={() => updateCurrentPlanField("customFinalRent", String(price))}>¥ {price}</button>
+              <button key={price} onClick={() => updateCurrentPlanField(isMaintenancePlan ? "maintenanceFinalPrice" : "customFinalRent", String(price))}>¥ {price}</button>
             ))}
           </div>
 
@@ -3029,9 +3836,19 @@ ${areaText || "暂无区域"}
       return result;
     }, {});
 
-    const navItems = ["工作台", "订单管理", "执行监测", "商品库", "客户库", "设置"];
+    const navItems = [
+      { key: "工作台", Icon: GardenIcons.Dashboard },
+      { key: "订单管理", Icon: GardenIcons.Orders },
+      { key: "团队成员", Icon: GardenIcons.Team },
+      { key: "执行监测", Icon: GardenIcons.Monitor },
+      { key: "商品库", Icon: GardenIcons.Products },
+      { key: "客户库", Icon: GardenIcons.Customers },
+      { key: "设置", Icon: GardenIcons.Settings },
+    ];
     const todoOrders = [...pendingMerchantConfirmOrders, ...pendingArchiveOrders];
     const displayOrders = merchantOrders;
+    const activeStaffMembers = staffDirectory.filter((member) => member.organizationId === currentMerchantUser.organizationId);
+    const editingStaffMember = activeStaffMembers.find((member) => member.id === editingStaffId) || null;
     
     const filteredMerchantProducts = merchantProducts.filter((product) => {
       const keyword = productSearchText.trim();
@@ -3054,7 +3871,10 @@ ${areaText || "暂无区域"}
 
     // 独立抽出的审核台组件：左右分栏沉浸式
     function MerchantReviewPage({ order }) {
-      const stats = getPlanStats(order.plan);
+      const orderPlan = order.plan || null;
+      const stats = getPlanStats(orderPlan);
+      const isRetailPlan = orderPlan?.planType === "零售方案";
+      const isMaintenancePlan = orderPlan?.planType === "养护服务";
       const isWaitingConfirm = order.status === "待商户确认";
       const isWaitingArchive = order.status === "待商户归档";
 
@@ -3078,8 +3898,59 @@ ${areaText || "暂无区域"}
                 <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>项目档案</h2>
                 <div className="plan-info-line"><span>状态</span><strong style={{ color: "#3b82f6" }}>{order.status}</strong></div>
                 <div className="plan-info-line"><span>面积</span><strong>{order.areaSize}</strong></div>
+                <div className="plan-info-line"><span>方案类型</span><strong>{orderPlan?.planType || order.planType || "-"}</strong></div>
+                <div className="plan-info-line"><span>员工</span><strong>{order.assignedStaffName || "-"} {order.assignedStaffEmail ? `｜${order.assignedStaffEmail}` : ""}</strong></div>
                 <div className="plan-info-line"><span>联系人</span><strong>{order.contactName || "-"} {order.phone ? `｜${order.phone}` : ""}</strong></div>
                 <div className="plan-info-line"><span>地址</span><strong>{order.address}</strong></div>
+                <div className="plan-info-line"><span>商户备注</span><strong>{order.merchantNote || orderPlan?.merchantDraftNote || "-"}</strong></div>
+                <div className="plan-info-line"><span>员工备注</span><strong>{order.fieldNote || order.completeForm?.remark || "-"}</strong></div>
+                <div className="sheet-block" style={{ marginTop: 14 }}>
+                  <p className="sheet-label">需求类型</p>
+                  <div className="option-grid payment-grid">
+                    {["租赁", "零售", "养护"].map((serviceType) => (
+                      <button
+                        key={serviceType}
+                        className={(order.serviceType || "租赁") === serviceType ? "selected" : ""}
+                        onClick={() => {
+                          const nextPlanType = serviceType === "养护" ? "养护服务" : serviceType === "零售" ? "零售方案" : "租赁方案";
+                          updateOrder(order.id, {
+                            serviceType,
+                            planType: nextPlanType,
+                            plan: order.plan ? { ...order.plan, planType: nextPlanType } : order.plan,
+                          }, "订单需求类型已同步");
+                        }}
+                      >
+                        {serviceType}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="sheet-block">
+                  <p className="sheet-label">需求标签</p>
+                  <input
+                    className="area-input"
+                    value={Array.isArray(order.tags) ? order.tags.join(",") : ""}
+                    onChange={(event) => updateOrder(order.id, { tags: event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean) }, "订单标签已同步")}
+                    placeholder="例如：需比价,租过绿植,室外"
+                  />
+                </div>
+                <div className="sheet-block" style={{ marginTop: 14 }}>
+                  <p className="sheet-label">客户沟通群二维码</p>
+                  {/* 正式版接 Supabase Storage / 腾讯云 COS / 阿里云 OSS 后，应将二维码远程 URL 写入 communicationQrUrl。 */}
+                  <ImageUploader
+                    value={order.communicationQrUrl || ""}
+                    label="上传或替换二维码"
+                    helper="员工任务卡会显示二维码入口。"
+                    onChange={(nextImage) => updateOrder(order.id, { communicationQrUrl: nextImage }, "沟通群二维码已同步")}
+                  />
+                  <input
+                    className="area-input"
+                    value={order.communicationQrUrl || ""}
+                    onChange={(event) => updateOrder(order.id, { communicationQrUrl: event.target.value }, "沟通群二维码已同步")}
+                    placeholder="也可以粘贴二维码图片地址"
+                    style={{ marginTop: 10 }}
+                  />
+                </div>
               </div>
               <ExtraDetails order={order} />
             </div>
@@ -3107,8 +3978,23 @@ ${areaText || "暂无区域"}
               )}
 
               <div className="admin-card" style={{ marginBottom: 0 }}>
-                <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>方案物料明细</h2>
-                {safeAreas(order.plan).length === 0 ? (
+                <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>{isMaintenancePlan ? "养护服务明细" : "方案物料明细"}</h2>
+                {!orderPlan ? (
+                  <div className="empty-card"><p>暂无方案内容</p><span>商户已创建派单，但还没有方案草稿或员工提交内容。</span></div>
+                ) : isMaintenancePlan ? (
+                  <div className="area-card" style={{ border: "1px solid #e2e8f0" }}>
+                    <div style={{ background: "#f8fafc", padding: "12px 16px", borderBottom: "1px solid #e2e8f0" }}>
+                      <h3 style={{ margin: 0, fontSize: 15 }}>{order.plan?.maintenancePackage || "标准养护"}</h3>
+                      <span style={{ fontSize: 12, color: "#64748b" }}>{order.plan?.maintenanceFrequency || "-"} ｜ {order.plan?.maintenanceCycle || "-"}</span>
+                    </div>
+                    <div style={{ padding: 16, color: "#475569", lineHeight: 1.7 }}>
+                      <strong style={{ color: "#182536" }}>适合场景</strong>
+                      <p style={{ margin: "6px 0 12px" }}>{order.plan?.maintenanceScene || "-"}</p>
+                      <strong style={{ color: "#182536" }}>服务内容</strong>
+                      <p style={{ margin: "6px 0 0" }}>{order.plan?.maintenanceContent || "-"}</p>
+                    </div>
+                  </div>
+                ) : safeAreas(order.plan).length === 0 ? (
                   <div className="empty-card"><p>暂无区域</p><span>员工尚未添加任何植物。</span></div>
                 ) : (
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -3116,13 +4002,13 @@ ${areaText || "暂无区域"}
                       <div className="area-card" key={area.id} style={{ border: "1px solid #e2e8f0" }}>
                         <div style={{ background: "#f8fafc", padding: "12px 16px", borderBottom: "1px solid #e2e8f0" }}>
                           <h3 style={{ margin: 0, fontSize: 15 }}>{area.name}</h3>
-                          <span style={{ fontSize: 12, color: "#64748b" }}>共 {getAreaProductCount(area)} 件 ｜ 区域预估: ¥{money(getAreaDailyRent(area))}/天</span>
+                          <span style={{ fontSize: 12, color: "#64748b" }}>共 {getAreaProductCount(area)} 件 ｜ 区域预估: ¥{money(getAreaDailyRent(area))}{isRetailPlan ? "" : "/天"}</span>
                         </div>
                         <div style={{ padding: "8px 16px" }}>
                           {safeItems(area).map((item) => (
                             <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px dashed #e2e8f0" }} key={item.productId}>
                               <strong style={{ fontSize: 13 }}>{item.name}</strong>
-                              <span style={{ fontSize: 13, color: "#64748b" }}>¥{item.pricePerDay} × {item.quantity}</span>
+                              <span style={{ fontSize: 13, color: "#64748b" }}>¥{item.pricePerDay}{isRetailPlan ? "/件" : "/天"} × {item.quantity}</span>
                             </div>
                           ))}
                         </div>
@@ -3133,22 +4019,64 @@ ${areaText || "暂无区域"}
               </div>
 
               <div className="admin-card" style={{ marginBottom: 0 }}>
+                <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>现场记录</h2>
+                {order.completePhotos ? (
+                  <>
+                    <div className="merchant-photo-grid">
+                      {[...(order.completePhotos.scenePhotos || []), ...(order.completePhotos.plantPhotos || [])]
+                        .filter(Boolean)
+                        .slice(0, 6)
+                        .map((photo, index) => (
+                          <img key={`${photo}-${index}`} src={photo} alt={`现场图片 ${index + 1}`} />
+                        ))}
+                    </div>
+                    <div className="plan-info-line"><span>员工备注</span><strong>{order.completePhotos.remark || "-"}</strong></div>
+                  </>
+                ) : (
+                  <div className="empty-card"><p>暂无现场图片</p><span>员工完工上报后，这里会显示现场照片和备注。</span></div>
+                )}
+              </div>
+
+              <div className="admin-card" style={{ marginBottom: 0 }}>
                 <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>财务与租约</h2>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-                   <div className="metric-box" style={{ borderLeft: "none", padding: 16 }}>
-                     <h3>系统预估总租金</h3>
-                     <strong style={{ fontSize: 24 }}>¥ {money(stats.systemTotalRent)}</strong>
-                   </div>
+                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+                    <div className="metric-box" style={{ borderLeft: "none", padding: 16 }}>
+                       <h3>{isMaintenancePlan ? "养护套餐" : isRetailPlan ? "系统建议总价" : "系统预估总租金"}</h3>
+                      <strong style={{ fontSize: isMaintenancePlan ? 18 : 24 }}>{isMaintenancePlan ? orderPlan?.maintenancePackage || "标准养护" : `¥ ${money(stats.systemTotalRent)}`}</strong>
+                    </div>
                    <div className="metric-box" style={{ borderLeft: "none", padding: 16, background: "#f0fdf4" }}>
                      <h3>最终销售报价</h3>
                      <strong style={{ fontSize: 24, color: "#166534" }}>¥ {money(stats.finalRent)}</strong>
-                   </div>
-                   <div className="metric-box" style={{ borderLeft: "none", padding: 16 }}>
-                     <h3>租期及支付</h3>
-                     <strong style={{ fontSize: 16, marginTop: 8 }}>{order.plan?.leaseMonths || 12}个月 ｜ {order.plan?.paymentMethod || "月付"}</strong>
-                   </div>
-                </div>
-              </div>
+                     </div>
+                     <div className="metric-box" style={{ borderLeft: "none", padding: 16 }}>
+                      <h3>{isMaintenancePlan ? "方案类型" : isRetailPlan ? "方案类型" : "租期及支付"}</h3>
+                      <strong style={{ fontSize: 16, marginTop: 8 }}>{isMaintenancePlan ? "养护服务" : isRetailPlan ? "零售方案" : `${orderPlan?.leaseMonths || 12}个月 ｜ ${orderPlan?.paymentMethod || "月付"}`}</strong>
+                    </div>
+                 </div>
+                 {isMaintenancePlan && (
+                  <div className="maintenance-merchant-editor">
+                    <div className="sheet-block">
+                      <p className="sheet-label">养护服务最终报价</p>
+                      <input
+                        className="area-input"
+                        type="number"
+                        value={orderPlan?.maintenanceFinalPrice || ""}
+                        onChange={(event) => updateOrderPlan(order.id, (plan) => ({ ...plan, maintenanceFinalPrice: event.target.value }), "养护报价已同步")}
+                        placeholder="由商户手动填写"
+                      />
+                    </div>
+                    <div className="sheet-block">
+                      <p className="sheet-label">内部报价备注</p>
+                      <textarea
+                        className="area-input maintenance-textarea"
+                        value={orderPlan?.maintenanceInternalNote || ""}
+                        onChange={(event) => updateOrderPlan(order.id, (plan) => ({ ...plan, maintenanceInternalNote: event.target.value }), "内部报价备注已同步")}
+                        placeholder="仅商户内部可见，例如：上门距离、特殊植物、服务耗时等报价依据。"
+                      />
+                    </div>
+                  </div>
+                 )}
+               </div>
 
             </div>
           </div>
@@ -3180,19 +4108,24 @@ ${areaText || "暂无区域"}
             <span style={{ color: "#3b82f6", fontSize: 12, fontWeight: 800 }}>总控商户端</span>
           </div>
 
-          {navItems.map((item) => (
-            <button
-              key={item}
-              className={`admin-nav-btn ${merchantTab === item ? "active" : ""}`}
-              onClick={() => setMerchantTab(item)}
-            >
-              {item}
-            </button>
-          ))}
+          {navItems.map((item) => {
+            const Icon = item.Icon;
+            return (
+              <button
+                key={item.key}
+                className={`admin-nav-btn ${merchantTab === item.key ? "active" : ""}`}
+                onClick={() => setMerchantTab(item.key)}
+              >
+                <Icon size={19} />
+                <span>{item.key}</span>
+              </button>
+            );
+          })}
 
           <div style={{ marginTop: "auto", borderTop: "1px solid #1e293b", paddingTop: 16 }}>
             <button className="admin-nav-btn" style={{ width: "100%", textAlign: "center", border: "1px solid #334155" }} onClick={() => switchRole("staff")}>
-              📱 切换至员工手机视角
+              <GardenIcons.StaffUser size={18} />
+              <span>切换至员工视角</span>
             </button>
           </div>
         </aside>
@@ -3208,8 +4141,10 @@ ${areaText || "暂无区域"}
               </span>
             </div>
             <div style={{ display: "flex", gap: 12 }}>
-              <button className="ghost-button" onClick={refreshOrdersFromCloud}>云端拉取刷新</button>
-              <button className="primary-button" style={{ padding: "0 24px" }} onClick={() => setShowCreateOrderSheet(true)}>+ 创建新派单</button>
+              <span className="admin-auth-chip">{authUserEmail}</span>
+              <button className="ghost-button" onClick={refreshOrdersFromCloud}><GardenIcons.Cloud size={16} /><span>云端刷新</span></button>
+              <button className="ghost-button" onClick={handleSignOut}><GardenIcons.Close size={16} /><span>退出登录</span></button>
+              <button className="merchant-create-button" onClick={() => setShowCreateOrderSheet(true)}><GardenIcons.Create size={17} /><span>创建新派单</span></button>
             </div>
           </header>
 
@@ -3224,7 +4159,7 @@ ${areaText || "暂无区域"}
               </div>
 
               <div className="admin-card">
-                <h2 style={{ fontSize: 17, marginBottom: 16, color: "#0f172a" }}><h2>待办审核</h2> (Todo)</h2>
+                <h2 className="merchant-card-title"><GardenIcons.Todo size={18} />待办审核 <span>Todo</span></h2>
                 {todoOrders.length === 0 ? (
                   <div className="empty-card" style={{ background: "#f8fafc", border: "none" }}><p>当前无紧急待办</p><span>喝杯咖啡休息一下，所有员工任务进展顺利。</span></div>
                 ) : (
@@ -3272,16 +4207,20 @@ ${areaText || "暂无区域"}
                   <p>查看全部订单、筛选状态、进入方案审核或归档。</p>
                 </div>
                 <button className="primary-button" onClick={() => setShowCreateOrderSheet(true)}>
-                  + 创建新派单
+                  <GardenIcons.Create size={16} />
+                  <span>创建新派单</span>
                 </button>
               </div>
 
               <div className="admin-filter-row">
+                <div className="admin-filter-field"><GardenIcons.Search size={16} />
                 <input
                   value={merchantSearchText}
                   onChange={(e) => setMerchantSearchText(e.target.value)}
                   placeholder="搜索客户、联系人、电话、地址、标签"
                 />
+                </div>
+                <div className="admin-filter-field"><GardenIcons.Filter size={16} />
                 <select
                   value={merchantStatusFilter}
                   onChange={(e) => setMerchantStatusFilter(e.target.value)}
@@ -3292,6 +4231,7 @@ ${areaText || "暂无区域"}
                     </option>
                   ))}
                 </select>
+                </div>
               </div>
 
               {displayOrders.length === 0 ? (
@@ -3300,13 +4240,13 @@ ${areaText || "暂无区域"}
                   <span>可以切换状态筛选，或创建一条新派单。</span>
                 </div>
               ) : (
-                <div className="admin-table">
+                <div className="admin-table order-admin-table">
                   <div className="admin-table-row admin-table-head">
                     <span>客户 / 项目</span>
                     <span>联系人</span>
                     <span>状态</span>
                     <span>面积</span>
-                    <span>来源</span>
+                    <span>负责员工</span>
                     <span>操作</span>
                   </div>
 
@@ -3321,10 +4261,23 @@ ${areaText || "暂无区域"}
                         <em>{order.phone || "暂无电话"}</em>
                       </span>
                       <span>
-                        <b className="admin-status-chip">{order.status}</b>
+                        <b className={`admin-status-chip ${getMerchantStatusClass(order.status)}`}>{order.status}</b>
                       </span>
                       <span>{order.areaSize || "-"}</span>
-                      <span>{order.source || "-"}</span>
+                      <span>
+                        <select
+                          className="admin-inline-select"
+                          value={order.assignedStaffId || DEFAULT_STAFF_ID}
+                          onChange={(event) => assignOrderToStaff(order.id, event.target.value)}
+                        >
+                          {activeStaffMembers.map((member) => (
+                            <option key={member.id} value={member.id}>
+                              {member.name} · {member.staffNo}
+                            </option>
+                          ))}
+                        </select>
+                        <em>{order.assignedStaffEmail || "未绑定邮箱"}</em>
+                      </span>
                       <span className="admin-table-actions">
                         <button
                           className="ghost-button"
@@ -3337,10 +4290,12 @@ ${areaText || "暂无区域"}
                             setMerchantViewingOrder(null);
                           }}
                         >
-                          查看
+                          <GardenIcons.Search size={14} />
+                          <span>查看</span>
                         </button>
                         <button className="ghost-button" onClick={() => exportOrderData(order)}>
-                          导出
+                          <GardenIcons.Archive size={14} />
+                          <span>导出</span>
                         </button>
                       </span>
                     </div>
@@ -3350,12 +4305,121 @@ ${areaText || "暂无区域"}
             </div>
           )}
 
+          {merchantTab === "团队成员" && (
+            <div className="admin-card admin-data-panel">
+              <div className="admin-section-head">
+                <div>
+                  <h2>团队成员</h2>
+                  <p>本地模拟组织账号、员工角色与派单关系；不保存或展示任何密码。</p>
+                </div>
+              </div>
+
+              <div className="admin-setting-grid team-summary-grid">
+                <div>
+                  <strong>组织</strong>
+                  <span>{organizations[0].name}</span>
+                </div>
+                <div>
+                  <strong>当前商户账号</strong>
+                  <span>{currentMerchantUser.name} · {ROLE_LABELS[currentMerchantUser.role]}</span>
+                </div>
+                <div>
+                  <strong>员工数量</strong>
+                  <span>{activeStaffMembers.length} 人</span>
+                </div>
+                <div>
+                  <strong>登录方式</strong>
+                  <span>邮箱 + 密码（后续接入）</span>
+                </div>
+              </div>
+
+              <div className="admin-table team-admin-table" style={{ marginTop: 16 }}>
+                <div className="admin-table-row admin-table-head">
+                  <span>员工</span>
+                  <span>邮箱 / 手机号</span>
+                  <span>角色</span>
+                  <span>状态</span>
+                  <span>当前任务</span>
+                  <span>操作</span>
+                </div>
+
+                {activeStaffMembers.map((member) => {
+                  const assignedOrders = orders.filter((order) => order.assignedStaffId === member.id);
+                  const activeCount = assignedOrders.filter((order) => order.status !== "已完成").length;
+
+                  return (
+                    <details className="staff-member-detail" key={member.id}>
+                      <summary className="admin-table-row">
+                        <span>
+                          <strong>{member.name}</strong>
+                          <em>{member.staffNo} · {member.area}</em>
+                        </span>
+                        <span>
+                          <strong>{member.email}</strong>
+                          <em>{member.phone}</em>
+                        </span>
+                        <span>{ROLE_LABELS[member.role] || member.role}</span>
+                        <span>
+                          <b className="admin-status-chip muted">{ACCOUNT_STATUS_LABELS[member.status] || member.status}</b>
+                        </span>
+                        <span>{activeCount} / {assignedOrders.length} 笔</span>
+                        <span>
+                          <button className="ghost-button team-manage-button" onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setEditingStaffId(member.id);
+                          }}>管理</button>
+                        </span>
+                      </summary>
+
+                      <div className="staff-member-panel">
+                        <div className="admin-setting-grid">
+                          <div><strong>姓名</strong><span>{member.name}</span></div>
+                          <div><strong>工号</strong><span>{member.staffNo}</span></div>
+                          <div><strong>邮箱</strong><span>{member.email}</span></div>
+                          <div><strong>手机号</strong><span>{member.phone}</span></div>
+                          <div><strong>角色</strong><span>{ROLE_LABELS[member.role] || member.role}</span></div>
+                          <div><strong>负责区域</strong><span>{member.area}</span></div>
+                        </div>
+
+                        <div className="staff-assigned-orders">
+                          <strong>已分配订单</strong>
+                          {assignedOrders.length === 0 ? (
+                            <p>暂无分配订单</p>
+                          ) : (
+                            assignedOrders.map((order) => (
+                              <button
+                                key={order.id}
+                                className="staff-assigned-order"
+                                onClick={() => {
+                                  if (order.plan) {
+                                    openMerchantPlanWorkbench(order);
+                                    return;
+                                  }
+                                  setSelectedOrderDetail(order);
+                                  setMerchantViewingOrder(null);
+                                }}
+                              >
+                                <span>{order.customerName}</span>
+                                <em>{order.status} · {order.address || "暂无地址"}</em>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {merchantTab === "商品库" && (
             <div className="admin-card admin-data-panel">
               <div className="admin-section-head">
                 <div>
                   <h2>商品库</h2>
-                  <p>维护绿植商品、价格、分类、图片链接和上下架状态。</p>
+                  <p>维护绿植商品、价格、分类、图片和上下架状态。</p>
                 </div>
                 <button
                   className="primary-button"
@@ -3545,7 +4609,7 @@ ${areaText || "暂无区域"}
                         <strong>{order.customerName}</strong>
                         <em>{order.contactName || "-"}</em>
                       </span>
-                      <span><b className="admin-status-chip">{order.status}</b></span>
+                      <span><b className={`admin-status-chip ${getMerchantStatusClass(order.status)}`}>{order.status}</b></span>
                       <span>{order.executionStatus || "-"}</span>
                       <span>{order.deliveryStatus || "-"}</span>
                       <span>{order.address || "-"}</span>
@@ -3588,6 +4652,81 @@ ${areaText || "暂无区域"}
                   <span>{merchantProducts.length} 个</span>
                 </div>
               </div>
+            </div>
+          )}
+
+          {editingStaffMember && (
+            <div className="sheet-mask merchant-staff-editor-mask" onClick={() => setEditingStaffId(null)}>
+              <section className="merchant-staff-editor" onClick={(event) => event.stopPropagation()}>
+                <div className="section-title-row">
+                  <div>
+                    <p className="eyebrow">Team Member</p>
+                    <h2>管理员工账号</h2>
+                  </div>
+                  <button className="close-button" onClick={() => setEditingStaffId(null)}>×</button>
+                </div>
+
+                <div className="admin-setting-grid">
+                  <div><strong>姓名</strong><span>{editingStaffMember.name}</span></div>
+                  <div><strong>工号</strong><span>{editingStaffMember.staffNo}</span></div>
+                  <div><strong>邮箱</strong><span>{editingStaffMember.email}</span></div>
+                  <div><strong>手机号</strong><span>{editingStaffMember.phone}</span></div>
+                  <div><strong>负责区域</strong><span>{editingStaffMember.area}</span></div>
+                  <div><strong>当前任务数</strong><span>{orders.filter((order) => order.assignedStaffId === editingStaffMember.id && order.status !== "已完成").length} 笔</span></div>
+                </div>
+
+                <div className="merchant-staff-edit-grid">
+                  <div className="sheet-block">
+                    <p className="sheet-label">角色</p>
+                    <select
+                      className="area-input"
+                      value={editingStaffMember.role}
+                      onChange={(event) => {
+                        const nextRole = event.target.value;
+                        setStaffDirectory((members) => members.map((member) => member.id === editingStaffMember.id ? { ...member, role: nextRole } : member));
+                      }}
+                    >
+                      <option value="staff">普通员工</option>
+                      <option value="manager">主管 / 经理</option>
+                      <option value="admin">管理员</option>
+                    </select>
+                  </div>
+
+                  <div className="sheet-block">
+                    <p className="sheet-label">状态</p>
+                    <select
+                      className="area-input"
+                      value={editingStaffMember.status}
+                      onChange={(event) => {
+                        const nextStatus = event.target.value;
+                        setStaffDirectory((members) => members.map((member) => member.id === editingStaffMember.id ? { ...member, status: nextStatus } : member));
+                      }}
+                    >
+                      <option value="active">启用账号</option>
+                      <option value="paused">停用账号</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="staff-assigned-orders">
+                  <strong>已分配订单</strong>
+                  {orders.filter((order) => order.assignedStaffId === editingStaffMember.id).length === 0 ? (
+                    <p>暂无分配订单</p>
+                  ) : (
+                    orders.filter((order) => order.assignedStaffId === editingStaffMember.id).map((order) => (
+                      <button key={order.id} className="staff-assigned-order" onClick={() => openMerchantPlanWorkbench(order)}>
+                        <span>{order.customerName}</span>
+                        <em>{order.status} · {order.address || "暂无地址"}</em>
+                      </button>
+                    ))
+                  )}
+                </div>
+
+                <div className="empty-card">
+                  <p>本地开发阶段模拟编辑</p>
+                  <span>正式版需要写入 profiles / staff_members 表，并配合权限控制；这里不展示也不保存密码。</span>
+                </div>
+              </section>
             </div>
           )}
 
@@ -3722,8 +4861,13 @@ ${areaText || "暂无区域"}
 
             <section className="plan-summary-card" style={{ margin: 0 }}>
               <div className="sheet-block">
-                <p className="sheet-label">商品照片链接</p>
-                <input className="area-input" value={newProductForm.imageUrl} onChange={(e) => setNewProductForm((form) => ({ ...form, imageUrl: e.target.value }))} placeholder="先粘贴图片 URL，后续接真正上传" />
+                <p className="sheet-label">商品照片</p>
+                <ImageUploader
+                  value={newProductForm.imageUrl}
+                  label="上传商品照片"
+                  helper="选择后立即预览；当前先保存为本地图片数据。"
+                  onChange={(nextImage) => setNewProductForm((form) => ({ ...form, imageUrl: nextImage }))}
+                />
               </div>
 
               <div className="sheet-block">
@@ -3737,8 +4881,8 @@ ${areaText || "暂无区域"}
               </div>
 
               <div className="empty-card">
-                <p>照片上传入口已预留</p>
-                <span>现在先用图片链接预览；后面接 Supabase Storage 后，这里会变成“上传本地照片”。</span>
+                <p>照片上传已启用本地预览</p>
+                <span>当前不接真实云存储；后续接 Storage 后会把远程 URL 写回 imageUrl 字段。</span>
               </div>
             </section>
           </div>
@@ -3840,12 +4984,83 @@ ${areaText || "暂无区域"}
               <section className="plan-summary-card" style={{ margin: 0 }}>
                 <div className="section-title-row"><div><p className="eyebrow">Project</p><h2>项目需求</h2></div></div>
                 <div className="sheet-block"><p className="sheet-label">订单来源</p><div className="option-grid payment-grid">{ORDER_SOURCES.map((source) => (<button key={source} className={newOrderForm.source === source ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, source }))}>{source}</button>))}</div></div>
+                <div className="sheet-block"><p className="sheet-label">需求类型</p><div className="option-grid payment-grid">{["租赁", "零售", "养护"].map((serviceType) => (<button key={serviceType} className={newOrderForm.serviceType === serviceType ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, serviceType }))}>{serviceType}</button>))}</div></div>
+                <div className="sheet-block">
+                  <p className="sheet-label">需求标签</p>
+                  <div className="merchant-tag-picker">
+                    {["需比价", "租过绿植", "室内", "室外", "办公室", "商业空间", "其他", "急单", "重点客户"].map((tag) => {
+                      const selected = newOrderForm.tagsText.split(",").map((item) => item.trim()).includes(tag);
+                      return <button key={tag} className={selected ? "selected" : ""} onClick={() => toggleNewOrderTag(tag)}>{tag}</button>;
+                    })}
+                  </div>
+                  <input className="area-input" value={newOrderForm.tagsText} onChange={(e) => setNewOrderForm((form) => ({ ...form, tagsText: e.target.value }))} placeholder="例如：办公室,长期租赁" />
+                </div>
+                <div className="sheet-block">
+                  <p className="sheet-label">分配员工</p>
+                  <select className="area-input" value={newOrderForm.assignedStaffId} onChange={(e) => setNewOrderForm((form) => ({ ...form, assignedStaffId: e.target.value }))}>
+                    {activeStaffMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name} · {member.staffNo} · {ROLE_LABELS[member.role] || member.role}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sheet-block">
+                  <p className="sheet-label">客户沟通群二维码</p>
+                  {/* 正式版接 Supabase Storage / 腾讯云 COS / 阿里云 OSS 后，应将二维码远程 URL 写入 communicationQrUrl。 */}
+                  <ImageUploader
+                    value={newOrderForm.communicationQrUrl}
+                    label="上传二维码"
+                    helper="员工端会显示“查看二维码”，用于扫码进客户沟通群。"
+                    onChange={(nextImage) => setNewOrderForm((form) => ({ ...form, communicationQrUrl: nextImage }))}
+                  />
+                  <input
+                    className="area-input"
+                    value={newOrderForm.communicationQrUrl}
+                    onChange={(e) => setNewOrderForm((form) => ({ ...form, communicationQrUrl: e.target.value }))}
+                    placeholder="也可以粘贴二维码图片地址"
+                    style={{ marginTop: 10 }}
+                  />
+                </div>
                 <div className="sheet-block"><p className="sheet-label">项目面积</p><input className="area-input" value={newOrderForm.areaSize} onChange={(e) => setNewOrderForm((form) => ({ ...form, areaSize: e.target.value }))} placeholder="例如：260㎡" /></div>
                 <div className="sheet-block"><p className="sheet-label">期望进场时间</p><input className="area-input" value={newOrderForm.expectedDate} onChange={(e) => setNewOrderForm((form) => ({ ...form, expectedDate: e.target.value }))} placeholder="例如：2026-06-08" /></div>
-                <div className="sheet-block"><p className="sheet-label">标签，用英文逗号分隔</p><input className="area-input" value={newOrderForm.tagsText} onChange={(e) => setNewOrderForm((form) => ({ ...form, tagsText: e.target.value }))} placeholder="例如：办公室,长期租赁" /></div>
+                <div className="sheet-block"><p className="sheet-label">预算 / 预估报价</p><input className="area-input" type="number" value={newOrderForm.budget} onChange={(e) => setNewOrderForm((form) => ({ ...form, budget: e.target.value }))} placeholder="例如：2880" /></div>
+                <div className="sheet-block"><p className="sheet-label">预计植物数量 / 区域说明</p><input className="area-input" value={newOrderForm.plannedPlantCount} onChange={(e) => setNewOrderForm((form) => ({ ...form, plannedPlantCount: e.target.value }))} placeholder="例如：20 盆" /></div>
+                <div className="sheet-block"><p className="sheet-label">计划区域</p><input className="area-input" value={newOrderForm.areaNote} onChange={(e) => setNewOrderForm((form) => ({ ...form, areaNote: e.target.value }))} placeholder="例如：前台 / 会议室 / 门口" /></div>
                 <div className="sheet-block"><p className="sheet-label">需求描述</p><input className="area-input" value={newOrderForm.description} onChange={(e) => setNewOrderForm((form) => ({ ...form, description: e.target.value }))} placeholder="例如：前台和会议室需要绿植配置" /></div>
+                <div className="sheet-block"><p className="sheet-label">商户备注</p><input className="area-input" value={newOrderForm.merchantNote} onChange={(e) => setNewOrderForm((form) => ({ ...form, merchantNote: e.target.value }))} placeholder="给员工的现场校正提示" /></div>
               </section>
             </div>
+
+            <section className="plan-summary-card merchant-plan-draft-card" style={{ marginTop: 16 }}>
+              <div className="section-title-row"><div><p className="eyebrow">Plan Draft</p><h2>方案草稿</h2></div></div>
+              {newOrderForm.serviceType === "租赁" && (
+                <div className="merchant-plan-draft-grid">
+                  <div className="sheet-block"><p className="sheet-label">租期</p><input className="area-input" type="number" value={newOrderForm.leaseMonths} onChange={(e) => setNewOrderForm((form) => ({ ...form, leaseMonths: e.target.value }))} /></div>
+                  <div className="sheet-block"><p className="sheet-label">付款方式</p><select className="area-input" value={newOrderForm.paymentMethod} onChange={(e) => setNewOrderForm((form) => ({ ...form, paymentMethod: e.target.value }))}>{["月付", "季付", "半年付", "年付"].map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+                  <div className="sheet-block"><p className="sheet-label">基础养护</p><div className="empty-card"><p>默认包含基础养护</p><span>员工端可按现场情况校正商品、区域和数量。</span></div></div>
+                </div>
+              )}
+              {newOrderForm.serviceType === "零售" && (
+                <div className="sheet-block">
+                  <p className="sheet-label">后续养护意向</p>
+                  <div className="option-grid payment-grid">
+                    <button className={newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: true }))}>需要</button>
+                    <button className={!newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: false }))}>暂不需要</button>
+                  </div>
+                </div>
+              )}
+              {newOrderForm.serviceType === "养护" && (
+                <div className="merchant-plan-draft-grid">
+                  <div className="sheet-block"><p className="sheet-label">套餐</p><select className="area-input" value={newOrderForm.maintenancePackage} onChange={(e) => { const pack = getMaintenancePackage(e.target.value); setNewOrderForm((form) => ({ ...form, maintenancePackage: pack.name, maintenanceCycle: pack.cycle, maintenanceFrequency: pack.frequency, maintenanceContent: pack.content })); }}>{MAINTENANCE_PACKAGES.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select></div>
+                  <div className="sheet-block"><p className="sheet-label">周期</p><input className="area-input" value={newOrderForm.maintenanceCycle} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceCycle: e.target.value }))} /></div>
+                  <div className="sheet-block"><p className="sheet-label">频次</p><input className="area-input" value={newOrderForm.maintenanceFrequency} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceFrequency: e.target.value }))} /></div>
+                  <div className="sheet-block"><p className="sheet-label">最终报价</p><input className="area-input" type="number" value={newOrderForm.maintenanceFinalPrice} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceFinalPrice: e.target.value }))} /></div>
+                  <div className="sheet-block wide"><p className="sheet-label">服务内容</p><input className="area-input" value={newOrderForm.maintenanceContent} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceContent: e.target.value }))} /></div>
+                  <div className="sheet-block wide"><p className="sheet-label">内部报价备注</p><input className="area-input" value={newOrderForm.maintenanceInternalNote} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceInternalNote: e.target.value }))} placeholder="仅商户内部可见" /></div>
+                </div>
+              )}
+            </section>
 
             <div className="empty-card" style={{ marginTop: 16 }}>
               <p>创建后会直接进入待接单</p>
@@ -3989,8 +5204,68 @@ ${areaText || "暂无区域"}
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
+            <p className="sheet-label">需求类型</p>
+            <div className="option-grid">
+              {["租赁", "零售", "养护"].map((serviceType) => (
+                <button key={serviceType} className={newOrderForm.serviceType === serviceType ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, serviceType }))}>
+                  {serviceType}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="sheet-block" style={compactBlockStyle}>
+            <p className="sheet-label">需求标签</p>
+            <div className="merchant-tag-picker">
+              {["需比价", "租过绿植", "室内", "室外", "办公室", "商业空间", "急单", "重点客户"].map((tag) => {
+                const selected = newOrderForm.tagsText.split(",").map((item) => item.trim()).includes(tag);
+                return <button key={tag} className={selected ? "selected" : ""} onClick={() => toggleNewOrderTag(tag)}>{tag}</button>;
+              })}
+            </div>
+          </div>
+
+          <div className="sheet-block" style={compactBlockStyle}>
+            <p className="sheet-label">分配员工</p>
+            <select className={inputClass} value={newOrderForm.assignedStaffId} onChange={(e) => setNewOrderForm((form) => ({ ...form, assignedStaffId: e.target.value }))}>
+              {activeStaffMembers.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.name} · {member.staffNo}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="sheet-block" style={compactBlockStyle}>
+            <p className="sheet-label">客户沟通群二维码</p>
+            {/* 正式版接 Supabase Storage / 腾讯云 COS / 阿里云 OSS 后，应将二维码远程 URL 写入 communicationQrUrl。 */}
+            <ImageUploader
+              value={newOrderForm.communicationQrUrl}
+              label="上传二维码"
+              helper="员工端会显示“查看二维码”，便于扫码进入客户沟通群。"
+              onChange={(nextImage) => setNewOrderForm((form) => ({ ...form, communicationQrUrl: nextImage }))}
+            />
+            <input
+              className={inputClass}
+              {...inputFocusProps}
+              value={newOrderForm.communicationQrUrl}
+              onChange={(e) => setNewOrderForm((form) => ({ ...form, communicationQrUrl: e.target.value }))}
+              placeholder="也可以粘贴二维码图片地址"
+            />
+          </div>
+
+          <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">项目面积</p>
             <input className={inputClass} {...inputFocusProps} value={newOrderForm.areaSize} onChange={(e) => setNewOrderForm((form) => ({ ...form, areaSize: e.target.value }))} placeholder="例如：260㎡" />
+          </div>
+
+          <div className="sheet-block" style={compactBlockStyle}>
+            <p className="sheet-label">预算 / 预估报价</p>
+            <input className={inputClass} inputMode="numeric" {...inputFocusProps} value={newOrderForm.budget} onChange={(e) => setNewOrderForm((form) => ({ ...form, budget: e.target.value }))} placeholder="例如：2880" />
+          </div>
+
+          <div className="sheet-block" style={compactBlockStyle}>
+            <p className="sheet-label">预计植物数量 / 区域说明</p>
+            <input className={inputClass} {...inputFocusProps} value={newOrderForm.plannedPlantCount} onChange={(e) => setNewOrderForm((form) => ({ ...form, plannedPlantCount: e.target.value }))} placeholder="例如：20 盆 / 前台和会议室" />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
@@ -4012,6 +5287,43 @@ ${areaText || "暂无区域"}
             <p className="sheet-label">标签，用英文逗号分隔</p>
             <input className={inputClass} {...inputFocusProps} value={newOrderForm.tagsText} onChange={(e) => setNewOrderForm((form) => ({ ...form, tagsText: e.target.value }))} placeholder="例如：办公室,长期租赁" />
           </div>
+
+          <div className="sheet-block" style={compactBlockStyle}>
+            <p className="sheet-label">商户备注</p>
+            <input className={inputClass} {...inputFocusProps} value={newOrderForm.merchantNote} onChange={(e) => setNewOrderForm((form) => ({ ...form, merchantNote: e.target.value }))} placeholder="给员工的现场校正提示" />
+          </div>
+
+          {newOrderForm.serviceType === "租赁" && (
+            <div className="sheet-block" style={compactBlockStyle}>
+              <p className="sheet-label">租赁方案草稿</p>
+              <div className="option-grid">
+                {[6, 12, 24, 36].map((month) => (
+                  <button key={month} className={Number(newOrderForm.leaseMonths || 12) === month ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, leaseMonths: String(month) }))}>{month} 月</button>
+                ))}
+              </div>
+              <div className="empty-card"><p>默认包含基础养护</p><span>员工接单后可按现场情况校正区域和商品。</span></div>
+            </div>
+          )}
+
+          {newOrderForm.serviceType === "零售" && (
+            <div className="sheet-block" style={compactBlockStyle}>
+              <p className="sheet-label">后续养护意向</p>
+              <div className="option-grid">
+                <button className={newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: true }))}>需要</button>
+                <button className={!newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: false }))}>暂不需要</button>
+              </div>
+            </div>
+          )}
+
+          {newOrderForm.serviceType === "养护" && (
+            <div className="sheet-block" style={compactBlockStyle}>
+              <p className="sheet-label">养护套餐</p>
+              <select className={inputClass} value={newOrderForm.maintenancePackage} onChange={(e) => { const pack = getMaintenancePackage(e.target.value); setNewOrderForm((form) => ({ ...form, maintenancePackage: pack.name, maintenanceCycle: pack.cycle, maintenanceFrequency: pack.frequency, maintenanceContent: pack.content })); }}>
+                {MAINTENANCE_PACKAGES.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
+              </select>
+              <input className={inputClass} inputMode="numeric" {...inputFocusProps} value={newOrderForm.maintenanceFinalPrice} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceFinalPrice: e.target.value }))} placeholder="最终报价" />
+            </div>
+          )}
 
           {isCreateOrderInputFocused && (
             <div className="empty-card">
@@ -4045,268 +5357,78 @@ ${areaText || "暂无区域"}
     );
   }
 
+  if (authLoading) {
+    return (
+      <main className="auth-page-shell">
+        <section className="auth-panel">
+          <div className="auth-brand"><span>G</span><div><p>GardenOS Account</p><h1>正在检查登录状态</h1></div></div>
+        </section>
+      </main>
+    );
+  }
+
+  if (!session) return <AuthPage onSignedOut={handleSignOut} />;
+
   if (customerPlanId) return renderCustomerPlanView();
   if (currentPage === "completeUpload" && currentOrder) return renderCompleteUploadPage();
   if (currentPage === "plan" && currentOrder && currentPlan) return renderPlanPage();
   if (activeRole === "merchant") return renderMerchantPage();
 
  return (
-  <div className="staff-app-shell">
-    <header className="staff-app-topbar">
-  <button
-    className="staff-avatar-entry"
-    onClick={() => setStaffAppTab("我的")}
-    aria-label="进入我的页面"
-  >
-    <span>G</span>
-  </button>
+    <>
+      <StaffMobile
+        staffAppTab={staffAppTab}
+        setStaffAppTab={setStaffAppTab}
+        switchRole={switchRole}
+        orders={orders}
+        staffOrders={staffScopedOrders}
+        refreshOrdersFromCloud={refreshOrdersFromCloud}
+        getPlanStats={getPlanStats}
+        money={money}
+        activeStaffTab={activeStaffTab}
+        setActiveStaffTab={setActiveStaffTab}
+        filteredStaffOrders={filteredStaffOrders}
+        CoreOrderCard={CoreOrderCard}
+        setCurrentOrderId={setCurrentOrderId}
+        setCurrentPage={setCurrentPage}
+        syncState={syncState}
+        autoSyncState={autoSyncState}
+        syncMessage={syncMessage}
+        uploadLocalOrdersToCloud={uploadLocalOrdersToCloud}
+        selectedOrder={selectedOrder}
+        setSelectedOrder={setSelectedOrder}
+        planType={planType}
+        setPlanType={setPlanType}
+        acceptOrderAndCreatePlan={acceptOrderAndCreatePlan}
+        staffAvatar={staffAvatar}
+        setStaffAvatar={setStaffAvatar}
+        currentStaff={currentStaff}
+        currentOrganization={currentOrganization}
+        roleLabels={ROLE_LABELS}
+        accountStatusLabels={ACCOUNT_STATUS_LABELS}
+        authUserEmail={authUserEmail}
+        canOpenMerchant={canUseMerchant}
+        onSignOut={handleSignOut}
+      />
 
-  <strong>GardenOS</strong>
-
-  <button className="staff-mini-button merchant-switch" onClick={() => switchRole("merchant")}>
-    商户
-  </button>
-</header>
-
-    <main className="staff-app-main">
-{staffAppTab === "首页" && (
-          <StaffHome
-            orders={orders}
-            refreshOrdersFromCloud={refreshOrdersFromCloud}
-            getPlanStats={getPlanStats}
-            money={money}
-            setStaffAppTab={setStaffAppTab}
-            setActiveStaffTab={setActiveStaffTab}
-            autoSyncState={autoSyncState}
-            syncMessage={syncMessage}
-          />
-        )}
-
-      {staffAppTab === "任务" && (
-        <>
-          <section className="staff-compact-header">
-            <div>
-              <p className="staff-kicker">TASK FLOW</p>
-              <h1>任务列表</h1>
-              <span>{autoSyncState}</span>
-            </div>
-            <button onClick={refreshOrdersFromCloud}>刷新</button>
-          </section>
-
-          <section className="staff-status-tabs">
-            {STAFF_TABS.map((tab) => (
-              <button
-                key={tab}
-                className={activeStaffTab === tab ? "active" : ""}
-                onClick={() => setActiveStaffTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
-          </section>
-
-          <section className="staff-task-list">
-            {filteredStaffOrders.length === 0 ? (
-              <div className="staff-empty-card">
-                <strong>暂无{activeStaffTab}任务</strong>
-                <span>订单变化会自动同步，也可以点击刷新。</span>
-              </div>
-            ) : (
-              filteredStaffOrders.map((order) => (
-                <CoreOrderCard key={order.id} order={order} mode="staff" />
-              ))
-            )}
-          </section>
-        </>
-      )}
-
-      {staffAppTab === "上报" && (
-        <>
-          <section className="staff-compact-header">
-            <div>
-              <p className="staff-kicker">FIELD REPORT</p>
-              <h1>现场上报</h1>
-              <span>用于完成照片、现场备注、异常反馈</span>
-            </div>
-          </section>
-
-          <section className="staff-report-card">
-            <h2>快捷上报</h2>
-            <p>当前版本先从执行中订单进入完成上传；后续这里会升级为拍照、定位、异常反馈入口。</p>
-
-            {orders.filter((order) => order.status === "执行中").length === 0 ? (
-              <div className="staff-empty-mini">暂无执行中订单</div>
-            ) : (
-              orders
-                .filter((order) => order.status === "执行中")
-                .slice(0, 3)
-                .map((order) => (
-                  <button
-                    key={order.id}
-                    className="staff-report-row"
-                    onClick={() => {
-                      setCurrentOrderId(order.id);
-                      setCurrentPage("completeUpload");
-                    }}
-                  >
-                    <span>{order.customerName}</span>
-                    <strong>去完成上报</strong>
-                  </button>
-                ))
-            )}
-          </section>
-        </>
-      )}
-
-     {staffAppTab === "我的" && (
-  <>
-    <section className="staff-profile-hero">
-      <p className="staff-kicker">PARTNER PROFILE</p>
-      <h1>我的服务身份</h1>
-      <span>账号、组织、接单权限与同步状态</span>
-    </section>
-
-    <section className="staff-profile-card refined">
-      <div className="staff-avatar large">G</div>
-      <div>
-        <h2>园林服务人员</h2>
-        <p>当前为测试身份，后续接入邮箱 / 手机号登录。</p>
-        <b className="staff-login-pill">未登录 · 测试模式</b>
-      </div>
-    </section>
-
-    <section className="staff-visible-info">
-      <div>
-        <span>所属组织</span>
-        <strong>南通总部 / 城市合作方</strong>
-        <em>由商户端或总部后台分配，员工端仅展示。</em>
-      </div>
-
-      <div>
-        <span>服务区域</span>
-        <strong>默认全部测试订单可见</strong>
-        <em>正式版可绑定城市、区域或合作公司。</em>
-      </div>
-
-      <div>
-        <span>当前接单模式</span>
-        <strong>公共抢单 + 指定派单预留</strong>
-        <em>未来可按员工、手机号、邮箱、合作方定向派单。</em>
-      </div>
-    </section>
-
-    <section className="staff-setting-accordion">
-      <details>
-        <summary>
-          <span>账号状态</span>
-          <strong>未登录</strong>
-        </summary>
-        <div className="staff-detail-content">
-          <p>后续这里接入邮箱 / 手机号登录，用于确认员工、加盟商或城市合作方身份。</p>
-          <button>登录 / 绑定账号</button>
-          <button>修改密码</button>
-        </div>
-      </details>
-
-      <details>
-        <summary>
-          <span>接单权限</span>
-          <strong>查看规则</strong>
-        </summary>
-        <div className="staff-detail-content">
-          <p>公共抢单：符合条件的人都可见，谁先接谁做。</p>
-          <p>指定派单：商户端指定员工、手机号、邮箱或合作方后，只有对应人员可见。</p>
-        </div>
-      </details>
-
-      <details>
-        <summary>
-          <span>通知设置</span>
-          <strong>预留</strong>
-        </summary>
-        <div className="staff-detail-content">
-          <p>后续可接入新派单提醒、方案打回提醒、客户确认提醒、归档提醒。</p>
-        </div>
-      </details>
-
-      <details>
-        <summary>
-          <span>数据同步</span>
-          <strong>{syncState}</strong>
-        </summary>
-        <div className="staff-detail-content">
-          <p>自动同步：{autoSyncState}</p>
-          <p>{syncMessage}</p>
-          <div className="staff-detail-actions">
-            <button onClick={refreshOrdersFromCloud}>刷新云端数据</button>
-            <button onClick={uploadLocalOrdersToCloud}>上传本地数据</button>
-          </div>
-        </div>
-      </details>
-    </section>
-  </>
-)}
-</main>
-   
- <nav className="staff-bottom-tab">
-  {[
-    { key: "首页", Icon: GardenIcons.StaffHome, label: "首页" },
-    { key: "任务", Icon: GardenIcons.StaffTask, label: "任务" },
-    { key: "上报", Icon: GardenIcons.StaffReport, label: "上报" },
-    { key: "我的", Icon: GardenIcons.StaffMine, label: "我的" },
-  ].map((item) => {
-    const Icon = item.Icon;
-
-    return (
-      <button
-        key={item.key}
-        className={`staff-bottom-item ${staffAppTab === item.key ? "active" : ""}`}
-        onClick={() => setStaffAppTab(item.key)}
-      >
-        <span className="staff-tab-icon">
-          <Icon />
-        </span>
-        <span>{item.label}</span>
-      </button>
-    );
-  })}
-</nav>
-
-      {selectedOrder && (
-        <div className="sheet-mask" onClick={() => setSelectedOrder(null)}>
-          <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
-            <div className="sheet-handle" />
-
+      {qrPreviewOrder && (
+        <div className="sheet-mask staff-qr-mask" onClick={() => setQrPreviewOrder(null)}>
+          <section className="staff-qr-dialog" onClick={(event) => event.stopPropagation()}>
             <div className="sheet-header">
-              <div><p className="eyebrow">Confirm Order</p><h2>确认接单</h2></div>
-              <button className="close-button" onClick={() => setSelectedOrder(null)}>×</button>
-            </div>
-
-            <div className="sheet-block">
-              <p className="sheet-label">选择方案类型</p>
-              <div className="plan-type-grid">
-                <button className={planType === "租赁方案" ? "selected" : ""} onClick={() => setPlanType("租赁方案")}>租赁方案</button>
-                <button className={planType === "零售方案" ? "selected" : ""} onClick={() => setPlanType("零售方案")}>零售方案</button>
+              <div>
+                <p className="eyebrow">Communication</p>
+                <h2>客户沟通群</h2>
               </div>
+              <button className="close-button" onClick={() => setQrPreviewOrder(null)}>×</button>
             </div>
-
-            <div className="sheet-block">
-              <p className="sheet-label">客户信息</p>
-              <div className="confirm-row"><span>项目 / 客户</span><strong>{selectedOrder.customerName}</strong></div>
-              <div className="confirm-row"><span>联系人</span><strong>{selectedOrder.contactName || "-"}</strong></div>
-              <div className="confirm-row"><span>电话</span><strong>{selectedOrder.phone || "-"}</strong></div>
-              <div className="confirm-row"><span>项目面积</span><strong>{selectedOrder.areaSize}</strong></div>
-              <div className="confirm-row"><span>进场时间</span><strong>{selectedOrder.expectedDate}</strong></div>
-              <div className="confirm-row address"><span>客户地址</span><strong>{selectedOrder.address}</strong></div>
+            <p className="staff-qr-copy">扫码进入客户沟通群，便于沟通方案与进场安排。</p>
+            <div className="staff-qr-image">
+              <img src={qrPreviewOrder.communicationQrUrl} alt={`${qrPreviewOrder.customerName || "客户"}沟通群二维码`} />
             </div>
-
-            <button className="submit-sheet-button" onClick={acceptOrderAndCreatePlan}>
-              确认接单并创建{planType}
-            </button>
           </section>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
