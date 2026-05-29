@@ -62,7 +62,7 @@ export function StaffMobile({
 
       <div className="staff-topbar-title">
         <strong>GardenOS</strong>
-        <span>Field Console</span>
+        <span>FIELD CONSOLE</span>
       </div>
 
       <button className="staff-mini-button merchant-switch" onClick={() => switchRole("merchant")}>
@@ -89,7 +89,7 @@ export function StaffMobile({
         <>
           <section className="staff-compact-header">
             <div>
-              <p className="staff-kicker">TASK FLOW</p>
+              <p className="staff-kicker">任务流转</p>
               <h1>任务列表</h1>
               <span>{autoSyncState}</span>
             </div>
@@ -130,7 +130,7 @@ export function StaffMobile({
         <>
           <section className="staff-compact-header">
             <div>
-              <p className="staff-kicker">FIELD REPORT</p>
+              <p className="staff-kicker">现场上报</p>
               <h1>现场上报</h1>
               <span>用于完成照片、现场备注、异常反馈</span>
             </div>
@@ -166,7 +166,7 @@ export function StaffMobile({
      {staffAppTab === "我的" && (
   <>
     <section className="staff-profile-hero">
-      <p className="staff-kicker">PARTNER PROFILE</p>
+      <p className="staff-kicker">个人中心</p>
       <h1>我的</h1>
       <span>个人资料、账号状态与服务设置</span>
     </section>
@@ -184,7 +184,7 @@ export function StaffMobile({
 
     <section className="staff-profile-card refined staff-avatar-upload-card">
       <div>
-        <p className="staff-kicker">PROFILE PHOTO</p>
+        <p className="staff-kicker">头像资料</p>
         <h2>{staffAvatar ? "更换头像" : "上传头像"}</h2>
         <p>用于首页头像和个人资料展示。</p>
       </div>
@@ -232,6 +232,19 @@ export function StaffMobile({
     <section className="staff-setting-accordion staff-setting-cards">
       <details>
         <summary>
+          <span>账号状态</span>
+          <strong>{accountStatusLabels[currentStaff?.status] || "正常"}</strong>
+        </summary>
+        <div className="staff-detail-content">
+          <p>{authUserEmail || currentStaff?.email || "暂无登录邮箱"}</p>
+          <div className="staff-detail-actions">
+            <button onClick={onSignOut}>退出登录</button>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>
           <span>接单权限</span>
           <strong>正常</strong>
         </summary>
@@ -265,18 +278,6 @@ export function StaffMobile({
         </div>
       </details>
 
-      <details>
-        <summary>
-          <span>账号</span>
-          <strong>{accountStatusLabels[currentStaff?.status] || "正常"}</strong>
-        </summary>
-        <div className="staff-detail-content">
-          <p>{authUserEmail || currentStaff?.email || "暂无登录邮箱"}</p>
-          <div className="staff-detail-actions">
-            <button onClick={onSignOut}>退出登录</button>
-          </div>
-        </div>
-      </details>
     </section>
   </>
 )}
@@ -307,7 +308,7 @@ export function StaffMobile({
             <div className="sheet-handle" />
 
             <div className="sheet-header">
-              <div><p className="eyebrow">Confirm Order</p><h2>确认接单</h2></div>
+              <div><p className="eyebrow">确认接单</p><h2>确认接单</h2></div>
               <button className="close-button" onClick={() => setSelectedOrder(null)} aria-label="关闭">
                 <GardenIcons.Close size={18} />
               </button>
