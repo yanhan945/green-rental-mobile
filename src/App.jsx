@@ -215,11 +215,11 @@ function resolveAuthAccountByEmail(email) {
   const normalizedEmail = String(email || "").trim().toLowerCase();
   if (!normalizedEmail) return null;
 
-  // 本地开发阶段临时映射；正式版应从 profiles 表读取 role、organizationId、staffNo、name。
+  // Local demo account mapping. Production role routing should come from the account service.
   if (normalizedEmail === "1464155122@qq.com") {
     return {
       id: "user-dev-owner-1464155122",
-      name: "测试商户账号",
+      name: "商户管理员",
       email: normalizedEmail,
       role: "owner",
       status: "active",
@@ -239,7 +239,7 @@ function resolveAuthAccountByEmail(email) {
     };
   }
 
-  // 正式版应从 profiles 表读取 role、organizationId、staffNo、name，再决定进入员工端或商户端。
+  // Account service should decide whether the user enters the staff or merchant workspace.
   return {
     id: "auth-unknown",
     name: normalizedEmail,
@@ -260,9 +260,16 @@ function cloudHeaders(extra = {}) {
   };
 }
 
-function ensureOrderDefaults(order) {
+function ensureOrderDefaults(order = {}) {
   const assignedStaff = getStaffMemberById(order.assignedStaffId) || getDefaultAssignedStaff();
   return {
+    id: order.id || Date.now(),
+    customerName: order.customerName || "未命名客户",
+    areaSize: order.areaSize || "暂无内容",
+    expectedDate: order.expectedDate || "待确认",
+    address: order.address || "",
+    description: order.description || "",
+    status: order.status || "待接单",
     deliveryStatus: "未出发",
     executionStatus: "待联系",
     customerConfirmStatus: "待确认",
@@ -292,7 +299,11 @@ function ensureOrderDefaults(order) {
     fieldNote: order.fieldNote || "",
     internalNote: order.internalNote || "",
     revisionReason: order.revisionReason || "",
+    tags: Array.isArray(order.tags) ? order.tags : [],
+    products: Array.isArray(order.products) ? order.products : [],
+    photos: Array.isArray(order.photos) ? order.photos : [],
     timeline: Array.isArray(order.timeline) ? order.timeline : [],
+    completePhotos: order.completePhotos || null,
     plan: order.plan || null,
     ...order,
   };
@@ -573,7 +584,10 @@ async function upsertOrdersToCloud(orders) {
 }
 
 function money(value) {
-  return Number(value || 0).toFixed(1);
+  return Number(value || 0).toLocaleString("zh-CN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function safeAreas(plan) {
@@ -586,6 +600,10 @@ function safeItems(area) {
 
 function safeTimeline(order) {
   return Array.isArray(order?.timeline) ? order.timeline : [];
+}
+
+function safePhotos(values) {
+  return Array.isArray(values) ? values.filter(Boolean) : [];
 }
 
 function getAreaProductCount(area) {
@@ -752,6 +770,12 @@ function getMerchantStatusClass(status) {
 
 function App() {
   const merchantListRef = useRef(null);
+  const activeViewRef = useRef({
+    currentPage: "orders",
+    activeRole: "staff",
+    merchantViewingOrderId: null,
+    selectedOrderDetailId: null,
+  });
 
   const [activeRole, setActiveRole] = useState("staff");
   const [session, setSession] = useState(null);
@@ -762,8 +786,8 @@ function App() {
   const [merchantTab, setMerchantTab] = useState("工作台");
   const [merchantStatusFilter, setMerchantStatusFilter] = useState("全部");
   const [merchantSearchText, setMerchantSearchText] = useState("");
-  const [syncMessage, setSyncMessage] = useState("当前已连接 Supabase。点击刷新订单即可读取云端数据。");
-  const [syncState, setSyncState] = useState("云端待刷新");
+  const [syncMessage, setSyncMessage] = useState("当前数据通道已连接。点击刷新即可读取最新订单。");
+  const [syncState, setSyncState] = useState("待刷新");
   const [autoSyncState, setAutoSyncState] = useState("自动同步准备中");
 
   const [orders, setOrders] = useState(() => loadOrdersFromLocalStore());
@@ -1016,13 +1040,22 @@ function App() {
   }, [currentStaffId]);
 
   useEffect(() => {
-    if (currentPage === "plan" && !currentOrder) setCurrentPage("orders");
+    activeViewRef.current = {
+      currentPage,
+      activeRole,
+      merchantViewingOrderId: merchantViewingOrder?.id || null,
+      selectedOrderDetailId: selectedOrderDetail?.id || null,
+    };
+  }, [currentPage, activeRole, merchantViewingOrder?.id, selectedOrderDetail?.id]);
+
+  useEffect(() => {
+    if (["plan", "completeUpload", "archiveDetail"].includes(currentPage) && !currentOrder) setCurrentPage("orders");
     if (showProductSheet && !currentArea) setShowProductSheet(false);
   }, [currentPage, currentOrder, showProductSheet, currentArea]);
 
     useEffect(() => {
     if (activeRole !== "staff") return;
-    if (!["plan", "completeUpload"].includes(currentPage)) return;
+    if (!["plan", "completeUpload", "archiveDetail"].includes(currentPage)) return;
 
     const targetOrder =
       currentOrder || orders.find((order) => order.id === currentOrderId) || null;
@@ -1141,7 +1174,7 @@ function App() {
 
   async function refreshOrdersFromCloud() {
     setSyncState("同步中");
-    setSyncMessage("正在从 Supabase 读取订单...");
+    setSyncMessage("正在读取最新订单...");
 
     try {
       const [cloudOrders, cloudProducts] = await Promise.all([
@@ -1154,8 +1187,8 @@ function App() {
       }
 
       if (cloudOrders.length === 0) {
-        setSyncState("云端为空");
-        setSyncMessage("云端暂无订单。可以先在商户端创建订单，或点击“上传本地到云端”。");
+        setSyncState("暂无数据");
+        setSyncMessage("暂无订单。可以先在商户端创建订单，或点击“同步当前数据”。");
         return;
       }
 
@@ -1177,26 +1210,35 @@ function App() {
         fetchProductsFromCloud().catch(() => []),
       ]);
 
+      const viewState = activeViewRef.current;
+      const isReadingDetail =
+        ["plan", "completeUpload", "archiveDetail"].includes(viewState.currentPage) ||
+        Boolean(viewState.merchantViewingOrderId || viewState.selectedOrderDetailId);
+
       if (cloudOrders.length > 0) {
         const normalizedOrders = normalizeOrders(cloudOrders);
-        setOrders((prevOrders) => {
-          const prevText = JSON.stringify(prevOrders);
-          const nextText = JSON.stringify(normalizedOrders);
-          return prevText === nextText ? prevOrders : normalizedOrders;
-        });
-        setMerchantCustomers((prev) => mergeCustomers(prev, normalizedOrders));
+        if (!isReadingDetail) {
+          setOrders((prevOrders) => {
+            const prevText = JSON.stringify(prevOrders);
+            const nextText = JSON.stringify(normalizedOrders);
+            return prevText === nextText ? prevOrders : normalizedOrders;
+          });
+          setMerchantCustomers((prev) => mergeCustomers(prev, normalizedOrders));
+        }
       }
 
       if (cloudProducts.length > 0) {
         const normalizedProducts = normalizeProducts(cloudProducts);
-        setMerchantProducts((prevProducts) => {
-          const prevText = JSON.stringify(prevProducts);
-          const nextText = JSON.stringify(normalizedProducts);
-          return prevText === nextText ? prevProducts : normalizedProducts;
-        });
+        if (!isReadingDetail) {
+          setMerchantProducts((prevProducts) => {
+            const prevText = JSON.stringify(prevProducts);
+            const nextText = JSON.stringify(normalizedProducts);
+            return prevText === nextText ? prevProducts : normalizedProducts;
+          });
+        }
       }
 
-      setAutoSyncState(`${reason}：${nowText().slice(11)}`);
+      setAutoSyncState(`${reason}${isReadingDetail ? "（详情浏览中未打断）" : ""}：${nowText().slice(11)}`);
     } catch (error) {
       console.error("自动同步失败：", error);
       setAutoSyncState("自动同步失败，手动刷新兜底");
@@ -1205,7 +1247,7 @@ function App() {
 
   async function uploadLocalOrdersToCloud() {
     setSyncState("同步中");
-    setSyncMessage("正在把当前本地订单上传到 Supabase...");
+    setSyncMessage("正在同步当前订单...");
 
     try {
       await upsertOrdersToCloud(orders);
@@ -1305,7 +1347,6 @@ function App() {
     setSelectedOrderDetail(null);
     setMerchantTab("工作台");
     setMerchantStatusFilter(order.status || "全部");
-    window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   }
 
   function backToMerchantHome(message) {
@@ -1313,12 +1354,11 @@ function App() {
     setMerchantViewingOrder(null);
     setMerchantTab("工作台");
     setMerchantStatusFilter("全部");
-    window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
     if (message) setSyncMessage(message);
   }
 
   function switchRole(role) {
-    // 开发测试阶段允许前端视图自由切换；正式版应由 profiles.role 决定入口并关闭此捷径。
+    // Demo mode allows switching between staff and merchant workspaces.
     setActiveRole(role);
     setCurrentPage("orders");
     setCurrentOrderId(null);
@@ -2041,9 +2081,9 @@ function App() {
       name,
       category: newProductForm.category || "室内绿植",
       subCategory: newProductForm.subCategory || "大型植物",
-      description: newProductForm.description.trim() || "暂无描述，后续可在商品库补充。",
+      description: newProductForm.description.trim() || "暂无描述，可在商品库补充。",
       pricePerDay: price,
-      // 正式版接 Supabase Storage / 腾讯云 COS / 阿里云 OSS 后，这里应写入上传后的远程图片 URL。
+      // Image upload integration can replace preview data with a remote URL.
       imageUrl: newProductForm.imageUrl.trim(),
       image: newProductForm.image || "🪴",
       stock: newProductForm.stock || "充足",
@@ -2232,7 +2272,7 @@ function App() {
 最终报价：¥${money(stats.finalRent)}`
       : isRetailPlan
         ? `商品金额：¥${money(stats.dailyRent)}
-后续养护：${plan?.retailNeedsMaintenance ? `需要，${plan?.retailMaintenanceNote || "待确认"}` : "暂不需要"}
+售后养护：${plan?.retailNeedsMaintenance ? `需要，${plan?.retailMaintenanceNote || "待确认"}` : "当前不需要"}
 最终报价：¥${money(stats.finalRent)}`
       : `日租金：¥${money(stats.dailyRent)}
 租期：${plan?.leaseMonths || 12}月
@@ -2265,7 +2305,7 @@ ${rentalText}`;
         <div className="plan-summary-top">
           <div>
             <p>数据来源</p>
-            <strong>Supabase 云端</strong>
+            <strong>业务数据</strong>
           </div>
           <div>
             <p>同步状态</p>
@@ -2281,7 +2321,7 @@ ${rentalText}`;
           <>
             <div className="empty-card">
               <p>云同步已开启</p>
-              <span>{syncMessage}｜页面打开时会每 5 秒自动同步订单和商品，手动刷新仍然保留作兜底。</span>
+              <span>{syncMessage}｜页面打开后会自动同步订单和商品，也可以手动刷新。</span>
             </div>
 
             <div className="actions">
@@ -2289,7 +2329,7 @@ ${rentalText}`;
                 刷新订单
               </button>
               <button className="ghost-button" onClick={uploadLocalOrdersToCloud}>
-                上传本地到云端
+                同步当前数据
               </button>
             </div>
           </>
@@ -2311,6 +2351,7 @@ ${rentalText}`;
   const isPending = order.status === "待接单";
   const canBuild = ["配置中", "待商户确认"].includes(order.status);
   const canExecute = ["方案已确认", "执行中"].includes(order.status);
+  const isServiceRecord = ["待商户归档", "已完成"].includes(order.status);
   const orderSignals = getOrderSignalTags(order);
 
   const statusClass = isPending
@@ -2336,7 +2377,7 @@ ${rentalText}`;
           <p>{order.source || "商户派单"} · {order.areaSize || "面积待确认"}</p>
         </div>
         {order.plan && (
-          <strong className="staff-price">¥ {money(stats.finalRent)}</strong>
+          <strong className="staff-price">¥{money(stats.finalRent)}</strong>
         )}
       </div>
 
@@ -2395,6 +2436,45 @@ ${rentalText}`;
               确认接单
             </button>
           </>
+        ) : isServiceRecord ? (
+          <>
+            <button className="staff-ghost-action" onClick={() => openRouteNavigation(order.address)}>
+              导航
+            </button>
+            <button
+              className="staff-primary-action"
+              onClick={() => {
+                setCurrentOrderId(order.id);
+                setCurrentPage("archiveDetail");
+              }}
+            >
+              服务记录 / 归档详情
+            </button>
+          </>
+        ) : canExecute ? (
+          <>
+            <button className="staff-ghost-action" onClick={() => openRouteNavigation(order.address)}>
+              导航
+            </button>
+            <button className="staff-ghost-action" onClick={() => openPlanForOrder(order)}>
+              查看方案
+            </button>
+            {order.status === "方案已确认" ? (
+              <button className="staff-primary-action" onClick={() => startExecution(order.id)}>
+                记录执行情况
+              </button>
+            ) : (
+              <button
+                className="staff-primary-action"
+                onClick={() => {
+                  setCurrentOrderId(order.id);
+                  setCurrentPage("completeUpload");
+                }}
+              >
+                上传现场照片
+              </button>
+            )}
+          </>
         ) : (
           <>
             <button className="staff-ghost-action" onClick={() => openRouteNavigation(order.address)}>
@@ -2408,15 +2488,10 @@ ${rentalText}`;
             <button
               className="staff-primary-action"
               onClick={() => {
-                if (canExecute && order.status === "执行中") {
-                  setCurrentOrderId(order.id);
-                  setCurrentPage("completeUpload");
-                  return;
-                }
                 openPlanForOrder(order);
               }}
             >
-              {order.status === "执行中" ? "完成任务" : canBuild ? (order.plan ? "查看 / 修改方案" : "现场创建方案") : "查看详情"}
+              {canBuild ? (order.plan ? "查看 / 修改方案" : "现场创建方案") : "查看详情"}
             </button>
           </>
         )}
@@ -2456,7 +2531,7 @@ ${rentalText}`;
         {order.plan && (
           <div className="info-row">
             <span>报价</span>
-            <strong>¥ {money(stats.finalRent)}</strong>
+            <strong>¥{money(stats.finalRent)}</strong>
           </div>
         )}
 
@@ -2721,7 +2796,7 @@ ${rentalText}`;
                 className="area-input"
                 value={order.internalNote || ""}
                 onChange={(e) => updateOrder(order.id, { internalNote: e.target.value }, "内部备注已同步")}
-                placeholder="例如：后续可推荐季度养护套餐"
+                placeholder="例如：可推荐季度养护套餐"
               />
             </div>
           </>
@@ -2744,7 +2819,7 @@ ${rentalText}`;
   function updateCompletePhoto(group, index, value) {
     setCompleteForm((form) => ({
       ...form,
-      [group]: form[group].map((item, i) => (i === index ? value : item)),
+      [group]: (Array.isArray(form[group]) ? form[group] : ["", "", ""]).map((item, i) => (i === index ? value : item)),
     }));
   }
 
@@ -2878,6 +2953,67 @@ ${rentalText}`;
     );
   }
 
+  function renderArchiveDetailPage() {
+    if (!currentOrder) {
+      return (
+        <div className="app">
+          <section className="empty-card">
+            <p>暂无内容</p>
+            <span>没有找到对应订单，请返回任务列表重新进入。</span>
+          </section>
+        </div>
+      );
+    }
+
+    const orderPlan = currentOrder.plan || null;
+    const stats = getPlanStats(orderPlan);
+    const completePhotos = currentOrder.completePhotos || {};
+    const scenePhotos = safePhotos(completePhotos.scenePhotos);
+    const plantPhotos = safePhotos(completePhotos.plantPhotos);
+
+    return (
+      <div className="app">
+        <header className="plan-header">
+          <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
+          <div>
+            <p className="eyebrow">Service Record</p>
+            <h1>服务记录 / 归档详情</h1>
+          </div>
+        </header>
+
+        <section className="plan-summary-card">
+          <div className="plan-summary-top">
+            <div><p>客户项目</p><strong>{currentOrder.customerName || "暂无内容"}</strong></div>
+            <div><p>当前状态</p><strong>{currentOrder.status || "暂无内容"}</strong></div>
+          </div>
+          <div className="plan-info-line"><span>方案类型</span><strong>{orderPlan?.planType || currentOrder.planType || "暂无内容"}</strong></div>
+          <div className="plan-info-line"><span>联系人</span><strong>{currentOrder.contactName || "暂无内容"} {currentOrder.phone ? `｜${currentOrder.phone}` : ""}</strong></div>
+          <div className="plan-info-line"><span>地址</span><strong>{currentOrder.address || "暂无内容"}</strong></div>
+          <div className="plan-info-line"><span>最终报价</span><strong>¥{money(stats.finalRent)}</strong></div>
+        </section>
+
+        <section className="plan-summary-card">
+          <div className="section-title-row">
+            <div><p className="eyebrow">Photos</p><h2>现场记录</h2></div>
+          </div>
+          {[...scenePhotos, ...plantPhotos].length === 0 ? (
+            <div className="empty-card"><p>暂无现场照片</p><span>员工上传完成资料后会显示在这里。</span></div>
+          ) : (
+            <div className="merchant-photo-grid">
+              {[...scenePhotos, ...plantPhotos].slice(0, 6).map((photo, index) => (
+                <img key={`${photo}-${index}`} src={photo} alt={`现场照片 ${index + 1}`} />
+              ))}
+            </div>
+          )}
+          <div className="plan-info-line"><span>完成备注</span><strong>{completePhotos.remark || currentOrder.fieldNote || "暂无内容"}</strong></div>
+        </section>
+
+        <NotesCard order={currentOrder} />
+        <TimelineCard order={currentOrder} />
+      </div>
+    );
+  }
+
   function renderCustomerPlanView() {
     if (!customerPlanId) return null;
 
@@ -2886,7 +3022,7 @@ ${rentalText}`;
         <div className="app">
           <section className="empty-card">
             <p>没有找到这个方案</p>
-            <span>请先在同一浏览器刷新云端订单，或等待后续客户端独立页面。</span>
+            <span>请刷新订单后重试，或联系商户确认方案链接是否正确。</span>
           </section>
         </div>
       );
@@ -2917,12 +3053,12 @@ ${rentalText}`;
             </>
           ) : (
             <>
-              <div><span>{isRetailPlan ? "商品金额" : "日租金"}</span><strong>¥ {money(stats.dailyRent)}</strong></div>
+              <div><span>{isRetailPlan ? "商品金额" : "日租金"}</span><strong>¥{money(stats.dailyRent)}</strong></div>
               {!isRetailPlan && <div><span>租期</span><strong>{customerViewOrder.plan?.leaseMonths || 12} 月</strong></div>}
-              <div><span>{isRetailPlan ? "系统建议总价" : "系统预计总租金"}</span><strong>¥ {money(stats.systemTotalRent)}</strong></div>
+              <div><span>{isRetailPlan ? "系统建议总价" : "系统预计总租金"}</span><strong>¥{money(stats.systemTotalRent)}</strong></div>
             </>
           )}
-          <div><span>最终报价</span><strong>¥ {money(stats.finalRent)}</strong></div>
+          <div><span>最终报价</span><strong>¥{money(stats.finalRent)}</strong></div>
           {!isRetailPlan && !isMaintenancePlan && <div><span>支付方式</span><strong>{customerViewOrder.plan?.paymentMethod || "月付"}</strong></div>}
           {!isRetailPlan && !isMaintenancePlan && <div><span>押金</span><strong>{customerViewOrder.plan?.needDeposit ? "需要" : "不需要"}</strong></div>}
         </section>
@@ -2970,7 +3106,7 @@ ${rentalText}`;
                   <div className="selected-product-row" key={item.productId}>
                     <div>
                       <strong>{item.name}</strong>
-                      <span>¥ {item.pricePerDay}{isRetailPlan ? "/件" : "/天"} × {item.quantity}</span>
+                      <span>¥{money(item.pricePerDay)}{isRetailPlan ? "/件" : "/天"} × {item.quantity}</span>
                     </div>
                   </div>
                 ))}
@@ -3080,8 +3216,8 @@ ${rentalText}`;
         <section style={cardStyle}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid #e7edf4", marginBottom: 12 }}>
             <button style={tabStyle(true)}>植物</button>
-            <button style={tabStyle(false)} onClick={() => alert("花盆库已经预留，后续补充数据。")}>花盆</button>
-            <button style={tabStyle(false)} onClick={() => alert("资材库已经预留，后续补充数据。")}>资材</button>
+            <button style={tabStyle(false)} onClick={() => alert("当前版本暂不支持花盆库。")}>花盆</button>
+            <button style={tabStyle(false)} onClick={() => alert("当前版本暂不支持资材库。")}>资材</button>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
@@ -3125,7 +3261,7 @@ ${rentalText}`;
                     <tr key={`${item.areaId}-${item.productId}`} style={{ borderTop: "1px solid #edf1f5" }}>
                       <td style={{ padding: 10 }}><strong style={{ color: "#223247" }}>{item.name}</strong><br/><span style={{ color: "#8a96a8" }}>{item.areaName}</span></td>
                       <td style={{ padding: 10, textAlign: "center" }}><span style={{ width: 42, height: 42, borderRadius: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#f2f5f8", overflow: "hidden" }}>{isImageUrl(image) ? <img src={image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : image}</span></td>
-                      <td style={{ padding: 10, textAlign: "right", fontWeight: 800 }}>¥ {item.pricePerDay}{currentPlan?.planType === "零售方案" ? "/件" : "/天"}</td>
+                      <td style={{ padding: 10, textAlign: "right", fontWeight: 800 }}>¥{money(item.pricePerDay)}{currentPlan?.planType === "零售方案" ? "/件" : "/天"}</td>
                       <td style={{ padding: 10, textAlign: "center" }}><span style={{ borderRadius: 6, background: "#eaf2fb", color: "#2f6fae", padding: "4px 8px", fontWeight: 800 }}>有货</span></td>
                       <td style={{ padding: 10, textAlign: "center" }}><input inputMode="numeric" type="number" value={item.quantity} min="1" style={{ width: 56, height: 34, border: "1px solid #d8e1ec", borderRadius: 8, textAlign: "center", fontWeight: 800 }} onChange={(e) => {
                         const nextQty = Math.max(1, Number(e.target.value || 1));
@@ -3226,11 +3362,11 @@ ${rentalText}`;
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
             <div style={{ background: "#f6f8fb", borderRadius: 10, padding: 12 }}>
               <span style={{ color: "#7b899a", fontSize: 12, fontWeight: 700 }}>{currentPlan?.planType === "零售方案" ? "商品金额" : "预估日租金"}</span>
-              <strong style={{ display: "block", marginTop: 4, fontSize: 18, color: "#182536" }}>¥ {money(currentStats.dailyRent)}</strong>
+              <strong style={{ display: "block", marginTop: 4, fontSize: 18, color: "#182536" }}>¥{money(currentStats.dailyRent)}</strong>
             </div>
             <div style={{ background: "#f6f8fb", borderRadius: 10, padding: 12 }}>
               <span style={{ color: "#7b899a", fontSize: 12, fontWeight: 700 }}>系统建议总价</span>
-              <strong style={{ display: "block", marginTop: 4, fontSize: 18, color: "#2f6fb3" }}>¥ {money(currentStats.systemTotalRent)}</strong>
+              <strong style={{ display: "block", marginTop: 4, fontSize: 18, color: "#2f6fb3" }}>¥{money(currentStats.systemTotalRent)}</strong>
             </div>
           </div>
 
@@ -3243,10 +3379,10 @@ ${rentalText}`;
 
           {currentPlan?.planType === "零售方案" && (
             <div className="sheet-block">
-              <p className="sheet-label">是否需要后续养护</p>
+              <p className="sheet-label">是否需要售后养护</p>
               <div className="option-grid payment-grid">
-                <button className={currentPlan.retailNeedsMaintenance ? "selected" : ""} onClick={() => updateCurrentPlanField("retailNeedsMaintenance", true)}>需要后续养护</button>
-                <button className={!currentPlan.retailNeedsMaintenance ? "selected" : ""} onClick={() => updateCurrentPlanField("retailNeedsMaintenance", false)}>暂不需要</button>
+                <button className={currentPlan.retailNeedsMaintenance ? "selected" : ""} onClick={() => updateCurrentPlanField("retailNeedsMaintenance", true)}>需要售后养护</button>
+                <button className={!currentPlan.retailNeedsMaintenance ? "selected" : ""} onClick={() => updateCurrentPlanField("retailNeedsMaintenance", false)}>当前不需要</button>
               </div>
               {currentPlan.retailNeedsMaintenance && (
                 <input
@@ -3529,7 +3665,7 @@ ${rentalText}`;
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid #e7edf4" }}>
               {['植物', '花盆', '资材'].map((name) => (
-                <button key={name} style={{ border: 0, background: "transparent", padding: "11px 0", color: name === '植物' ? videoBlue : "#526274", fontWeight: 900, borderBottom: name === '植物' ? `3px solid ${videoBlue}` : "3px solid transparent" }} onClick={() => name !== '植物' && alert(`${name}库已经预留，后续补充数据。`)}>{name}</button>
+                <button key={name} style={{ border: 0, background: "transparent", padding: "11px 0", color: name === '植物' ? videoBlue : "#526274", fontWeight: 900, borderBottom: name === '植物' ? `3px solid ${videoBlue}` : "3px solid transparent" }} onClick={() => name !== '植物' && alert(`当前版本暂不支持${name}库。`)}>{name}</button>
               ))}
             </div>
             <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 8 }}>
@@ -3558,7 +3694,7 @@ ${rentalText}`;
                     <span style={{ minWidth: 0 }}>
                       <strong style={{ display: "block", color: "#182536", fontSize: 15, marginBottom: 4 }}>{product.name}</strong>
                       <small style={{ display: "block", color: "#7b899a", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{product.description}</small>
-                      <b style={{ display: "block", color: videoBlue, marginTop: 5 }}>{currentPlan?.planType === "零售方案" ? `¥ ${product.pricePerDay}/件` : `¥ ${product.pricePerDay}/天`}</b>
+                      <b style={{ display: "block", color: videoBlue, marginTop: 5 }}>{currentPlan?.planType === "零售方案" ? `¥${money(product.pricePerDay)}/件` : `¥${money(product.pricePerDay)}/天`}</b>
                     </span>
                     <div className="staff-product-stepper" onClick={(event) => event.stopPropagation()}>
                       <button
@@ -3594,7 +3730,7 @@ ${rentalText}`;
 
           <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 60, background: "rgba(255,255,255,.98)", borderTop: "1px solid #e4eaf2", padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
             <button style={{ border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 12px", fontSize: 16 }} onClick={() => setShowProductSheet(false)}>
-              已选 {getAreaProductCount(currentArea)} 件｜{currentPlan?.planType === "零售方案" ? "商品金额" : "日租金"} ¥ {money(getAreaDailyRent(currentArea))}｜完成选品
+              已选 {getAreaProductCount(currentArea)} 件｜{currentPlan?.planType === "零售方案" ? "商品金额" : "日租金"} ¥{money(getAreaDailyRent(currentArea))}｜完成选品
             </button>
             <button style={{ border: "1px solid #f0c7c2", borderRadius: 10, background: "#fff7f6", color: "#b44a3e", fontWeight: 800, padding: "10px 12px" }} onClick={clearCurrentAreaItems}>清空当前场景物料</button>
           </div>
@@ -3630,7 +3766,7 @@ ${rentalText}`;
               <span>复杂报价因素仅作为商户内部备注，不展示给客户。</span>
             </div>
 
-            <div className="rent-preview"><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
+            <div className="rent-preview"><span>最终报价</span><strong>¥{money(currentStats.finalRent)}</strong></div>
             <button className="submit-sheet-button" onClick={() => setShowPaymentSheet(false)}>保存养护报价</button>
           </section>
         </div>
@@ -3649,10 +3785,10 @@ ${rentalText}`;
 
             <div className="empty-card">
               <p>零售方案不需要租期、支付周期和押金设置。</p>
-              <span>当前按商品单价 × 数量统计，后续可以再接正式销售价目表。</span>
+              <span>当前按商品单价 × 数量统计，可作为商户报价参考。</span>
             </div>
 
-            <div className="rent-preview"><span>商品金额</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
+            <div className="rent-preview"><span>商品金额</span><strong>¥{money(currentStats.systemTotalRent)}</strong></div>
             <button className="submit-sheet-button" onClick={() => setShowPaymentSheet(false)}>保存零售报价</button>
           </section>
         </div>
@@ -3722,7 +3858,7 @@ ${rentalText}`;
             </button>
           </div>
 
-          <div className="rent-preview"><span>预计总租金</span><strong>¥ {money(currentStats.systemTotalRent)}</strong></div>
+          <div className="rent-preview"><span>预计总租金</span><strong>¥{money(currentStats.systemTotalRent)}</strong></div>
           <button className="submit-sheet-button" onClick={() => setShowPaymentSheet(false)}>保存租期与支付</button>
         </section>
       </div>
@@ -3743,7 +3879,7 @@ ${rentalText}`;
 
           <div className="sheet-block">
             <p className="sheet-label">{isMaintenancePlan ? "养护服务报价" : "系统预计总租金"}</p>
-            <div className="price-preview-line"><span>{isMaintenancePlan ? "最终报价由商户手动填写" : "按当前商品和租期自动计算"}</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
+            <div className="price-preview-line"><span>{isMaintenancePlan ? "最终报价由商户手动填写" : "按当前商品和租期自动计算"}</span><strong>¥{money(currentStats.finalRent)}</strong></div>
           </div>
 
           <div className="sheet-block">
@@ -3758,8 +3894,8 @@ ${rentalText}`;
           </div>
 
           <div className="quick-price-list">
-            {[money(currentStats.systemTotalRent), 1980, 2880, 3880].map((price) => (
-              <button key={price} onClick={() => updateCurrentPlanField(isMaintenancePlan ? "maintenanceFinalPrice" : "customFinalRent", String(price))}>¥ {price}</button>
+            {[currentStats.systemTotalRent, 1980, 2880, 3880].map((price) => (
+              <button key={price} onClick={() => updateCurrentPlanField(isMaintenancePlan ? "maintenanceFinalPrice" : "customFinalRent", String(price))}>¥{money(price)}</button>
             ))}
           </div>
 
@@ -3816,11 +3952,11 @@ ${rentalText}`;
             <div className="confirm-row"><span>项目 / 客户</span><strong>{currentOrder.customerName}</strong></div>
             <div className="confirm-row"><span>区域数量</span><strong>{currentStats.areaCount} 个</strong></div>
             <div className="confirm-row"><span>商品数量</span><strong>{currentStats.productCount} 件</strong></div>
-            <div className="confirm-row"><span>最终报价</span><strong>¥ {money(currentStats.finalRent)}</strong></div>
+            <div className="confirm-row"><span>最终报价</span><strong>¥{money(currentStats.finalRent)}</strong></div>
           </div>
 
           {currentStats.productCount === 0 && (
-            <div className="rent-preview"><span>提醒</span><strong>当前还没有添加商品，也可以先提交测试流程</strong></div>
+            <div className="rent-preview"><span>提醒</span><strong>当前还没有添加商品，请补充方案明细后再提交</strong></div>
           )}
 
           <button className="submit-sheet-button" onClick={submitPlan}>确认提交给商户</button>
@@ -3869,6 +4005,43 @@ ${rentalText}`;
       );
     }
 
+    function MerchantSidebar() {
+      return (
+        <aside className="admin-sidebar">
+          <div className="brand">
+            <p className="eyebrow" style={{ color: "#64748b" }}>SaaS Admin · V4.0</p>
+            <h2 style={{ margin: "4px 0 0", color: "#f8fafc", fontSize: 20 }}>绿植租赁中枢</h2>
+            <span style={{ color: "#3b82f6", fontSize: 12, fontWeight: 800 }}>总控商户端</span>
+          </div>
+
+          {navItems.map((item) => {
+            const Icon = item.Icon;
+            return (
+              <button
+                key={item.key}
+                className={`admin-nav-btn ${merchantTab === item.key ? "active" : ""}`}
+                onClick={() => {
+                  setMerchantViewingOrder(null);
+                  setSelectedOrderDetail(null);
+                  setMerchantTab(item.key);
+                }}
+              >
+                <Icon size={19} />
+                <span>{item.key}</span>
+              </button>
+            );
+          })}
+
+          <div style={{ marginTop: "auto", borderTop: "1px solid #1e293b", paddingTop: 16 }}>
+            <button className="admin-nav-btn" style={{ width: "100%", textAlign: "center", border: "1px solid #334155" }} onClick={() => switchRole("staff")}>
+              <GardenIcons.StaffUser size={18} />
+              <span>切换至员工视角</span>
+            </button>
+          </div>
+        </aside>
+      );
+    }
+
     // 独立抽出的审核台组件：左右分栏沉浸式
     function MerchantReviewPage({ order }) {
       const orderPlan = order.plan || null;
@@ -3879,7 +4052,7 @@ ${rentalText}`;
       const isWaitingArchive = order.status === "待商户归档";
 
       return (
-        <div className="admin-main">
+        <div className="admin-main admin-review-main">
           <div className="admin-topbar">
             <div>
               <p className="eyebrow">Review Desk · 智能审核台</p>
@@ -3896,14 +4069,12 @@ ${rentalText}`;
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div className="admin-card" style={{ marginBottom: 0 }}>
                 <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>项目档案</h2>
+                <div className="plan-info-line"><span>客户名</span><strong>{order.customerName || "暂无内容"}</strong></div>
                 <div className="plan-info-line"><span>状态</span><strong style={{ color: "#3b82f6" }}>{order.status}</strong></div>
-                <div className="plan-info-line"><span>面积</span><strong>{order.areaSize}</strong></div>
                 <div className="plan-info-line"><span>方案类型</span><strong>{orderPlan?.planType || order.planType || "-"}</strong></div>
                 <div className="plan-info-line"><span>员工</span><strong>{order.assignedStaffName || "-"} {order.assignedStaffEmail ? `｜${order.assignedStaffEmail}` : ""}</strong></div>
                 <div className="plan-info-line"><span>联系人</span><strong>{order.contactName || "-"} {order.phone ? `｜${order.phone}` : ""}</strong></div>
-                <div className="plan-info-line"><span>地址</span><strong>{order.address}</strong></div>
-                <div className="plan-info-line"><span>商户备注</span><strong>{order.merchantNote || orderPlan?.merchantDraftNote || "-"}</strong></div>
-                <div className="plan-info-line"><span>员工备注</span><strong>{order.fieldNote || order.completeForm?.remark || "-"}</strong></div>
+                <div className="plan-info-line"><span>地址</span><strong>{order.address || "暂无内容"}</strong></div>
                 <div className="sheet-block" style={{ marginTop: 14 }}>
                   <p className="sheet-label">需求类型</p>
                   <div className="option-grid payment-grid">
@@ -3936,7 +4107,7 @@ ${rentalText}`;
                 </div>
                 <div className="sheet-block" style={{ marginTop: 14 }}>
                   <p className="sheet-label">客户沟通群二维码</p>
-                  {/* 正式版接 Supabase Storage / 腾讯云 COS / 阿里云 OSS 后，应将二维码远程 URL 写入 communicationQrUrl。 */}
+                  {/* QR image upload keeps the preview URL on the order record. */}
                   <ImageUploader
                     value={order.communicationQrUrl || ""}
                     label="上传或替换二维码"
@@ -3952,7 +4123,6 @@ ${rentalText}`;
                   />
                 </div>
               </div>
-              <ExtraDetails order={order} />
             </div>
 
             {/* 右侧栏：方案明细、报价与核心决策操作 */}
@@ -4023,8 +4193,7 @@ ${rentalText}`;
                 {order.completePhotos ? (
                   <>
                     <div className="merchant-photo-grid">
-                      {[...(order.completePhotos.scenePhotos || []), ...(order.completePhotos.plantPhotos || [])]
-                        .filter(Boolean)
+                      {[...safePhotos(order.completePhotos.scenePhotos), ...safePhotos(order.completePhotos.plantPhotos)]
                         .slice(0, 6)
                         .map((photo, index) => (
                           <img key={`${photo}-${index}`} src={photo} alt={`现场图片 ${index + 1}`} />
@@ -4042,11 +4211,11 @@ ${rentalText}`;
                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
                     <div className="metric-box" style={{ borderLeft: "none", padding: 16 }}>
                        <h3>{isMaintenancePlan ? "养护套餐" : isRetailPlan ? "系统建议总价" : "系统预估总租金"}</h3>
-                      <strong style={{ fontSize: isMaintenancePlan ? 18 : 24 }}>{isMaintenancePlan ? orderPlan?.maintenancePackage || "标准养护" : `¥ ${money(stats.systemTotalRent)}`}</strong>
+                      <strong style={{ fontSize: isMaintenancePlan ? 18 : 24 }}>{isMaintenancePlan ? orderPlan?.maintenancePackage || "标准养护" : `¥${money(stats.systemTotalRent)}`}</strong>
                     </div>
                    <div className="metric-box" style={{ borderLeft: "none", padding: 16, background: "#f0fdf4" }}>
                      <h3>最终销售报价</h3>
-                     <strong style={{ fontSize: 24, color: "#166534" }}>¥ {money(stats.finalRent)}</strong>
+                     <strong style={{ fontSize: 24, color: "#166534" }}>¥{money(stats.finalRent)}</strong>
                      </div>
                      <div className="metric-box" style={{ borderLeft: "none", padding: 16 }}>
                       <h3>{isMaintenancePlan ? "方案类型" : isRetailPlan ? "方案类型" : "租期及支付"}</h3>
@@ -4078,6 +4247,8 @@ ${rentalText}`;
                  )}
                </div>
 
+              <ExtraDetails order={order} />
+
             </div>
           </div>
         </div>
@@ -4087,12 +4258,7 @@ ${rentalText}`;
     if (activeReviewOrder) {
       return (
         <div className="admin-layout">
-          <aside className="admin-sidebar">
-             <div className="brand">
-                <p className="eyebrow">Han Pilates & Green</p>
-                <h2 style={{ margin: 0 }}>绿植租赁中枢</h2>
-             </div>
-          </aside>
+          <MerchantSidebar />
           <MerchantReviewPage order={activeReviewOrder} />
         </div>
       );
@@ -4329,7 +4495,7 @@ ${rentalText}`;
                 </div>
                 <div>
                   <strong>登录方式</strong>
-                  <span>邮箱 + 密码（后续接入）</span>
+                  <span>邮箱 + 密码</span>
                 </div>
               </div>
 
@@ -4486,7 +4652,7 @@ ${rentalText}`;
                         <strong>{product.category || "-"}</strong>
                         <em>{product.subCategory || "-"}</em>
                       </span>
-                      <span>¥ {money(product.pricePerDay)} / 天</span>
+                      <span>¥{money(product.pricePerDay)} / 天</span>
                       <span>{product.stock || "充足"}</span>
                       <span>
                         <b className={product.status === "已上架" ? "admin-status-chip" : "admin-status-chip muted"}>
@@ -4657,75 +4823,86 @@ ${rentalText}`;
 
           {editingStaffMember && (
             <div className="sheet-mask merchant-staff-editor-mask" onClick={() => setEditingStaffId(null)}>
-              <section className="merchant-staff-editor" onClick={(event) => event.stopPropagation()}>
-                <div className="section-title-row">
+              <section className="merchant-staff-editor merchant-staff-drawer" onClick={(event) => event.stopPropagation()}>
+                <header className="merchant-staff-drawer-head">
                   <div>
                     <p className="eyebrow">Team Member</p>
-                    <h2>管理员工账号</h2>
+                    <h2>{editingStaffMember.name}</h2>
+                    <span>{editingStaffMember.staffNo} · {ACCOUNT_STATUS_LABELS[editingStaffMember.status] || editingStaffMember.status}</span>
                   </div>
                   <button className="close-button" onClick={() => setEditingStaffId(null)}>×</button>
+                </header>
+
+                <div className="merchant-staff-drawer-body">
+                  <section className="merchant-staff-section">
+                    <h3>基础资料</h3>
+                    <div className="admin-setting-grid">
+                      <div><strong>姓名</strong><span>{editingStaffMember.name}</span></div>
+                      <div><strong>工号</strong><span>{editingStaffMember.staffNo}</span></div>
+                      <div><strong>邮箱</strong><span>{editingStaffMember.email}</span></div>
+                      <div><strong>手机号</strong><span>{editingStaffMember.phone}</span></div>
+                      <div><strong>负责区域</strong><span>{editingStaffMember.area}</span></div>
+                      <div><strong>当前任务数</strong><span>{orders.filter((order) => order.assignedStaffId === editingStaffMember.id && order.status !== "已完成").length} 笔</span></div>
+                    </div>
+                  </section>
+
+                  <section className="merchant-staff-section">
+                    <h3>权限角色</h3>
+                    <div className="merchant-staff-edit-grid">
+                      <div className="sheet-block">
+                        <p className="sheet-label">角色</p>
+                        <select
+                          className="area-input"
+                          value={editingStaffMember.role}
+                          onChange={(event) => {
+                            const nextRole = event.target.value;
+                            setStaffDirectory((members) => members.map((member) => member.id === editingStaffMember.id ? { ...member, role: nextRole } : member));
+                          }}
+                        >
+                          <option value="staff">普通员工</option>
+                          <option value="manager">主管 / 经理</option>
+                          <option value="admin">管理员</option>
+                        </select>
+                      </div>
+
+                      <div className="sheet-block">
+                        <p className="sheet-label">状态</p>
+                        <select
+                          className="area-input"
+                          value={editingStaffMember.status}
+                          onChange={(event) => {
+                            const nextStatus = event.target.value;
+                            setStaffDirectory((members) => members.map((member) => member.id === editingStaffMember.id ? { ...member, status: nextStatus } : member));
+                          }}
+                        >
+                          <option value="active">启用账号</option>
+                          <option value="paused">停用账号</option>
+                        </select>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="merchant-staff-section">
+                    <h3>已分配订单</h3>
+                    <div className="staff-assigned-orders">
+                      {orders.filter((order) => order.assignedStaffId === editingStaffMember.id).length === 0 ? (
+                        <p>暂无分配订单</p>
+                      ) : (
+                        orders.filter((order) => order.assignedStaffId === editingStaffMember.id).map((order) => (
+                          <button key={order.id} className="staff-assigned-order" onClick={() => openMerchantPlanWorkbench(order)}>
+                            <span>{order.customerName}</span>
+                            <em>{order.status} · {order.address || "暂无地址"}</em>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </section>
                 </div>
 
-                <div className="admin-setting-grid">
-                  <div><strong>姓名</strong><span>{editingStaffMember.name}</span></div>
-                  <div><strong>工号</strong><span>{editingStaffMember.staffNo}</span></div>
-                  <div><strong>邮箱</strong><span>{editingStaffMember.email}</span></div>
-                  <div><strong>手机号</strong><span>{editingStaffMember.phone}</span></div>
-                  <div><strong>负责区域</strong><span>{editingStaffMember.area}</span></div>
-                  <div><strong>当前任务数</strong><span>{orders.filter((order) => order.assignedStaffId === editingStaffMember.id && order.status !== "已完成").length} 笔</span></div>
-                </div>
-
-                <div className="merchant-staff-edit-grid">
-                  <div className="sheet-block">
-                    <p className="sheet-label">角色</p>
-                    <select
-                      className="area-input"
-                      value={editingStaffMember.role}
-                      onChange={(event) => {
-                        const nextRole = event.target.value;
-                        setStaffDirectory((members) => members.map((member) => member.id === editingStaffMember.id ? { ...member, role: nextRole } : member));
-                      }}
-                    >
-                      <option value="staff">普通员工</option>
-                      <option value="manager">主管 / 经理</option>
-                      <option value="admin">管理员</option>
-                    </select>
-                  </div>
-
-                  <div className="sheet-block">
-                    <p className="sheet-label">状态</p>
-                    <select
-                      className="area-input"
-                      value={editingStaffMember.status}
-                      onChange={(event) => {
-                        const nextStatus = event.target.value;
-                        setStaffDirectory((members) => members.map((member) => member.id === editingStaffMember.id ? { ...member, status: nextStatus } : member));
-                      }}
-                    >
-                      <option value="active">启用账号</option>
-                      <option value="paused">停用账号</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="staff-assigned-orders">
-                  <strong>已分配订单</strong>
-                  {orders.filter((order) => order.assignedStaffId === editingStaffMember.id).length === 0 ? (
-                    <p>暂无分配订单</p>
-                  ) : (
-                    orders.filter((order) => order.assignedStaffId === editingStaffMember.id).map((order) => (
-                      <button key={order.id} className="staff-assigned-order" onClick={() => openMerchantPlanWorkbench(order)}>
-                        <span>{order.customerName}</span>
-                        <em>{order.status} · {order.address || "暂无地址"}</em>
-                      </button>
-                    ))
-                  )}
-                </div>
-
-                <div className="empty-card">
-                  <p>本地开发阶段模拟编辑</p>
-                  <span>正式版需要写入 profiles / staff_members 表，并配合权限控制；这里不展示也不保存密码。</span>
-                </div>
+                <footer className="merchant-staff-drawer-foot">
+                  <button className="ghost-button" onClick={() => setEditingStaffId(null)}>取消</button>
+                  <button className="primary-button" onClick={() => setEditingStaffId(null)}>保存修改</button>
+                </footer>
               </section>
             </div>
           )}
@@ -4882,7 +5059,7 @@ ${rentalText}`;
 
               <div className="empty-card">
                 <p>照片上传已启用本地预览</p>
-                <span>当前不接真实云存储；后续接 Storage 后会把远程 URL 写回 imageUrl 字段。</span>
+                <span>图片会在保存前显示预览，便于确认商品展示效果。</span>
               </div>
             </section>
           </div>
@@ -4899,7 +5076,7 @@ ${rentalText}`;
                 <h3>{newProductForm.name || "新商品名称"}</h3>
                 <p>{newProductForm.category}｜{newProductForm.subCategory}</p>
                 <p>{newProductForm.description || "商品描述会显示在这里"}</p>
-                <strong>¥ {newProductForm.pricePerDay || "-"}/天</strong>
+                <strong>{newProductForm.pricePerDay ? `¥${money(newProductForm.pricePerDay)}/天` : "-"}</strong>
               </div>
             </article>
           </section>
@@ -5007,7 +5184,7 @@ ${rentalText}`;
                 </div>
                 <div className="sheet-block">
                   <p className="sheet-label">客户沟通群二维码</p>
-                  {/* 正式版接 Supabase Storage / 腾讯云 COS / 阿里云 OSS 后，应将二维码远程 URL 写入 communicationQrUrl。 */}
+                  {/* QR image upload keeps the preview URL on the order record. */}
                   <ImageUploader
                     value={newOrderForm.communicationQrUrl}
                     label="上传二维码"
@@ -5043,10 +5220,10 @@ ${rentalText}`;
               )}
               {newOrderForm.serviceType === "零售" && (
                 <div className="sheet-block">
-                  <p className="sheet-label">后续养护意向</p>
+                  <p className="sheet-label">售后养护意向</p>
                   <div className="option-grid payment-grid">
                     <button className={newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: true }))}>需要</button>
-                    <button className={!newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: false }))}>暂不需要</button>
+                    <button className={!newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: false }))}>当前不需要</button>
                   </div>
                 </div>
               )}
@@ -5064,7 +5241,7 @@ ${rentalText}`;
 
             <div className="empty-card" style={{ marginTop: 16 }}>
               <p>创建后会直接进入待接单</p>
-              <span>员工端刷新后即可接单，后续再配置区域、商品和报价。</span>
+              <span>员工端刷新后即可接单，并继续完善区域、商品和报价。</span>
             </div>
 
             <div style={{
@@ -5237,7 +5414,7 @@ ${rentalText}`;
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">客户沟通群二维码</p>
-            {/* 正式版接 Supabase Storage / 腾讯云 COS / 阿里云 OSS 后，应将二维码远程 URL 写入 communicationQrUrl。 */}
+            {/* QR image upload keeps the preview URL on the order record. */}
             <ImageUploader
               value={newOrderForm.communicationQrUrl}
               label="上传二维码"
@@ -5307,10 +5484,10 @@ ${rentalText}`;
 
           {newOrderForm.serviceType === "零售" && (
             <div className="sheet-block" style={compactBlockStyle}>
-              <p className="sheet-label">后续养护意向</p>
+              <p className="sheet-label">售后养护意向</p>
               <div className="option-grid">
                 <button className={newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: true }))}>需要</button>
-                <button className={!newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: false }))}>暂不需要</button>
+                <button className={!newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: false }))}>当前不需要</button>
               </div>
             </div>
           )}
@@ -5370,6 +5547,7 @@ ${rentalText}`;
   if (!session) return <AuthPage onSignedOut={handleSignOut} />;
 
   if (customerPlanId) return renderCustomerPlanView();
+  if (currentPage === "archiveDetail" && currentOrder) return renderArchiveDetailPage();
   if (currentPage === "completeUpload" && currentOrder) return renderCompleteUploadPage();
   if (currentPage === "plan" && currentOrder && currentPlan) return renderPlanPage();
   if (activeRole === "merchant") return renderMerchantPage();
