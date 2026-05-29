@@ -3028,9 +3028,19 @@ ${rentalText}`;
 }
 
   function renderCompleteUploadPage() {
-    if (!currentOrder) return null;
+    if (!currentOrder) {
+      return (
+        <div className="app staff-legacy-page staff-complete-page">
+          <section className="empty-card">
+            <p>暂无内容</p>
+            <span>没有找到对应订单，请返回任务列表重新进入。</span>
+            <button className="staff-legacy-secondary" onClick={() => setCurrentPage("orders")}>返回任务</button>
+          </section>
+        </div>
+      );
+    }
     return (
-      <div className="app">
+      <div className="app staff-legacy-page staff-complete-page">
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage(currentPlan ? "plan" : "orders")}>←</button>
           <div>
@@ -3077,7 +3087,7 @@ ${rentalText}`;
   function renderArchiveDetailPage() {
     if (!currentOrder) {
       return (
-        <div className="app">
+        <div className="app staff-legacy-page staff-archive-page">
           <section className="empty-card">
             <p>暂无内容</p>
             <span>没有找到对应订单，请返回任务列表重新进入。</span>
@@ -3095,7 +3105,7 @@ ${rentalText}`;
     const completedAt = currentOrder.completedAt || orderPlan?.completedAt || currentOrder.archivedAt || "暂无服务记录";
 
     return (
-      <div className="app">
+      <div className="app staff-legacy-page staff-archive-page">
         <header className="plan-header">
           <button className="back-button" onClick={() => setCurrentPage("orders")}>←</button>
           <div>
@@ -3245,7 +3255,17 @@ ${rentalText}`;
   }
 
   function renderPlanPage() {
-    if (!currentOrder || !currentPlan) return null;
+    if (!currentOrder || !currentPlan) {
+      return (
+        <div className="app staff-legacy-page staff-plan-page">
+          <section className="empty-card">
+            <p>暂无方案内容</p>
+            <span>当前订单方案数据不足，请返回任务列表重新进入。</span>
+            <button className="staff-legacy-secondary" onClick={() => setCurrentPage("orders")}>返回任务</button>
+          </section>
+        </div>
+      );
+    }
 
     const videoBlue = "#2d5f8f";
     const selectedRows = planAreas.flatMap((area) =>
@@ -3294,7 +3314,7 @@ ${rentalText}`;
     });
 
     return (
-      <div style={pageStyle}>
+      <div className="staff-legacy-page staff-plan-page" style={pageStyle}>
         <header style={navStyle}>
           <button style={{ border: 0, background: "transparent", fontSize: 22, color: "#24364b" }} onClick={() => setCurrentPage("orders")}>‹</button>
           <strong style={{ textAlign: "center", fontSize: 17, color: "#182536" }}>添加方案</strong>
@@ -3333,7 +3353,7 @@ ${rentalText}`;
           <section style={cardStyle}>
             <strong style={{ color: "#182536" }}>任务执行中</strong>
             <p style={{ margin: "8px 0 12px", color: "#6b7788" }}>完成摆放后上传现场照片并提交。</p>
-            <button style={{ width: "100%", border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 14px" }} onClick={() => setCurrentPage("completeUpload")}>完成任务并上传照片</button>
+            <button style={{ width: "100%", border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 14px" }} onClick={() => openCompleteUploadForOrder(currentOrder)}>完成任务并上传照片</button>
           </section>
         )}
 
