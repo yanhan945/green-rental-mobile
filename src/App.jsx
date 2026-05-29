@@ -2947,7 +2947,7 @@ ${rentalText}`;
   function updateCompletePhotos(group, values) {
     setCompleteForm((form) => ({
       ...form,
-      [group]: values.slice(0, 3),
+      [group]: (Array.isArray(values) ? values : []).slice(0, 3),
     }));
   }
 
@@ -3384,46 +3384,39 @@ ${rentalText}`;
             ))}
           </div>
 
-          <div style={{ overflowX: "auto", border: "1px solid #e7edf4", borderRadius: 10 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 620, fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: "#f6f8fb", color: "#607085" }}>
-                  <th style={{ padding: 10, textAlign: "left" }}>名称</th>
-                  <th style={{ padding: 10, textAlign: "center" }}>图片</th>
-                  <th style={{ padding: 10, textAlign: "right" }}>价格</th>
-                  <th style={{ padding: 10, textAlign: "center" }}>状态</th>
-                  <th style={{ padding: 10, textAlign: "center" }}>数量</th>
-                  <th style={{ padding: 10, textAlign: "center" }}>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedRows.length === 0 ? (
-                  <tr><td colSpan="6" style={{ padding: 22, textAlign: "center", color: "#8a96a8" }}>暂无物料。先添加场景，再选择植物。</td></tr>
-                ) : selectedRows.map((item) => {
-                  const product = merchantProducts.find((p) => p.id === item.productId) || item;
-                  const image = getProductImage(product);
-                  return (
-                    <tr key={`${item.areaId}-${item.productId}`} style={{ borderTop: "1px solid #edf1f5" }}>
-                      <td style={{ padding: 10 }}><strong style={{ color: "#223247" }}>{item.name}</strong><br/><span style={{ color: "#8a96a8" }}>{item.areaName}</span></td>
-                      <td style={{ padding: 10, textAlign: "center" }}><span style={{ width: 42, height: 42, borderRadius: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#f2f5f8", overflow: "hidden" }}>{isImageUrl(image) ? <img src={image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : image}</span></td>
-                      <td style={{ padding: 10, textAlign: "right", fontWeight: 800 }}>¥{money(item.pricePerDay)}{currentPlan?.planType === "零售方案" ? "/件" : "/天"}</td>
-                      <td style={{ padding: 10, textAlign: "center" }}><span style={{ borderRadius: 6, background: "#eaf2fb", color: "#2f6fae", padding: "4px 8px", fontWeight: 800 }}>有货</span></td>
-                      <td style={{ padding: 10, textAlign: "center" }}><input inputMode="numeric" type="number" value={item.quantity} min="1" style={{ width: 56, height: 34, border: "1px solid #d8e1ec", borderRadius: 8, textAlign: "center", fontWeight: 800 }} onChange={(e) => {
-                        const nextQty = Math.max(1, Number(e.target.value || 1));
-                        updateOrderPlan(currentOrder.id, (plan) => ({
-                          ...plan,
-                          areas: safeAreas(plan).map((area) => area.id === item.areaId ? {
-                            ...area,
-                            items: safeItems(area).map((old) => old.productId === item.productId ? { ...old, quantity: nextQty } : old)
-                          } : area),
-                        }), "数量已同步");
-                      }} /></td>
-                      <td style={{ padding: 10, textAlign: "center" }}><button style={{ border: 0, background: "#fff1f0", color: "#b44a3e", borderRadius: 8, padding: "7px 9px", fontWeight: 800 }} onClick={() => removeItemFromArea(item.areaId, item.productId)}>删除</button></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="staff-material-card-flow">
+            {selectedRows.length === 0 ? (
+              <div className="empty-card"><p>暂无物料</p><span>先添加场景，再选择植物。</span></div>
+            ) : selectedRows.map((item) => {
+              const product = merchantProducts.find((p) => p.id === item.productId) || item;
+              const image = getProductImage(product);
+              return (
+                <article className="staff-material-card" key={`${item.areaId}-${item.productId}`}>
+                  <span className="staff-material-thumb">
+                    {isImageUrl(image) ? <img src={image} alt={item.name} /> : image}
+                  </span>
+                  <div className="staff-material-info">
+                    <strong>{item.name}</strong>
+                    <em>{item.areaName}</em>
+                    <small>¥{money(item.pricePerDay)}{currentPlan?.planType === "零售方案" ? "/件" : "/天"}</small>
+                  </div>
+                  <div className="staff-material-controls">
+                    <span className="staff-material-stock">有货</span>
+                    <input inputMode="numeric" type="number" value={item.quantity} min="1" onChange={(e) => {
+                      const nextQty = Math.max(1, Number(e.target.value || 1));
+                      updateOrderPlan(currentOrder.id, (plan) => ({
+                        ...plan,
+                        areas: safeAreas(plan).map((area) => area.id === item.areaId ? {
+                          ...area,
+                          items: safeItems(area).map((old) => old.productId === item.productId ? { ...old, quantity: nextQty } : old)
+                        } : area),
+                      }), "数量已同步");
+                    }} />
+                    <button className="staff-material-remove" onClick={() => removeItemFromArea(item.areaId, item.productId)}>删除</button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
         )}
@@ -5229,7 +5222,7 @@ ${rentalText}`;
             setIsCreateOrderInputFocused(false);
           }}
         >
-          <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
+          <section className="merchant-create-order-dialog" style={panelStyle} onClick={(event) => event.stopPropagation()}>
             <div className="section-title-row">
               <div><p className="eyebrow">New Order · v3.8</p><h2>创建新订单</h2></div>
               <button
@@ -5241,17 +5234,17 @@ ${rentalText}`;
               >×</button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
-              <section className="plan-summary-card" style={{ margin: 0 }}>
-                <div className="section-title-row"><div><p className="eyebrow">Customer</p><h2>客户信息</h2></div></div>
+            <div className="merchant-create-stage-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+              <section className="plan-summary-card merchant-create-stage" style={{ margin: 0 }}>
+                <div className="section-title-row"><div><p className="eyebrow">Step 01</p><h2>基础客户信息</h2></div></div>
                 <div className="sheet-block"><p className="sheet-label">项目 / 客户名称</p><input className="area-input" value={newOrderForm.customerName} onChange={(e) => setNewOrderForm((form) => ({ ...form, customerName: e.target.value }))} placeholder="例如：南通万达 A3 写字楼" /></div>
                 <div className="sheet-block"><p className="sheet-label">联系人</p><input className="area-input" value={newOrderForm.contactName} onChange={(e) => setNewOrderForm((form) => ({ ...form, contactName: e.target.value }))} placeholder="例如：王经理" /></div>
                 <div className="sheet-block"><p className="sheet-label">联系电话</p><input className="area-input" inputMode="tel" value={newOrderForm.phone} onChange={(e) => setNewOrderForm((form) => ({ ...form, phone: e.target.value }))} placeholder="例如：13800001111" /></div>
                 <div className="sheet-block"><p className="sheet-label">客户地址</p><input className="area-input" value={newOrderForm.address} onChange={(e) => setNewOrderForm((form) => ({ ...form, address: e.target.value }))} placeholder="例如：南通港闸区万达 A3 写字楼" /></div>
               </section>
 
-              <section className="plan-summary-card" style={{ margin: 0 }}>
-                <div className="section-title-row"><div><p className="eyebrow">Project</p><h2>项目需求</h2></div></div>
+              <section className="plan-summary-card merchant-create-stage" style={{ margin: 0 }}>
+                <div className="section-title-row"><div><p className="eyebrow">Step 02</p><h2>项目需求</h2></div></div>
                 <div className="sheet-block"><p className="sheet-label">订单来源</p><div className="option-grid payment-grid order-source-segmented">{ORDER_SOURCES.map((source) => (<button key={source} className={newOrderForm.source === source ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, source }))}>{source}</button>))}</div></div>
                 <div className="sheet-block"><p className="sheet-label">方案类型</p><div className="plan-type-grid">{[
                   ["租赁", "租赁方案"],
@@ -5309,8 +5302,8 @@ ${rentalText}`;
               </section>
             </div>
 
-            <section className="plan-summary-card merchant-plan-draft-card" style={{ marginTop: 16 }}>
-              <div className="section-title-row"><div><p className="eyebrow">Plan Draft</p><h2>方案草稿</h2></div></div>
+            <section className="plan-summary-card merchant-plan-draft-card merchant-create-stage" style={{ marginTop: 16 }}>
+              <div className="section-title-row"><div><p className="eyebrow">Step 03</p><h2>派单与备注</h2></div></div>
               {newOrderForm.serviceType === "租赁" && (
                 <div className="merchant-plan-draft-grid">
                   <div className="sheet-block"><p className="sheet-label">租期</p><input className="area-input" type="number" value={newOrderForm.leaseMonths} onChange={(e) => setNewOrderForm((form) => ({ ...form, leaseMonths: e.target.value }))} /></div>
