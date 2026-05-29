@@ -896,7 +896,7 @@ function App() {
     status: "已上架",
   });
 
-  const currentOrder = orders.find((order) => order.id === currentOrderId) || null;
+  const currentOrder = orders.find((order) => String(order.id) === String(currentOrderId)) || null;
   const currentPlan =
     currentOrder?.plan ||
     (currentPage === "plan" && currentOrder ? createEmptyPlan(currentOrder, getInitialPlanTypeForOrder(currentOrder)) : null);
@@ -1530,15 +1530,42 @@ function App() {
   function openPlanForOrder(order) {
     if (!order?.id) return;
 
-    if (!order.plan) {
-      const initialPlanType = getInitialPlanTypeForOrder(order);
-      updateOrder(order.id, { planType: initialPlanType, plan: createEmptyPlan(order, initialPlanType) }, "方案已创建");
+    const safeOrder = ensureOrderDefaults(order);
+
+    if (!safeOrder.plan) {
+      const initialPlanType = getInitialPlanTypeForOrder(safeOrder);
+      updateOrder(safeOrder.id, { planType: initialPlanType, plan: createEmptyPlan(safeOrder, initialPlanType) }, "方案已创建");
     }
 
-    setCurrentOrderId(order.id);
+    setCurrentOrderId(safeOrder.id);
     setCurrentPage("plan");
     setShowDetailBlock(false);
     setCompleteForm({ scenePhotos: ["", "", ""], plantPhotos: ["", "", ""], remark: "" });
+  }
+
+  function openCompleteUploadForOrder(order) {
+    if (!order?.id) return;
+
+    const safeOrder = ensureOrderDefaults(order);
+    const completePhotos = safeOrder.completePhotos || {};
+    const padPhotos = (values) => [...safePhotos(values), "", "", ""].slice(0, 3);
+
+    setCurrentOrderId(safeOrder.id);
+    setCompleteForm({
+      scenePhotos: padPhotos(completePhotos.scenePhotos),
+      plantPhotos: padPhotos(completePhotos.plantPhotos),
+      remark: completePhotos.remark || "",
+    });
+    setCurrentPage("completeUpload");
+    setShowDetailBlock(false);
+  }
+
+  function openArchiveDetailForOrder(order) {
+    if (!order?.id) return;
+
+    setCurrentOrderId(order.id);
+    setCurrentPage("archiveDetail");
+    setShowDetailBlock(false);
   }
 
   function openCreateOrderSheet() {
@@ -2393,6 +2420,7 @@ ${rentalText}`;
 
   // --- 核心修复区域开始：CoreOrderCard 重新排版 ---
   function CoreOrderCard({ order, mode = "staff" }) {
+    order = ensureOrderDefaults(order);
     const stats = getPlanStats(order.plan);
     const hint = getOrderHint(order);
 
@@ -2492,10 +2520,7 @@ ${rentalText}`;
             </button>
             <button
               className="staff-primary-action"
-              onClick={() => {
-                setCurrentOrderId(order.id);
-                setCurrentPage("archiveDetail");
-              }}
+              onClick={() => openArchiveDetailForOrder(order)}
             >
               服务记录 / 归档详情
             </button>
@@ -2515,10 +2540,7 @@ ${rentalText}`;
             ) : (
               <button
                 className="staff-primary-action"
-                onClick={() => {
-                  setCurrentOrderId(order.id);
-                  setCurrentPage("completeUpload");
-                }}
+                onClick={() => openCompleteUploadForOrder(order)}
               >
                 上传现场照片
               </button>
@@ -4120,8 +4142,8 @@ ${rentalText}`;
 
           <div className="admin-review-desk">
             {/* 左侧栏：客户与项目基础信息 */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div className="admin-card" style={{ marginBottom: 0 }}>
+            <div className="merchant-project-summary-column">
+              <div className="admin-card merchant-project-summary-card" style={{ marginBottom: 0 }}>
                 <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>项目档案</h2>
                 <div className="plan-info-line"><span>客户名</span><strong>{order.customerName || "暂无内容"}</strong></div>
                 <div className="plan-info-line"><span>状态</span><strong style={{ color: "#3b82f6" }}>{order.status}</strong></div>
@@ -4129,62 +4151,16 @@ ${rentalText}`;
                 <div className="plan-info-line"><span>员工</span><strong>{order.assignedStaffName || "-"} {order.assignedStaffEmail ? `｜${order.assignedStaffEmail}` : ""}</strong></div>
                 <div className="plan-info-line"><span>联系人</span><strong>{order.contactName || "-"} {order.phone ? `｜${order.phone}` : ""}</strong></div>
                 <div className="plan-info-line"><span>地址</span><strong>{order.address || "暂无内容"}</strong></div>
-                <div className="sheet-block" style={{ marginTop: 14 }}>
-                  <p className="sheet-label">方案类型</p>
-                  <div className="plan-type-grid">
-                    {[
-                      ["租赁", "租赁方案"],
-                      ["零售", "零售方案"],
-                      ["养护", "养护服务"],
-                    ].map(([serviceType, label]) => (
-                      <button
-                        key={serviceType}
-                        className={(order.serviceType || "租赁") === serviceType ? "selected" : ""}
-                        onClick={() => {
-                          const nextPlanType = serviceType === "养护" ? "养护服务" : serviceType === "零售" ? "零售方案" : "租赁方案";
-                          updateOrder(order.id, {
-                            serviceType,
-                            planType: nextPlanType,
-                            plan: order.plan ? { ...order.plan, planType: nextPlanType } : order.plan,
-                          }, "订单需求类型已同步");
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="sheet-block">
-                  <p className="sheet-label">需求标签</p>
-                  <input
-                    className="area-input"
-                    value={Array.isArray(order.tags) ? order.tags.join(",") : ""}
-                    onChange={(event) => updateOrder(order.id, { tags: event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean) }, "订单标签已同步")}
-                    placeholder="例如：需比价,租过绿植,室外"
-                  />
-                </div>
-                <div className="sheet-block" style={{ marginTop: 14 }}>
-                  <p className="sheet-label">客户沟通群二维码</p>
-                  {/* QR image upload keeps the preview URL on the order record. */}
-                  <ImageUploader
-                    value={order.communicationQrUrl || ""}
-                    label="上传或替换二维码"
-                    helper="员工任务卡会显示二维码入口。"
-                    onChange={(nextImage) => updateOrder(order.id, { communicationQrUrl: nextImage }, "沟通群二维码已同步")}
-                  />
-                  <input
-                    className="area-input"
-                    value={order.communicationQrUrl || ""}
-                    onChange={(event) => updateOrder(order.id, { communicationQrUrl: event.target.value }, "沟通群二维码已同步")}
-                    placeholder="也可以粘贴二维码图片地址"
-                    style={{ marginTop: 10 }}
-                  />
+                <div className="merchant-summary-tags">
+                  {(Array.isArray(order.tags) && order.tags.length ? order.tags : ["暂无标签"]).map((tag) => (
+                    <span key={tag}>{tag}</span>
+                  ))}
                 </div>
               </div>
             </div>
 
             {/* 右侧栏：方案明细、报价与核心决策操作 */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div className="merchant-review-workspace">
               {(isWaitingConfirm || isWaitingArchive) && (
                 <div className="admin-card" style={{ marginBottom: 0, border: "2px solid #bfdbfe", background: "#f8fafc" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -4262,6 +4238,32 @@ ${rentalText}`;
                 ) : (
                   <div className="empty-card"><p>暂无现场图片</p><span>员工完工上报后，这里会显示现场照片和备注。</span></div>
                 )}
+              </div>
+
+              <div className="admin-card merchant-communication-card" style={{ marginBottom: 0 }}>
+                <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>沟通与备注</h2>
+                <div className="merchant-review-communication-grid">
+                  <div className="sheet-block">
+                    <p className="sheet-label">客户沟通群二维码</p>
+                    <ImageUploader
+                      value={order.communicationQrUrl || ""}
+                      label="上传或替换二维码"
+                      helper="用于员工扫码进入客户沟通群。"
+                      onChange={(nextImage) => updateOrder(order.id, { communicationQrUrl: nextImage }, "沟通群二维码已同步")}
+                    />
+                    <input
+                      className="area-input"
+                      value={order.communicationQrUrl || ""}
+                      onChange={(event) => updateOrder(order.id, { communicationQrUrl: event.target.value }, "沟通群二维码已同步")}
+                      placeholder="也可以粘贴二维码图片地址"
+                    />
+                  </div>
+                  <div className="merchant-review-note-lines">
+                    <div className="plan-info-line"><span>商户备注</span><strong>{order.merchantNote || "暂无内容"}</strong></div>
+                    <div className="plan-info-line"><span>现场备注</span><strong>{order.fieldNote || "暂无内容"}</strong></div>
+                    <div className="plan-info-line"><span>内部备注</span><strong>{order.internalNote || "暂无内容"}</strong></div>
+                  </div>
+                </div>
               </div>
 
               <div className="admin-card" style={{ marginBottom: 0 }}>
@@ -5180,7 +5182,7 @@ ${rentalText}`;
 
               <section className="plan-summary-card" style={{ margin: 0 }}>
                 <div className="section-title-row"><div><p className="eyebrow">Project</p><h2>项目需求</h2></div></div>
-                <div className="sheet-block"><p className="sheet-label">订单来源</p><div className="option-grid payment-grid">{ORDER_SOURCES.map((source) => (<button key={source} className={newOrderForm.source === source ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, source }))}>{source}</button>))}</div></div>
+                <div className="sheet-block"><p className="sheet-label">订单来源</p><div className="option-grid payment-grid order-source-segmented">{ORDER_SOURCES.map((source) => (<button key={source} className={newOrderForm.source === source ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, source }))}>{source}</button>))}</div></div>
                 <div className="sheet-block"><p className="sheet-label">方案类型</p><div className="plan-type-grid">{[
                   ["租赁", "租赁方案"],
                   ["零售", "零售方案"],
@@ -5399,7 +5401,7 @@ ${rentalText}`;
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">订单来源</p>
-            <div className="option-grid">
+            <div className="option-grid order-source-segmented">
               {ORDER_SOURCES.map((source) => (
                 <button key={source} className={newOrderForm.source === source ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, source }))}>
                   {source}
@@ -5616,6 +5618,7 @@ ${rentalText}`;
         CoreOrderCard={CoreOrderCard}
         setCurrentOrderId={setCurrentOrderId}
         setCurrentPage={setCurrentPage}
+        openCompleteUploadForOrder={openCompleteUploadForOrder}
         syncState={syncState}
         autoSyncState={autoSyncState}
         syncMessage={syncMessage}
