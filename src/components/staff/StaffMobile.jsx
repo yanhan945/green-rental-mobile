@@ -45,7 +45,9 @@ export function StaffMobile({
   canOpenMerchant = false,
   onSignOut,
 }) {
-  const executableOrders = staffOrders.filter((order) => order.status === "执行中");
+  const safeStaffOrders = Array.isArray(staffOrders) ? staffOrders : [];
+  const safeFilteredStaffOrders = Array.isArray(filteredStaffOrders) ? filteredStaffOrders : [];
+  const executableOrders = safeStaffOrders.filter((order) => order.status === "执行中");
 
   return (
   <div className="staff-app-shell">
@@ -110,13 +112,13 @@ export function StaffMobile({
           </section>
 
           <section className="staff-task-list">
-            {filteredStaffOrders.length === 0 ? (
+            {safeFilteredStaffOrders.length === 0 ? (
               <div className="staff-empty-card">
                 <strong>暂无{activeStaffTab}任务</strong>
-                <span>订单变化会自动同步，也可以点击刷新。</span>
+                <span>有新任务时会显示在这里，也可以点击刷新查看最新状态。</span>
               </div>
             ) : (
-              filteredStaffOrders.map((order) => (
+              safeFilteredStaffOrders.map((order) => (
                 <CoreOrderCard key={order.id} order={order} mode="staff" />
               ))
             )}
@@ -136,7 +138,7 @@ export function StaffMobile({
 
           <section className="staff-report-card">
             <h2>快捷上报</h2>
-            <p>当前版本先从执行中订单进入完成上传；后续这里会升级为拍照、定位、异常反馈入口。</p>
+            <p>从执行中的订单进入现场照片和完成备注上报。</p>
 
             {executableOrders.length === 0 ? (
               <div className="staff-empty-mini">暂无执行中订单</div>
@@ -165,8 +167,8 @@ export function StaffMobile({
   <>
     <section className="staff-profile-hero">
       <p className="staff-kicker">PARTNER PROFILE</p>
-      <h1>我的服务身份</h1>
-      <span>账号、组织、接单权限与同步状态</span>
+      <h1>我的</h1>
+      <span>个人资料、账号状态与服务设置</span>
     </section>
 
     <section className="staff-profile-card refined">
@@ -175,92 +177,76 @@ export function StaffMobile({
       </div>
       <div>
         <h2>{currentStaff?.name || "园林服务人员"}</h2>
-        <p>{authUserEmail || currentStaff?.email || "后续接入邮箱 / 密码登录。"}</p>
-        <b className="staff-login-pill">{accountStatusLabels[currentStaff?.status] || "模拟账号"} · 本地模式</b>
+        <p>{authUserEmail || currentStaff?.email || "暂无邮箱"}</p>
+        <b className="staff-login-pill">{accountStatusLabels[currentStaff?.status] || "账号正常"}</b>
       </div>
     </section>
 
     <section className="staff-profile-card refined staff-avatar-upload-card">
       <div>
         <p className="staff-kicker">PROFILE PHOTO</p>
-        <h2>个人头像</h2>
-        <p>点击上传头像，首页左上角和我的页面会同步显示。</p>
+        <h2>{staffAvatar ? "更换头像" : "上传头像"}</h2>
+        <p>用于首页头像和个人资料展示。</p>
       </div>
       <ImageUploader
         value={staffAvatar}
         avatar
-        label="员工头像"
+        label={staffAvatar ? "更换头像" : "上传头像"}
         helper=""
         onChange={setStaffAvatar}
       />
-      <p className="staff-storage-note">
-        后续接账号系统和云端 Storage 后，头像 URL 应保存到 staffMembers / user profile 中。
-      </p>
     </section>
 
     <section className="staff-visible-info">
       <div>
-        <span>姓名 / 工号</span>
-        <strong>{currentStaff?.name || "-"} · {currentStaff?.staffNo || "-"}</strong>
-        <em>邮箱密码登录后，这里会来自账号资料。</em>
+        <span>姓名</span>
+        <strong>{currentStaff?.name || "-"}</strong>
+        <em>工号：{currentStaff?.staffNo || "-"}</em>
       </div>
 
       <div>
-        <span>登录邮箱 / 手机号</span>
+        <span>邮箱</span>
         <strong>{authUserEmail || currentStaff?.email || "-"}</strong>
-        <em>{currentStaff?.phone || "未填写手机号"}</em>
+        <em>{currentStaff?.phone || "暂无手机号"}</em>
       </div>
 
       <div>
-        <span>所属组织 / 区域</span>
+        <span>组织 / 区域</span>
         <strong>{currentOrganization?.name || currentStaff?.organizationId || "-"}</strong>
         <em>{currentStaff?.area || "未分配区域"}</em>
       </div>
 
       <div>
-        <span>角色 / 状态</span>
+        <span>角色</span>
         <strong>{roleLabels[currentStaff?.role] || currentStaff?.role || "-"}</strong>
-        <em>{accountStatusLabels[currentStaff?.status] || currentStaff?.status || "-"}</em>
+        <em>状态：{accountStatusLabels[currentStaff?.status] || currentStaff?.status || "-"}</em>
       </div>
 
       <div>
         <span>当前任务数</span>
-        <strong>{staffOrders.length} 笔</strong>
-        <em>员工端当前只显示分配给本人的订单。</em>
+        <strong>{safeStaffOrders.length} 笔</strong>
+        <em>仅展示分配给你的订单</em>
       </div>
     </section>
 
-    <section className="staff-setting-accordion">
-      <details>
-        <summary>
-          <span>账号状态</span>
-          <strong>{accountStatusLabels[currentStaff?.status] || "模拟"}</strong>
-        </summary>
-        <div className="staff-detail-content">
-          <p>当前登录邮箱：{authUserEmail || "-"}</p>
-          <p>后续这里会从 profiles 表读取账号资料与权限。</p>
-          <button onClick={onSignOut}>退出登录</button>
-        </div>
-      </details>
-
+    <section className="staff-setting-accordion staff-setting-cards">
       <details>
         <summary>
           <span>接单权限</span>
-          <strong>查看规则</strong>
+          <strong>正常</strong>
         </summary>
         <div className="staff-detail-content">
-          <p>当前模拟账号：{currentStaff?.email || "-"}</p>
-          <p>指定派单：商户端选择员工后，员工端只展示 assignedStaffId 等于当前员工 id 的订单。</p>
+          <p>当前可接收商户分配的订单。</p>
         </div>
       </details>
 
       <details>
         <summary>
           <span>通知设置</span>
-          <strong>预留</strong>
+          <strong>即将支持</strong>
         </summary>
         <div className="staff-detail-content">
-          <p>后续可接入新派单提醒、方案打回提醒、客户确认提醒、归档提醒。</p>
+          <p>即将支持新任务、方案审核和归档提醒。</p>
         </div>
       </details>
 
@@ -270,11 +256,24 @@ export function StaffMobile({
           <strong>{syncState}</strong>
         </summary>
         <div className="staff-detail-content">
-          <p>自动同步：{autoSyncState}</p>
+          <p>{autoSyncState}</p>
           <p>{syncMessage}</p>
           <div className="staff-detail-actions">
-            <button onClick={refreshOrdersFromCloud}>刷新云端数据</button>
-            <button onClick={uploadLocalOrdersToCloud}>上传本地数据</button>
+            <button onClick={refreshOrdersFromCloud}>刷新数据</button>
+            <button onClick={uploadLocalOrdersToCloud}>同步当前数据</button>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>
+          <span>账号</span>
+          <strong>{accountStatusLabels[currentStaff?.status] || "正常"}</strong>
+        </summary>
+        <div className="staff-detail-content">
+          <p>{authUserEmail || currentStaff?.email || "暂无登录邮箱"}</p>
+          <div className="staff-detail-actions">
+            <button onClick={onSignOut}>退出登录</button>
           </div>
         </div>
       </details>
@@ -323,7 +322,7 @@ export function StaffMobile({
               </div>
               <div className="plan-type-note">
                 {planType === "租赁方案" && "适用于长期绿植租摆，默认包含基础养护。"}
-                {planType === "零售方案" && "适用于一次性售卖植物 / 花盆 / 资材，可记录后续养护意向。"}
+                {planType === "零售方案" && "适用于一次性售卖植物 / 花盆 / 资材，可记录售后养护意向。"}
                 {planType === "养护服务" && "适用于客户已有植物或追加上门维护，只选择套餐与最终报价。"}
               </div>
             </div>
