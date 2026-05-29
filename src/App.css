@@ -8849,3 +8849,48 @@ button:disabled,
     height: 64px !important;
   }
 }
+
+/* Targeted acceptance fixes: create dispatch button and team member editor */
+.admin-layout .merchant-create-button {
+  border: 1px solid rgba(25, 56, 30, 0.28) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 44%),
+    linear-gradient(135deg, #193c22 0%, #2f5a34 54%, #5d7546 100%) !important;
+  color: #fffdf4 !important;
+  box-shadow: 0 18px 36px rgba(31, 65, 35, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+  font-weight: 900 !important;
+}
+
+.admin-layout .merchant-create-button svg {
+  color: #fffdf4 !important;
+  stroke-width: 2.4 !important;
+}
+
+.admin-layout .merchant-create-button:hover {
+  transform: translateY(-2px) !important;
+  filter: saturate(1.08) brightness(1.03) !important;
+  box-shadow: 0 24px 46px rgba(31, 65, 35, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.26) !important;
+}
+
+.admin-layout .merchant-create-button:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 12px 26px rgba(31, 65, 35, 0.24), inset 0 2px 6px rgba(18, 38, 21, 0.22) !important;
+}
+
+.merchant-staff-editor-mask {
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+}
+
+.merchant-staff-editor.merchant-staff-drawer {
+  width: min(760px, calc(100vw - 48px)) !important;
+  max-height: min(82vh, 760px) !important;
+  border-radius: 28px !important;
+  transform: none !important;
+}
+
+.team-admin-table .staff-member-detail,
+.team-admin-table .staff-member-panel {
+  display: none !important;
+}
