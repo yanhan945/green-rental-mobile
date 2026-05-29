@@ -7481,6 +7481,55 @@ input:focus {
   font-variant-numeric: tabular-nums;
 }
 
+.admin-layout .metric-box::before,
+.admin-layout .metric-box::after,
+.metric-box::before,
+.metric-box::after {
+  display: none !important;
+  content: none !important;
+}
+
+.admin-layout .metric-box,
+.metric-box {
+  overflow: visible !important;
+}
+
+.admin-layout .metric-box strong,
+.metric-box strong {
+  font-family: inherit !important;
+  color: #20251d !important;
+  font-size: 28px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+}
+
+.money-amount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  white-space: nowrap;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.money-symbol {
+  font-size: 0.62em;
+  font-weight: 850;
+  opacity: 0.82;
+}
+
+.money-whole {
+  font-size: 1em;
+  font-weight: 900;
+}
+
+.money-cents {
+  font-size: 0.62em;
+  font-weight: 850;
+  opacity: 0.7;
+}
+
 .empty-card,
 .staff-empty-card,
 .staff-empty-mini {
@@ -7616,11 +7665,6 @@ button.danger {
     grid-template-columns: 1fr !important;
   }
 
-  .plan-type-grid {
-    grid-template-columns: 1fr !important;
-    border-radius: 18px !important;
-  }
-
   .merchant-staff-drawer {
     width: calc(100vw - 20px) !important;
     max-height: calc(100vh - 20px) !important;
@@ -7630,6 +7674,10 @@ button.danger {
   .merchant-staff-drawer-foot {
     grid-template-columns: 1fr !important;
   }
+}
+
+.plan-type-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
 }
 
 @media (max-width: 760px) {
@@ -7644,5 +7692,1160 @@ button.danger {
 
   .team-admin-table .admin-table-row {
     grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================================================
+   Garden Estate OS visual system
+   Modern SaaS workspace with limestone, ivory, olive, sand.
+========================================================= */
+:root {
+  --estate-ivory: #fffaf0;
+  --estate-limestone: #f3efe6;
+  --estate-sand: #ead9b8;
+  --estate-olive: #5f7156;
+  --estate-olive-deep: #31452f;
+  --estate-sage: #8a9a7e;
+  --estate-clay: #a75f49;
+  --estate-brass: #b89658;
+  --estate-ink: #20251d;
+  --estate-muted: #827b6d;
+  --estate-shadow-soft: 0 10px 28px rgba(58, 47, 30, 0.065);
+  --estate-shadow-card: 0 18px 44px rgba(58, 47, 30, 0.095), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  --estate-shadow-floating: 0 28px 80px rgba(48, 54, 39, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  --estate-border-light: rgba(116, 102, 74, 0.12);
+  --estate-border-strong: rgba(83, 95, 68, 0.24);
+  --estate-radius-card: 22px;
+  --estate-radius-pill: 999px;
+  --estate-radius-panel: 28px;
+  --estate-texture-limestone: url("./assets/visual/limestone-grain.svg");
+  --estate-watermark-olive: url("./assets/visual/olive-watermark.svg");
+  --estate-glow-sandstone: url("./assets/visual/sandstone-glow.svg");
+}
+
+body,
+.app,
+.staff-app-shell,
+.admin-layout,
+.auth-page-shell {
+  background-color: var(--estate-limestone) !important;
+  color: var(--estate-ink) !important;
+}
+
+.admin-layout,
+.staff-app-shell,
+.auth-page-shell {
+  background-image:
+    var(--estate-texture-limestone),
+    var(--estate-glow-sandstone),
+    linear-gradient(180deg, #fbf7ef 0%, #f4ead9 48%, #eef1e7 100%) !important;
+  background-repeat: repeat, no-repeat, no-repeat !important;
+  background-size: 240px 240px, min(860px, 92vw) auto, cover !important;
+  background-position: 0 0, right -80px top -70px, center !important;
+}
+
+.admin-main,
+.staff-app-main {
+  position: relative;
+}
+
+.admin-main::before {
+  content: "";
+  position: fixed;
+  right: 34px;
+  bottom: 18px;
+  width: min(360px, 32vw);
+  aspect-ratio: 1;
+  pointer-events: none;
+  background: var(--estate-watermark-olive) center / contain no-repeat;
+  opacity: 0.18;
+  z-index: 0;
+}
+
+.admin-main > *,
+.staff-app-main > * {
+  position: relative;
+  z-index: 1;
+}
+
+.primary-button,
+.submit-sheet-button,
+.submit-plan-button,
+.merchant-create-button,
+.staff-primary-action,
+.auth-submit,
+.auth-session-card button {
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: var(--estate-radius-pill) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 42%),
+    linear-gradient(135deg, var(--estate-olive-deep), #4d6845) !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 14px 30px rgba(49, 69, 47, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+}
+
+.primary-button:hover,
+.submit-sheet-button:hover,
+.submit-plan-button:hover,
+.merchant-create-button:hover,
+.staff-primary-action:hover,
+.auth-submit:hover {
+  filter: saturate(1.04) brightness(1.03);
+  transform: translateY(-1px);
+  box-shadow: 0 18px 36px rgba(49, 69, 47, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+}
+
+.ghost-button,
+.role-button,
+.back-button,
+.close-button,
+.staff-ghost-action,
+.staff-mini-button,
+.admin-nav-btn,
+.image-uploader-actions label,
+.image-uploader-actions button {
+  border: 1px solid var(--estate-border-light) !important;
+  border-radius: var(--estate-radius-pill) !important;
+  background: rgba(255, 250, 240, 0.86) !important;
+  color: #405238 !important;
+  box-shadow: var(--estate-shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+  letter-spacing: 0 !important;
+}
+
+.ghost-button:hover,
+.role-button:hover,
+.back-button:hover,
+.close-button:hover,
+.staff-ghost-action:hover,
+.staff-mini-button:hover {
+  border-color: var(--estate-border-strong) !important;
+  background: rgba(255, 252, 246, 0.96) !important;
+}
+
+.ghost-button.danger,
+button.danger,
+.admin-layout .ghost-button.danger {
+  border-color: rgba(167, 95, 73, 0.22) !important;
+  background: linear-gradient(180deg, rgba(255, 247, 241, 0.96), rgba(246, 224, 214, 0.88)) !important;
+  color: #985443 !important;
+  box-shadow: 0 10px 24px rgba(167, 95, 73, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+.plan-summary-card,
+.price-card,
+.empty-card,
+.metric-box,
+.admin-card,
+.admin-data-panel,
+.staff-task-card,
+.staff-report-card,
+.staff-profile-card,
+.staff-profile-hero,
+.staff-visible-info > div,
+.staff-setting-accordion details,
+.bottom-sheet,
+.merchant-staff-editor,
+.auth-panel,
+.image-uploader-empty,
+.image-uploader-preview {
+  border: 1px solid var(--estate-border-light) !important;
+  border-radius: var(--estate-radius-card) !important;
+  background-image:
+    var(--estate-texture-limestone),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(246, 239, 226, 0.88)) !important;
+  background-size: 240px 240px, cover !important;
+  box-shadow: var(--estate-shadow-card) !important;
+}
+
+.admin-card,
+.admin-data-panel,
+.bottom-sheet,
+.merchant-staff-editor,
+.auth-panel {
+  border-radius: var(--estate-radius-panel) !important;
+}
+
+.tag-list span,
+.status-pill,
+.area-size,
+.task-status,
+.admin-status-chip,
+.staff-order-tag,
+.staff-status-chip,
+.staff-login-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid rgba(95, 113, 86, 0.16) !important;
+  border-radius: var(--estate-radius-pill) !important;
+  background: rgba(237, 241, 231, 0.84) !important;
+  color: #405238 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+  font-weight: 850 !important;
+}
+
+.admin-status-chip.is-plan,
+.staff-status-chip.build,
+.staff-order-tag.compare {
+  border-color: rgba(184, 150, 88, 0.2) !important;
+  background: rgba(246, 234, 210, 0.9) !important;
+  color: #8d682c !important;
+}
+
+.admin-status-chip.is-warning,
+.staff-status-chip.archive,
+.ghost-button.danger,
+button.danger {
+  border-color: rgba(167, 95, 73, 0.22) !important;
+  background: rgba(255, 241, 237, 0.9) !important;
+  color: #985443 !important;
+}
+
+.area-input,
+.price-input,
+.search-card input,
+.admin-filter-row input,
+.admin-filter-row select,
+.admin-inline-select,
+.auth-form input,
+textarea,
+select {
+  border: 1px solid var(--estate-border-light) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 250, 240, 0.86) !important;
+  color: var(--estate-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74) !important;
+  outline: none !important;
+}
+
+.area-input:focus,
+.price-input:focus,
+.search-card input:focus,
+.admin-filter-row input:focus,
+.admin-filter-row select:focus,
+.admin-inline-select:focus,
+.auth-form input:focus,
+textarea:focus,
+select:focus {
+  border-color: rgba(49, 69, 47, 0.34) !important;
+  box-shadow: 0 0 0 4px rgba(95, 113, 86, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
+}
+
+.money-amount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  white-space: nowrap;
+  color: var(--estate-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.money-symbol {
+  font-size: 0.62em;
+  font-weight: 850;
+  opacity: 0.82;
+}
+
+.money-whole {
+  font-size: 1em;
+  font-weight: 900;
+}
+
+.money-cents {
+  font-size: 0.62em;
+  font-weight: 850;
+  opacity: 0.68;
+}
+
+.plan-type-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 4px !important;
+  border: 1px solid var(--estate-border-light) !important;
+  border-radius: var(--estate-radius-pill) !important;
+  padding: 4px !important;
+  background: rgba(232, 222, 204, 0.58) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+.plan-type-grid button {
+  min-height: 40px !important;
+  border: 0 !important;
+  border-radius: var(--estate-radius-pill) !important;
+  background: transparent !important;
+  color: #6d6758 !important;
+  box-shadow: none !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+}
+
+.plan-type-grid button.selected {
+  background:
+    linear-gradient(180deg, rgba(255, 253, 247, 0.98), rgba(237, 241, 231, 0.92)) !important;
+  color: var(--estate-olive-deep) !important;
+  box-shadow: 0 8px 18px rgba(58, 47, 30, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.88) !important;
+}
+
+.admin-layout .metric-box::before,
+.admin-layout .metric-box::after,
+.metric-box::before,
+.metric-box::after {
+  display: none !important;
+  content: none !important;
+  opacity: 0 !important;
+}
+
+.metric-box {
+  overflow: visible !important;
+}
+
+.metric-box strong {
+  color: var(--estate-ink) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif !important;
+  font-size: 30px !important;
+  font-weight: 900 !important;
+}
+
+button:disabled,
+.staff-stepper-button:disabled,
+.area-input:disabled,
+.price-input:disabled {
+  opacity: 0.52 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  filter: grayscale(0.12);
+}
+
+/* Merchant Garden Estate OS upgrade */
+.admin-layout {
+  grid-template-columns: 254px minmax(0, 1fr) !important;
+  background-image:
+    var(--estate-texture-limestone),
+    var(--estate-glow-sandstone),
+    radial-gradient(circle at 76% 8%, rgba(255, 250, 240, 0.64), transparent 28%),
+    linear-gradient(180deg, #fbf7ef 0%, #f4ead9 45%, #edf1e7 100%) !important;
+  background-position: 0 0, right -110px top -90px, right 8% top 4%, center !important;
+}
+
+.admin-sidebar {
+  padding: 24px 14px !important;
+  border-right: 1px solid rgba(83, 95, 68, 0.16) !important;
+  background-image:
+    var(--estate-texture-limestone),
+    linear-gradient(180deg, rgba(244, 239, 228, 0.96), rgba(221, 226, 210, 0.92)) !important;
+  background-size: 240px 240px, cover !important;
+  box-shadow: 18px 0 54px rgba(83, 73, 48, 0.08), inset -1px 0 0 rgba(255, 255, 255, 0.48) !important;
+}
+
+.admin-sidebar::after {
+  display: none !important;
+  content: none !important;
+}
+
+.admin-sidebar .brand {
+  margin-bottom: 22px !important;
+  padding: 16px 12px 20px !important;
+  border-bottom: 1px solid rgba(116, 102, 74, 0.12) !important;
+}
+
+.admin-sidebar .brand h2 {
+  color: var(--estate-ink) !important;
+  font-size: 20px !important;
+  font-weight: 950 !important;
+}
+
+.admin-sidebar .brand span,
+.admin-sidebar .brand p,
+.admin-sidebar .brand .eyebrow {
+  color: var(--estate-muted) !important;
+}
+
+.admin-nav-btn {
+  min-height: 46px !important;
+  margin: 5px 0 !important;
+  padding: 0 13px !important;
+  border-radius: 18px !important;
+  background: transparent !important;
+  color: rgba(32, 37, 29, 0.68) !important;
+  box-shadow: none !important;
+}
+
+.admin-nav-btn svg {
+  color: var(--estate-olive) !important;
+  stroke-width: 1.85 !important;
+}
+
+.admin-nav-btn.active {
+  border-color: rgba(83, 95, 68, 0.2) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.92), rgba(237, 241, 231, 0.78)) !important;
+  color: var(--estate-olive-deep) !important;
+  box-shadow: 0 12px 26px rgba(58, 47, 30, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+}
+
+.admin-sidebar .admin-nav-btn[style] {
+  min-height: 44px !important;
+  margin-top: 12px !important;
+  border-color: rgba(83, 95, 68, 0.18) !important;
+  background: rgba(255, 250, 240, 0.72) !important;
+  color: var(--estate-olive-deep) !important;
+}
+
+.admin-main {
+  padding: 30px 36px 48px !important;
+}
+
+.admin-topbar {
+  border-radius: 26px !important;
+  border-color: var(--estate-border-light) !important;
+  background:
+    var(--estate-texture-limestone),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.82), rgba(247, 240, 228, 0.68)) !important;
+  background-size: 240px 240px, cover !important;
+  box-shadow: var(--estate-shadow-card) !important;
+}
+
+.admin-topbar h1 {
+  color: var(--estate-ink) !important;
+  font-weight: 950 !important;
+}
+
+.admin-topbar .eyebrow,
+.admin-topbar span {
+  color: var(--estate-muted) !important;
+}
+
+.admin-auth-chip {
+  border-color: var(--estate-border-light) !important;
+  background: rgba(255, 250, 240, 0.78) !important;
+  color: var(--estate-olive-deep) !important;
+}
+
+.merchant-create-button {
+  min-height: 44px !important;
+  padding: 0 18px !important;
+  gap: 8px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 42%),
+    linear-gradient(135deg, #294329, #55734a) !important;
+}
+
+.merchant-create-button svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.admin-metric-grid {
+  grid-template-columns: repeat(5, minmax(142px, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.admin-metric-grid .metric-box {
+  min-height: 128px !important;
+  padding: 18px 18px 22px !important;
+}
+
+.admin-metric-grid .metric-box::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 15px;
+  height: 4px;
+  border-radius: var(--estate-radius-pill);
+  opacity: 1 !important;
+  background: linear-gradient(90deg, rgba(95, 113, 86, 0.72), rgba(95, 113, 86, 0.18)) !important;
+}
+
+.admin-metric-grid .metric-box:nth-child(3)::after {
+  background: linear-gradient(90deg, rgba(184, 150, 88, 0.74), rgba(184, 150, 88, 0.18)) !important;
+}
+
+.admin-metric-grid .metric-box:nth-child(4)::after {
+  background: linear-gradient(90deg, rgba(138, 154, 126, 0.76), rgba(138, 154, 126, 0.18)) !important;
+}
+
+.admin-metric-grid .metric-box:nth-child(5)::after {
+  background: linear-gradient(90deg, rgba(167, 95, 73, 0.66), rgba(167, 95, 73, 0.15)) !important;
+}
+
+.admin-metric-grid .metric-box h3 {
+  color: var(--estate-muted) !important;
+  font-size: 12px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.admin-metric-grid .metric-box strong {
+  margin-top: 8px;
+  font-size: 34px !important;
+  line-height: 1.05 !important;
+}
+
+.admin-metric-grid .metric-box span {
+  color: rgba(130, 123, 109, 0.9) !important;
+}
+
+.admin-card .area-card,
+.admin-table,
+.staff-member-panel {
+  border: 1px solid var(--estate-border-light) !important;
+  border-radius: 22px !important;
+  background:
+    var(--estate-texture-limestone),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.92), rgba(247, 240, 228, 0.82)) !important;
+  background-size: 240px 240px, cover !important;
+  box-shadow: var(--estate-shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+.admin-table-row {
+  min-height: 64px !important;
+  border-bottom-color: rgba(116, 102, 74, 0.09) !important;
+}
+
+.admin-table-head {
+  min-height: 48px !important;
+  background: rgba(237, 241, 231, 0.58) !important;
+  color: rgba(32, 37, 29, 0.68) !important;
+}
+
+.admin-table-row strong,
+.admin-card .area-card h3 {
+  color: var(--estate-ink) !important;
+  font-weight: 900 !important;
+}
+
+.admin-table-row em,
+.admin-card .area-card p {
+  color: var(--estate-muted) !important;
+}
+
+.admin-review-main .admin-topbar {
+  margin-bottom: 22px !important;
+}
+
+.admin-review-desk {
+  grid-template-columns: minmax(300px, 0.82fr) minmax(0, 1.7fr) !important;
+  gap: 22px !important;
+  align-items: start !important;
+}
+
+.admin-review-desk .admin-card h2 {
+  color: var(--estate-ink) !important;
+  border-bottom-color: rgba(116, 102, 74, 0.12) !important;
+}
+
+.admin-review-desk .plan-info-line {
+  grid-template-columns: 92px minmax(0, 1fr) !important;
+}
+
+.admin-review-desk .metric-box {
+  min-height: 104px !important;
+}
+
+.merchant-photo-grid img {
+  border-radius: 18px !important;
+  border-color: var(--estate-border-light) !important;
+  box-shadow: var(--estate-shadow-soft) !important;
+}
+
+.team-admin-table .admin-table-row {
+  align-items: center !important;
+}
+
+.staff-member-detail summary.admin-table-row {
+  cursor: pointer;
+}
+
+.merchant-staff-drawer {
+  border-radius: 30px !important;
+  box-shadow: var(--estate-shadow-floating) !important;
+}
+
+.merchant-staff-drawer-head,
+.merchant-staff-drawer-foot {
+  background:
+    var(--estate-texture-limestone),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(246, 239, 226, 0.9)) !important;
+  background-size: 240px 240px, cover !important;
+}
+
+.merchant-staff-section h3 {
+  color: var(--estate-olive-deep) !important;
+  letter-spacing: 0 !important;
+}
+
+@media (max-width: 1180px) {
+  .admin-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .admin-review-desk {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* GardenOS mobile premium layer */
+.staff-app-shell {
+  min-height: 100vh !important;
+  color: var(--estate-ink, #20251d) !important;
+  background:
+    var(--estate-texture-limestone, none),
+    var(--estate-glow-sandstone, none),
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.86), transparent 30%),
+    radial-gradient(circle at 86% 20%, rgba(211, 184, 132, 0.2), transparent 32%),
+    linear-gradient(180deg, #fbf8f0 0%, #f0eadc 52%, #e9e1cf 100%) !important;
+  background-size: 260px 260px, cover, cover, cover, cover !important;
+  overflow-x: hidden !important;
+}
+
+.staff-app-shell::before,
+.staff-app-shell::after {
+  display: none !important;
+  content: none !important;
+}
+
+.staff-app-topbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 50 !important;
+  min-height: 62px !important;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 14px 8px !important;
+  display: grid !important;
+  grid-template-columns: 44px minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+  align-items: center !important;
+  border-bottom: 1px solid rgba(102, 93, 70, 0.12) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.9), rgba(248, 242, 231, 0.72)) !important;
+  box-shadow: 0 12px 30px rgba(72, 60, 38, 0.08) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
+}
+
+.staff-avatar-entry {
+  width: 42px !important;
+  height: 42px !important;
+  border: 1px solid rgba(83, 95, 68, 0.16) !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  background:
+    linear-gradient(145deg, rgba(255, 252, 246, 0.96), rgba(226, 218, 199, 0.84)) !important;
+  color: var(--estate-olive-deep, #31472c) !important;
+  box-shadow: 0 10px 22px rgba(65, 55, 33, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+}
+
+.staff-avatar-entry img,
+.staff-avatar.large img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.staff-topbar-title {
+  min-width: 0 !important;
+  text-align: center !important;
+  line-height: 1.08 !important;
+}
+
+.staff-topbar-title strong {
+  display: block !important;
+  color: var(--estate-ink, #20251d) !important;
+  font-size: 17px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0 !important;
+}
+
+.staff-topbar-title span {
+  display: block !important;
+  margin-top: 3px !important;
+  color: rgba(83, 95, 68, 0.72) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+}
+
+.staff-mini-button.merchant-switch {
+  min-height: 38px !important;
+  padding: 0 12px !important;
+  border: 1px solid rgba(83, 95, 68, 0.18) !important;
+  border-radius: 999px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 45%),
+    linear-gradient(135deg, #31472c, #657a52) !important;
+  color: #fffaf0 !important;
+  box-shadow: 0 12px 24px rgba(48, 63, 38, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
+
+.staff-mini-button.merchant-switch svg {
+  color: #fffaf0 !important;
+}
+
+.staff-app-main {
+  width: min(100%, 460px) !important;
+  margin: 0 auto !important;
+  padding: 14px 14px calc(104px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.staff-app-main > * {
+  max-width: 100% !important;
+}
+
+.garden-clean-head,
+.staff-compact-header,
+.staff-profile-hero {
+  border: 1px solid rgba(102, 93, 70, 0.12) !important;
+  border-radius: 28px !important;
+  background:
+    var(--estate-texture-limestone, none),
+    linear-gradient(145deg, rgba(255, 252, 246, 0.92), rgba(239, 233, 219, 0.78)) !important;
+  background-size: 260px 260px, cover !important;
+  box-shadow: 0 18px 48px rgba(65, 55, 33, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+}
+
+.garden-clean-head::before,
+.garden-clean-head::after,
+.garden-clean-card::before,
+.garden-clean-card::after,
+.garden-live-progress-card::before,
+.garden-live-progress-card::after,
+.garden-today-card::before,
+.garden-today-card::after,
+.garden-status-card::before,
+.garden-status-card::after,
+.garden-progress-card::before,
+.garden-progress-card::after {
+  display: none !important;
+  content: none !important;
+}
+
+.garden-clean-head {
+  padding: 18px !important;
+  align-items: center !important;
+}
+
+.garden-clean-head p,
+.staff-kicker,
+.garden-kicker {
+  color: rgba(83, 95, 68, 0.68) !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: none !important;
+}
+
+.garden-clean-head h1,
+.staff-compact-header h1,
+.staff-profile-hero h1 {
+  color: var(--estate-ink, #20251d) !important;
+  font-size: 25px !important;
+  line-height: 1.12 !important;
+  font-weight: 950 !important;
+  letter-spacing: 0 !important;
+}
+
+.garden-clean-head span,
+.staff-compact-header span,
+.staff-profile-hero span {
+  color: var(--estate-muted, #746e61) !important;
+  line-height: 1.55 !important;
+}
+
+.garden-head-refresh,
+.garden-clean-title > button,
+.staff-compact-header > button,
+.staff-detail-actions button,
+.staff-report-row strong {
+  border: 1px solid rgba(83, 95, 68, 0.16) !important;
+  border-radius: 999px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(238, 232, 217, 0.84)) !important;
+  color: var(--estate-olive-deep, #31472c) !important;
+  box-shadow: 0 10px 22px rgba(65, 55, 33, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
+}
+
+.garden-clean-card,
+.garden-live-progress-card.refined,
+.staff-report-card,
+.staff-profile-card.refined,
+.staff-avatar-upload-card,
+.staff-setting-accordion details,
+.staff-task-card,
+.staff-empty-card,
+.staff-empty-mini {
+  position: relative !important;
+  border: 1px solid rgba(102, 93, 70, 0.13) !important;
+  border-radius: 26px !important;
+  background:
+    var(--estate-texture-limestone, none),
+    linear-gradient(145deg, rgba(255, 252, 246, 0.94), rgba(245, 239, 226, 0.84)) !important;
+  background-size: 260px 260px, cover !important;
+  box-shadow: 0 18px 44px rgba(65, 55, 33, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+  overflow: hidden !important;
+}
+
+.garden-clean-title,
+.garden-live-title-row,
+.staff-task-top,
+.staff-task-title-row {
+  align-items: flex-start !important;
+  gap: 12px !important;
+}
+
+.garden-clean-title h2,
+.garden-live-title-row h2,
+.staff-report-card h2,
+.staff-profile-card h2 {
+  color: var(--estate-ink, #20251d) !important;
+  font-weight: 950 !important;
+  letter-spacing: 0 !important;
+}
+
+.garden-service-flow-grid {
+  gap: 12px !important;
+}
+
+.garden-service-flow-item {
+  min-height: 116px !important;
+  padding: 14px !important;
+  border: 1px solid rgba(102, 93, 70, 0.12) !important;
+  border-radius: 22px !important;
+  background: linear-gradient(145deg, rgba(255, 252, 246, 0.9), rgba(239, 233, 219, 0.72)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76) !important;
+}
+
+.garden-flow-icon,
+.staff-status-chip,
+.staff-login-pill,
+.garden-live-title-row span {
+  border-radius: 999px !important;
+  background: rgba(95, 113, 86, 0.12) !important;
+  color: var(--estate-olive-deep, #31472c) !important;
+  border: 1px solid rgba(95, 113, 86, 0.12) !important;
+}
+
+.garden-service-flow-item strong,
+.garden-live-number strong {
+  color: var(--estate-ink, #20251d) !important;
+  font-family: inherit !important;
+  font-size: 30px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+}
+
+.garden-service-flow-item em,
+.garden-flow-note,
+.garden-live-progress-card p,
+.staff-report-card p,
+.staff-profile-card p,
+.staff-detail-content p {
+  color: var(--estate-muted, #746e61) !important;
+  line-height: 1.55 !important;
+}
+
+.garden-live-bars i {
+  border-radius: 999px 999px 6px 6px !important;
+  background: linear-gradient(180deg, rgba(95, 113, 86, 0.78), rgba(184, 150, 88, 0.28)) !important;
+}
+
+.staff-status-tabs {
+  margin: 12px 0 14px !important;
+  padding: 5px !important;
+  display: flex !important;
+  gap: 5px !important;
+  overflow-x: auto !important;
+  border: 1px solid rgba(102, 93, 70, 0.12) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 252, 246, 0.62) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+.staff-status-tabs button {
+  flex: 0 0 auto !important;
+  min-height: 34px !important;
+  padding: 0 13px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: rgba(47, 57, 39, 0.62) !important;
+  font-weight: 850 !important;
+  box-shadow: none !important;
+}
+
+.staff-status-tabs button.active {
+  background: linear-gradient(180deg, rgba(95, 113, 86, 0.18), rgba(95, 113, 86, 0.1)) !important;
+  color: var(--estate-olive-deep, #31472c) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68) !important;
+}
+
+.staff-task-list {
+  display: grid !important;
+  gap: 14px !important;
+}
+
+.staff-task-card {
+  padding: 16px !important;
+}
+
+.staff-task-title-row h2 {
+  color: var(--estate-ink, #20251d) !important;
+  font-size: 20px !important;
+  line-height: 1.2 !important;
+  font-weight: 950 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.staff-task-title-row p,
+.staff-task-info span,
+.staff-task-hint {
+  color: var(--estate-muted, #746e61) !important;
+}
+
+.staff-task-info {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  margin: 13px 0 !important;
+}
+
+.staff-task-info > div {
+  min-width: 0 !important;
+  padding: 10px 11px !important;
+  border: 1px solid rgba(102, 93, 70, 0.1) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 252, 246, 0.56) !important;
+}
+
+.staff-task-info strong {
+  color: var(--estate-ink, #20251d) !important;
+  line-height: 1.35 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.staff-task-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 9px !important;
+  margin-top: 14px !important;
+}
+
+.staff-task-actions button,
+.staff-primary-action,
+.staff-ghost-action,
+.submit-sheet-button {
+  min-height: 40px !important;
+  border-radius: 999px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+}
+
+.staff-primary-action,
+.submit-sheet-button {
+  border: 1px solid rgba(83, 95, 68, 0.24) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 45%),
+    linear-gradient(135deg, #31472c, #657a52) !important;
+  color: #fffaf0 !important;
+  box-shadow: 0 12px 24px rgba(48, 63, 38, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.staff-ghost-action {
+  border: 1px solid rgba(83, 95, 68, 0.16) !important;
+  background: rgba(255, 252, 246, 0.76) !important;
+  color: var(--estate-olive-deep, #31472c) !important;
+  box-shadow: 0 8px 18px rgba(65, 55, 33, 0.07) !important;
+}
+
+.staff-report-row {
+  border: 1px solid rgba(102, 93, 70, 0.12) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 252, 246, 0.62) !important;
+}
+
+.staff-profile-card.refined {
+  display: grid !important;
+  grid-template-columns: 72px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  align-items: center !important;
+  padding: 16px !important;
+}
+
+.staff-avatar.large {
+  width: 72px !important;
+  height: 72px !important;
+  border: 1px solid rgba(83, 95, 68, 0.16) !important;
+  border-radius: 24px !important;
+  overflow: hidden !important;
+  background: linear-gradient(145deg, rgba(255, 252, 246, 0.96), rgba(226, 218, 199, 0.84)) !important;
+  color: var(--estate-olive-deep, #31472c) !important;
+  box-shadow: 0 12px 26px rgba(65, 55, 33, 0.12) !important;
+}
+
+.staff-avatar-upload-card {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.staff-visible-info {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+  margin: 14px 0 !important;
+}
+
+.staff-visible-info > div {
+  min-width: 0 !important;
+  border: 1px solid rgba(102, 93, 70, 0.12) !important;
+  border-radius: 20px !important;
+  background: rgba(255, 252, 246, 0.68) !important;
+  box-shadow: 0 10px 22px rgba(65, 55, 33, 0.07) !important;
+}
+
+.staff-visible-info span,
+.staff-visible-info em {
+  color: var(--estate-muted, #746e61) !important;
+}
+
+.staff-visible-info strong {
+  color: var(--estate-ink, #20251d) !important;
+  overflow-wrap: anywhere !important;
+}
+
+.staff-setting-cards {
+  display: grid !important;
+  gap: 10px !important;
+}
+
+.staff-setting-accordion summary {
+  color: var(--estate-ink, #20251d) !important;
+}
+
+.staff-setting-accordion summary strong {
+  background: rgba(95, 113, 86, 0.12) !important;
+  color: var(--estate-olive-deep, #31472c) !important;
+}
+
+.staff-detail-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+.staff-app-shell input,
+.staff-app-shell textarea,
+.staff-app-shell select {
+  border: 1px solid rgba(102, 93, 70, 0.14) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 252, 246, 0.74) !important;
+  color: var(--estate-ink, #20251d) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74) !important;
+}
+
+.staff-app-shell input:focus,
+.staff-app-shell textarea:focus,
+.staff-app-shell select:focus {
+  outline: none !important;
+  border-color: rgba(83, 95, 68, 0.42) !important;
+  box-shadow: 0 0 0 4px rgba(95, 113, 86, 0.12) !important;
+}
+
+.staff-bottom-tab {
+  position: fixed !important;
+  left: 50% !important;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 60 !important;
+  width: min(calc(100% - 24px), 430px) !important;
+  min-height: 66px !important;
+  padding: 7px !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+  border: 1px solid rgba(102, 93, 70, 0.14) !important;
+  border-radius: 26px !important;
+  background: rgba(255, 252, 246, 0.78) !important;
+  box-shadow: 0 18px 46px rgba(65, 55, 33, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.84) !important;
+  transform: translateX(-50%) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
+}
+
+.staff-bottom-item {
+  min-width: 0 !important;
+  min-height: 50px !important;
+  padding: 5px 4px !important;
+  border: 0 !important;
+  border-radius: 19px !important;
+  background: transparent !important;
+  color: rgba(47, 57, 39, 0.58) !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
+  font-weight: 760 !important;
+}
+
+.staff-bottom-item .staff-tab-icon {
+  width: 22px !important;
+  height: 22px !important;
+  margin-bottom: 2px !important;
+}
+
+.staff-bottom-item svg {
+  width: 20px !important;
+  height: 20px !important;
+  stroke-width: 1.9 !important;
+}
+
+.staff-bottom-item.active {
+  background: linear-gradient(180deg, rgba(95, 113, 86, 0.18), rgba(95, 113, 86, 0.1)) !important;
+  color: var(--estate-olive-deep, #31472c) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+.staff-bottom-item.active svg {
+  color: var(--estate-olive-deep, #31472c) !important;
+}
+
+.sheet-mask .bottom-sheet {
+  max-height: min(84vh, 720px) !important;
+  border-radius: 30px 30px 0 0 !important;
+  border: 1px solid rgba(102, 93, 70, 0.14) !important;
+  background:
+    var(--estate-texture-limestone, none),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(241, 234, 220, 0.94)) !important;
+  background-size: 260px 260px, cover !important;
+}
+
+@media (max-width: 420px) {
+  .staff-app-topbar {
+    grid-template-columns: 42px minmax(0, 1fr) auto !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .staff-topbar-title strong {
+    font-size: 16px !important;
+  }
+
+  .staff-mini-button.merchant-switch {
+    padding: 0 10px !important;
+  }
+
+  .staff-mini-button.merchant-switch span {
+    display: inline !important;
+  }
+
+  .staff-task-info {
+    grid-template-columns: 1fr !important;
+  }
+
+  .staff-profile-card.refined {
+    grid-template-columns: 64px minmax(0, 1fr) !important;
+  }
+
+  .staff-avatar.large {
+    width: 64px !important;
+    height: 64px !important;
   }
 }
