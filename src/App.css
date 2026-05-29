@@ -8894,3 +8894,178 @@ button:disabled,
 .team-admin-table .staff-member-panel {
   display: none !important;
 }
+
+.order-source-segmented {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 4px !important;
+  padding: 4px !important;
+  border: 1px solid rgba(116, 102, 74, 0.13) !important;
+  border-radius: 999px !important;
+  background: rgba(244, 238, 226, 0.84) !important;
+}
+
+.order-source-segmented button {
+  min-height: 38px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: #6d6758 !important;
+  box-shadow: none !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+}
+
+.order-source-segmented button.selected {
+  background: rgba(255, 252, 246, 0.96) !important;
+  color: #31452f !important;
+  box-shadow: 0 8px 18px rgba(58, 47, 30, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+}
+
+.merchant-staff-editor-mask {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+}
+
+.merchant-staff-editor.merchant-staff-drawer {
+  position: relative !important;
+  margin: auto !important;
+  width: min(760px, calc(100vw - 48px)) !important;
+  max-height: calc(100dvh - 48px) !important;
+}
+
+.admin-review-main {
+  height: 100vh !important;
+  overflow-y: auto !important;
+}
+
+.admin-review-main .admin-topbar {
+  position: relative !important;
+  top: auto !important;
+  z-index: 1 !important;
+}
+
+.admin-review-desk {
+  grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.65fr) !important;
+  gap: 20px !important;
+  align-items: start !important;
+}
+
+.merchant-project-summary-column,
+.merchant-review-workspace {
+  min-width: 0 !important;
+}
+
+.merchant-review-workspace {
+  display: grid !important;
+  gap: 16px !important;
+}
+
+.merchant-project-summary-card .plan-info-line {
+  grid-template-columns: 82px minmax(0, 1fr) !important;
+}
+
+.merchant-summary-tags {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 7px !important;
+  margin-top: 14px !important;
+  padding-top: 14px !important;
+  border-top: 1px solid rgba(116, 102, 74, 0.11) !important;
+}
+
+.merchant-summary-tags span {
+  display: inline-flex !important;
+  min-height: 26px !important;
+  align-items: center !important;
+  border-radius: 999px !important;
+  padding: 0 10px !important;
+  background: rgba(95, 113, 86, 0.1) !important;
+  color: #31452f !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
+
+.merchant-review-communication-grid {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1fr) !important;
+  gap: 16px !important;
+  align-items: start !important;
+}
+
+.merchant-communication-card .image-uploader {
+  max-width: 220px !important;
+}
+
+.merchant-communication-card .area-input {
+  margin-top: 10px !important;
+}
+
+.merchant-review-note-lines {
+  display: grid !important;
+  gap: 10px !important;
+}
+
+.staff-avatar-profile-card {
+  grid-template-columns: 112px minmax(0, 1fr) !important;
+  justify-items: start !important;
+  align-items: center !important;
+}
+
+.staff-avatar-profile-card .image-uploader {
+  width: 112px !important;
+}
+
+.staff-avatar-profile-card .image-uploader-grid {
+  display: block !important;
+}
+
+.staff-avatar-profile-card .staff-avatar-profile-copy {
+  min-width: 0 !important;
+}
+
+.staff-avatar-profile-card .staff-avatar-profile-copy h2 {
+  margin: 3px 0 4px !important;
+  overflow-wrap: anywhere !important;
+}
+
+.staff-avatar-profile-card .staff-avatar-profile-copy p {
+  margin: 0 0 8px !important;
+  overflow-wrap: anywhere !important;
+}
+
+.staff-avatar-profile-card .staff-avatar-profile-copy > span {
+  display: block !important;
+  margin-top: 10px !important;
+  color: var(--estate-muted, #746e61) !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+}
+
+@media (max-width: 900px) {
+  .admin-review-desk,
+  .merchant-review-communication-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .order-source-segmented {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    border-radius: 22px !important;
+  }
+
+  .staff-avatar-profile-card {
+    grid-template-columns: 96px minmax(0, 1fr) !important;
+  }
+
+  .staff-avatar-profile-card .image-uploader {
+    width: 96px !important;
+  }
+}
