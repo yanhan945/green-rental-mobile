@@ -22,14 +22,14 @@ html, body {
   --text-main: #1f2937;
   --text-sub: #5f6b7a;
   --text-light: #8a96a6;
-  --brand: #2f6fae;
-  --brand-dark: #245a8d;
-  --brand-soft: #eaf2fb;
-  --brand-border: #bfd5ec;
+  --brand: #405a38;
+  --brand-dark: #31452f;
+  --brand-soft: #edf1e7;
+  --brand-border: #b8c4aa;
   --danger: #d64545;
   --danger-soft: #fff0f0;
-  --success: #2f6fae;
-  --success-soft: #eef4fb;
+  --success: #4d6845;
+  --success-soft: #edf1e7;
   --warning: #b7791f;
   --warning-soft: #fff7e6;
   --radius: 12px;
@@ -1302,7 +1302,7 @@ button.danger,
   top: 0;
   bottom: 0;
   width: 4px;
-  background: #2f6fae;
+  background: #405a38;
 }
 
 .task-card-header {
@@ -1405,8 +1405,8 @@ button.danger,
 
 .task-card .actions .primary-button,
 .task-card .actions button.primary-button {
-  border-color: #2f6fae !important;
-  background: #2f6fae !important;
+  border-color: #405a38 !important;
+  background: #405a38 !important;
   color: #ffffff !important;
 }
 
@@ -1416,7 +1416,7 @@ button.danger,
 
 .task-card .actions .primary-button:hover,
 .task-card .actions button.primary-button:hover {
-  background: #245a8d !important;
+  background: #31452f !important;
 }
 
 /* 兜底：避免任务列表再出现浏览器默认小灰按钮 */
@@ -1483,9 +1483,9 @@ button.danger,
 .price-card input:focus,
 .price-card select:focus,
 .price-card textarea:focus {
-  border-color: #2f6fae !important;
+  border-color: #405a38 !important;
   background: #ffffff !important;
-  box-shadow: 0 0 0 3px rgba(47, 111, 174, 0.12) !important;
+  box-shadow: 0 0 0 3px rgba(64, 90, 56, 0.12) !important;
 }
 
 .price-card button {
@@ -1511,8 +1511,8 @@ button.danger,
 .price-card button.selected,
 .price-card button.active,
 .price-card button[aria-pressed="true"] {
-  border-color: #2f6fae !important;
-  background: #2f6fae !important;
+  border-color: #405a38 !important;
+  background: #405a38 !important;
   color: #ffffff !important;
 }
 
@@ -1592,8 +1592,8 @@ button.danger,
 
 .bottom-actions .submit-plan-button,
 .bottom-actions button:last-child {
-  border-color: #2f6fae !important;
-  background: #2f6fae !important;
+  border-color: #405a38 !important;
+  background: #405a38 !important;
   color: #ffffff !important;
 }
 /* ================= 电脑端（商户老板后台）百万级 SaaS 重构 ================= */
@@ -1632,7 +1632,7 @@ button.danger,
   cursor: pointer;
 }
 .admin-nav-btn:hover { background: #1e293b; color: #fff; }
-.admin-nav-btn.active { background: #3b82f6; color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+.admin-nav-btn.active { background: #405a38; color: #fff; box-shadow: 0 4px 12px rgba(49, 69, 47, 0.22); }
 
 /* 主工作区与顶部毛玻璃导航 */
 .admin-main {
@@ -1673,7 +1673,7 @@ button.danger,
   padding: 20px; 
   border-radius: 16px; 
   border: 1px solid #e2e8f0; 
-  border-left: 5px solid #3b82f6; 
+  border-left: 5px solid #405a38; 
   box-shadow: 0 4px 12px rgba(0,0,0,0.02); 
 }
 .metric-box h3 { margin: 0 0 8px; font-size: 13px; color: #64748b; font-weight: 700; text-transform: uppercase; }
@@ -1727,25 +1727,25 @@ button.danger,
 
 /* 蓝色主操作按钮 */
 .admin-layout .primary-button {
-  background: #2f6fae !important;
+  background: #405a38 !important;
   color: #fff !important;
-  border: 1px solid #2f6fae !important;
-  box-shadow: 0 4px 10px rgba(47, 111, 174, 0.2) !important;
+  border: 1px solid #405a38 !important;
+  box-shadow: 0 4px 10px rgba(49, 69, 47, 0.2) !important;
 }
 .admin-layout .primary-button:hover {
-  background: #245a8d !important;
+  background: #31452f !important;
 }
 
 /* 白色/灰色次要操作按钮 */
 .admin-layout .ghost-button {
   background: #fff !important;
-  color: #2f6fae !important;
+  color: #405a38 !important;
   border: 1px solid #cfd8e3 !important;
   box-shadow: none !important;
 }
 .admin-layout .ghost-button:hover {
   background: #f8fafc !important;
-  border-color: #2f6fae !important;
+  border-color: #405a38 !important;
 }
 
 /* 红色危险/打回按钮 */
@@ -1816,8 +1816,8 @@ button.danger,
 
 .admin-filter-row input:focus,
 .admin-filter-row select:focus {
-  border-color: #2f6fae;
-  box-shadow: 0 0 0 3px rgba(47, 111, 174, 0.12);
+  border-color: #405a38;
+  box-shadow: 0 0 0 3px rgba(64, 90, 56, 0.12);
 }
 
 .admin-table {
@@ -1914,13 +1914,13 @@ button.danger,
 .admin-section-head .ghost-button {
   border: 1px solid #cfd8e3 !important;
   background: #ffffff !important;
-  color: #2f6fae !important;
+  color: #405a38 !important;
 }
 
 .admin-table-actions .primary-button,
 .admin-section-head .primary-button {
-  border: 1px solid #2f6fae !important;
-  background: #2f6fae !important;
+  border: 1px solid #405a38 !important;
+  background: #405a38 !important;
   color: #ffffff !important;
 }
 
@@ -8978,6 +8978,38 @@ button:disabled,
   grid-template-columns: 82px minmax(0, 1fr) !important;
 }
 
+.merchant-project-summary-column {
+  display: grid !important;
+  gap: 16px !important;
+}
+
+.merchant-side-note-card {
+  padding: 16px !important;
+}
+
+.merchant-side-qr {
+  display: grid !important;
+  gap: 10px !important;
+  justify-items: center !important;
+  text-align: center !important;
+}
+
+.merchant-side-qr img {
+  width: min(180px, 100%) !important;
+  aspect-ratio: 1 !important;
+  border-radius: 20px !important;
+  object-fit: contain !important;
+  background: #fff !important;
+  border: 1px solid rgba(102, 93, 70, 0.13) !important;
+  box-shadow: 0 10px 24px rgba(65, 55, 33, 0.08) !important;
+}
+
+.merchant-side-qr span {
+  color: var(--estate-muted, #746e61) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
 .merchant-summary-tags {
   display: flex !important;
   flex-wrap: wrap !important;
@@ -9020,17 +9052,89 @@ button:disabled,
 }
 
 .staff-avatar-profile-card {
-  grid-template-columns: 112px minmax(0, 1fr) !important;
+  grid-template-columns: 92px minmax(0, 1fr) !important;
   justify-items: start !important;
   align-items: center !important;
+  column-gap: 14px !important;
+  overflow: visible !important;
 }
 
 .staff-avatar-profile-card .image-uploader {
-  width: 112px !important;
+  width: 92px !important;
+  max-width: 92px !important;
 }
 
 .staff-avatar-profile-card .image-uploader-grid {
   display: block !important;
+}
+
+.staff-avatar-profile-card .image-uploader-slot {
+  position: relative !important;
+  min-height: 116px !important;
+  overflow: visible !important;
+}
+
+.staff-avatar-profile-card .image-uploader-empty,
+.staff-avatar-profile-card .image-uploader-preview {
+  width: 78px !important;
+  height: 78px !important;
+  min-height: 78px !important;
+  border-radius: 50% !important;
+  overflow: visible !important;
+}
+
+.staff-avatar-profile-card .image-uploader-empty svg {
+  display: none !important;
+}
+
+.staff-avatar-profile-card .image-uploader-empty::before {
+  content: "G";
+  display: grid;
+  place-items: center;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #6f8063, #3f5438);
+  color: #fffaf1;
+  font-size: 28px;
+  font-weight: 950;
+  box-shadow: 0 12px 24px rgba(60, 77, 52, 0.18);
+}
+
+.staff-avatar-profile-card .image-uploader-preview img {
+  border-radius: 50% !important;
+  overflow: hidden !important;
+}
+
+.staff-avatar-profile-card .image-uploader-empty strong,
+.staff-avatar-profile-card .image-uploader-actions label {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: -34px !important;
+  transform: translateX(-50%) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 84px !important;
+  min-height: 28px !important;
+  border: 1px solid rgba(83, 95, 68, 0.16) !important;
+  border-radius: 999px !important;
+  padding: 0 10px !important;
+  background: rgba(255, 252, 246, 0.94) !important;
+  color: var(--estate-olive-deep, #31452f) !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  box-shadow: 0 8px 16px rgba(65, 55, 33, 0.08) !important;
+}
+
+.staff-avatar-profile-card .image-uploader-actions {
+  position: static !important;
+  display: block !important;
+}
+
+.staff-avatar-profile-card .image-uploader-actions button {
+  display: none !important;
 }
 
 .staff-avatar-profile-card .staff-avatar-profile-copy {
@@ -9069,11 +9173,11 @@ button:disabled,
   }
 
   .staff-avatar-profile-card {
-    grid-template-columns: 96px minmax(0, 1fr) !important;
+    grid-template-columns: 88px minmax(0, 1fr) !important;
   }
 
   .staff-avatar-profile-card .image-uploader {
-    width: 96px !important;
+    width: 88px !important;
   }
 }
 
@@ -9245,6 +9349,56 @@ button:disabled,
   background: rgba(95, 113, 86, 0.12) !important;
 }
 
+.staff-legacy-page [style*="#d8e1ec"],
+.staff-legacy-page [style*="#e4eaf2"],
+.staff-legacy-page [style*="#e7edf4"],
+.staff-legacy-page [style*="#edf1f5"],
+.staff-legacy-page [style*="#f4f6f9"],
+.staff-legacy-page [style*="#f5f7fa"],
+.staff-legacy-page [style*="#eef2f6"] {
+  border-color: rgba(102, 93, 70, 0.13) !important;
+  background-color: rgba(255, 252, 246, 0.72) !important;
+  color: var(--estate-ink, #20251d) !important;
+}
+
+.staff-plan-page [style*="overflowX"],
+.staff-plan-page [style*="overflow-x"] {
+  scrollbar-width: none !important;
+}
+
+.staff-plan-page [style*="overflowX"]::-webkit-scrollbar,
+.staff-plan-page [style*="overflow-x"]::-webkit-scrollbar {
+  display: none !important;
+}
+
+.staff-plan-page > section button,
+.staff-legacy-page .bottom-sheet button {
+  min-height: 38px !important;
+}
+
+.staff-plan-page > section button:not(.submit-plan-button):not(.submit-sheet-button):not(.staff-material-remove),
+.staff-legacy-page .bottom-sheet button:not(.submit-plan-button):not(.submit-sheet-button):not(.danger) {
+  border: 1px solid rgba(83, 95, 68, 0.16) !important;
+  background: rgba(255, 252, 246, 0.84) !important;
+  color: var(--estate-olive-deep, #31452f) !important;
+}
+
+.staff-plan-page > section button[class*="selected"],
+.staff-legacy-page .option-grid button.selected,
+.staff-legacy-page .payment-grid button.selected {
+  background: rgba(95, 113, 86, 0.14) !important;
+  color: var(--estate-olive-deep, #31452f) !important;
+  border-color: rgba(83, 95, 68, 0.28) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 8px 18px rgba(65, 55, 33, 0.07) !important;
+}
+
+.staff-legacy-page .rent-preview strong,
+.staff-legacy-page .price-preview-line strong,
+.staff-plan-page strong[style*="font-size: 18px"] {
+  color: var(--estate-ink, #20251d) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
 .staff-legacy-page .bottom-actions {
   position: fixed !important;
   left: 50% !important;
@@ -9374,7 +9528,49 @@ button:disabled,
 }
 
 .staff-plan-page .maintenance-package-grid button {
-  min-height: 112px !important;
+  min-height: 150px !important;
+  display: grid !important;
+  align-content: start !important;
+  gap: 7px !important;
+  border-radius: 20px !important;
+  text-align: left !important;
+}
+
+.staff-plan-page .maintenance-package-grid button em {
+  display: block !important;
+  color: var(--estate-muted, #746e61) !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  font-style: normal !important;
+  font-weight: 760 !important;
+}
+
+.staff-plan-page [style*="overflow-x: auto"],
+.staff-plan-page [style*="overflowX"] {
+  flex-wrap: wrap !important;
+  overflow: visible !important;
+}
+
+.staff-plan-page section > div[style*="grid-template-columns: 1fr 1fr 1fr"],
+.staff-plan-page section > div[style*="repeat(4, 1fr)"],
+.staff-plan-page .payment-grid,
+.staff-plan-page .option-grid {
+  border: 1px solid rgba(116, 102, 74, 0.13) !important;
+  border-radius: 999px !important;
+  padding: 4px !important;
+  background: rgba(244, 238, 226, 0.78) !important;
+  gap: 4px !important;
+}
+
+.staff-plan-page section > div[style*="grid-template-columns: 1fr 1fr 1fr"] button,
+.staff-plan-page section > div[style*="repeat(4, 1fr)"] button,
+.staff-plan-page .payment-grid button,
+.staff-plan-page .option-grid button {
+  border-radius: 999px !important;
+  border: 0 !important;
+  min-height: 38px !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 .staff-plan-page .plan-summary-top strong,
@@ -9387,10 +9583,14 @@ button:disabled,
     var(--estate-texture-limestone, none),
     linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(241, 234, 220, 0.94)) !important;
   border: 1px solid rgba(102, 93, 70, 0.14) !important;
+  max-height: calc(100dvh - 48px) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
 }
 
 .merchant-create-stage-grid {
   align-items: stretch !important;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.1fr) !important;
 }
 
 .merchant-create-stage {
@@ -9403,9 +9603,56 @@ button:disabled,
   box-shadow: 0 14px 32px rgba(65, 55, 33, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
 }
 
+.merchant-create-order-dialog > .section-title-row {
+  position: sticky !important;
+  top: -24px !important;
+  z-index: 4 !important;
+  margin: -24px -24px 18px !important;
+  padding: 22px 24px 16px !important;
+  background:
+    var(--estate-texture-limestone, none),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(246, 239, 226, 0.92)) !important;
+  border-bottom: 1px solid rgba(102, 93, 70, 0.1) !important;
+}
+
+.merchant-create-order-dialog > div:last-child {
+  position: sticky !important;
+  bottom: -24px !important;
+  z-index: 4 !important;
+  margin: 18px -24px -24px !important;
+  padding: 14px 24px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  border-radius: 0 0 28px 28px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.86), rgba(255, 252, 246, 0.98)) !important;
+  border-top: 1px solid rgba(102, 93, 70, 0.12) !important;
+  box-shadow: 0 -16px 32px rgba(65, 55, 33, 0.08) !important;
+  backdrop-filter: blur(18px) !important;
+}
+
+.merchant-create-order-dialog > div:last-child button:first-child {
+  border: 1px solid rgba(83, 95, 68, 0.16) !important;
+  background: rgba(255, 252, 246, 0.86) !important;
+  color: var(--estate-olive-deep, #31452f) !important;
+}
+
+.merchant-create-order-dialog > div:last-child button:last-child {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 45%),
+    linear-gradient(135deg, #31472c, #657a52) !important;
+  color: #fffaf0 !important;
+  box-shadow: 0 14px 28px rgba(49, 69, 47, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.merchant-create-stage .section-title-row {
+  margin-bottom: 12px !important;
+  padding-bottom: 10px !important;
+  border-bottom: 1px solid rgba(102, 93, 70, 0.1) !important;
+}
+
 .merchant-create-stage .sheet-block {
   background: rgba(255, 252, 246, 0.62) !important;
   border-color: rgba(102, 93, 70, 0.12) !important;
+  margin-bottom: 12px !important;
 }
 
 .merchant-create-stage .area-input,
@@ -9450,20 +9697,49 @@ button:disabled,
 .merchant-staff-editor-mask {
   position: fixed !important;
   inset: 0 !important;
+  background: rgba(31, 36, 27, 0.34) !important;
+  backdrop-filter: blur(8px) saturate(1.05) !important;
 }
 
 .merchant-staff-drawer-body {
-  grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.15fr) !important;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.25fr) !important;
   align-items: start !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
 }
 
 .merchant-staff-section {
   min-width: 0 !important;
 }
 
+.merchant-staff-editor.merchant-staff-drawer {
+  width: min(920px, calc(100vw - 48px)) !important;
+  max-height: calc(100dvh - 48px) !important;
+  isolation: isolate !important;
+}
+
+.merchant-staff-editor .admin-setting-grid,
+.merchant-staff-editor .merchant-staff-edit-grid {
+  grid-template-columns: repeat(2, minmax(150px, 1fr)) !important;
+}
+
+.merchant-staff-editor .admin-setting-grid > div,
+.merchant-staff-editor .merchant-staff-edit-grid > div,
+.merchant-staff-editor .staff-assigned-order {
+  min-width: 0 !important;
+}
+
+.merchant-staff-editor .admin-setting-grid span,
+.merchant-staff-editor .staff-assigned-order span,
+.merchant-staff-editor .staff-assigned-order em {
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
 .merchant-staff-section:first-child {
   position: sticky !important;
   top: 0 !important;
+  align-self: start !important;
 }
 
 .merchant-staff-section:nth-child(n + 2) {
