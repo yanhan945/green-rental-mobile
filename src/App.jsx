@@ -286,7 +286,7 @@ function ensureOrderDefaults(order = {}) {
     assignedStaffEmail: order.assignedStaffEmail || assignedStaff?.email || "",
     communicationQrUrl: order.communicationQrUrl || "",
     serviceType: order.serviceType || "租赁",
-    planType: order.planType || "",
+    planType: order.planType || order.plan?.planType || "租赁方案",
     areaType: order.areaType || "",
     hasRentedBefore: Boolean(order.hasRentedBefore),
     needComparePrice: Boolean(order.needComparePrice),
@@ -303,7 +303,7 @@ function ensureOrderDefaults(order = {}) {
     products: Array.isArray(order.products) ? order.products : [],
     photos: Array.isArray(order.photos) ? order.photos : [],
     timeline: Array.isArray(order.timeline) ? order.timeline : [],
-    completePhotos: order.completePhotos || null,
+    completePhotos: order.completePhotos && typeof order.completePhotos === "object" ? order.completePhotos : null,
     plan: order.plan || null,
     ...order,
   };
@@ -588,6 +588,17 @@ function money(value) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function MoneyAmount({ value }) {
+  const [whole, cents = "00"] = money(value).split(".");
+  return (
+    <span className="money-amount">
+      <span className="money-symbol">¥</span>
+      <span className="money-whole">{whole}</span>
+      <span className="money-cents">.{cents}</span>
+    </span>
+  );
 }
 
 function safeAreas(plan) {
@@ -886,7 +897,9 @@ function App() {
   });
 
   const currentOrder = orders.find((order) => order.id === currentOrderId) || null;
-  const currentPlan = currentOrder?.plan || null;
+  const currentPlan =
+    currentOrder?.plan ||
+    (currentPage === "plan" && currentOrder ? createEmptyPlan(currentOrder, getInitialPlanTypeForOrder(currentOrder)) : null);
   const planAreas = safeAreas(currentPlan);
   const currentArea = planAreas.find((area) => area.id === currentAreaId) || null;
   const currentStats = getPlanStats(currentPlan);
@@ -896,6 +909,11 @@ function App() {
   const currentOrganization = getOrganizationById(currentStaff?.organizationId);
   const currentMerchantUser = authAccount?.userType === "merchant" ? authAccount : merchantUsers[0];
   const canUseMerchant = ["owner", "admin", "manager"].includes(authRole);
+  const activeStaffMembers = useMemo(() => {
+    const members = Array.isArray(staffDirectory) ? staffDirectory : [];
+    const organizationId = currentMerchantUser?.organizationId;
+    return organizationId ? members.filter((member) => member.organizationId === organizationId) : members;
+  }, [staffDirectory, currentMerchantUser?.organizationId]);
 
   const staffScopedOrders = useMemo(() => {
     return orders.filter((order) => order.assignedStaffId === currentStaff?.id);
@@ -1050,6 +1068,10 @@ function App() {
 
   useEffect(() => {
     if (["plan", "completeUpload", "archiveDetail"].includes(currentPage) && !currentOrder) setCurrentPage("orders");
+    if (currentPage === "plan" && currentOrder && !currentOrder.plan) {
+      const initialPlanType = getInitialPlanTypeForOrder(currentOrder);
+      updateOrder(currentOrder.id, { planType: initialPlanType, plan: createEmptyPlan(currentOrder, initialPlanType) }, "方案已创建");
+    }
     if (showProductSheet && !currentArea) setShowProductSheet(false);
   }, [currentPage, currentOrder, showProductSheet, currentArea]);
 
@@ -1343,7 +1365,12 @@ function App() {
   }
 
   function openMerchantPlanWorkbench(order) {
-    setMerchantViewingOrder(order);
+    if (!order) {
+      setSyncMessage("暂无方案内容。");
+      setMerchantViewingOrder(null);
+      return;
+    }
+    setMerchantViewingOrder(ensureOrderDefaults(order));
     setSelectedOrderDetail(null);
     setMerchantTab("工作台");
     setMerchantStatusFilter(order.status || "全部");
@@ -1501,6 +1528,8 @@ function App() {
   }
 
   function openPlanForOrder(order) {
+    if (!order?.id) return;
+
     if (!order.plan) {
       const initialPlanType = getInitialPlanTypeForOrder(order);
       updateOrder(order.id, { planType: initialPlanType, plan: createEmptyPlan(order, initialPlanType) }, "方案已创建");
@@ -1510,6 +1539,20 @@ function App() {
     setCurrentPage("plan");
     setShowDetailBlock(false);
     setCompleteForm({ scenePhotos: ["", "", ""], plantPhotos: ["", "", ""], remark: "" });
+  }
+
+  function openCreateOrderSheet() {
+    const firstStaff = activeStaffMembers[0] || getDefaultAssignedStaff();
+
+    setNewOrderForm((form) => ({
+      ...form,
+      tagsText: form.tagsText || "",
+      serviceType: form.serviceType || "租赁",
+      assignedStaffId: form.assignedStaffId || firstStaff?.id || "",
+      communicationQrUrl: form.communicationQrUrl || "",
+    }));
+    setIsCreateOrderInputFocused(false);
+    setShowCreateOrderSheet(true);
   }
 
   function addAreaWithName(inputName) {
@@ -1935,6 +1978,10 @@ function App() {
     const orderId = Date.now();
     const serviceType = newOrderForm.serviceType || "租赁";
     const planType = serviceType === "养护" ? "养护服务" : serviceType === "零售" ? "零售方案" : "租赁方案";
+    const assignedStaff =
+      staffDirectory.find((member) => member.id === newOrderForm.assignedStaffId) ||
+      getStaffMemberById(newOrderForm.assignedStaffId) ||
+      getDefaultAssignedStaff();
     const planDraft = {
       ...createEmptyPlan({ id: orderId }, planType),
       leaseMonths: Number(newOrderForm.leaseMonths || 12),
@@ -1969,7 +2016,9 @@ function App() {
       staffLocation: null,
       distanceText: "待定位",
       etaText: "待定位",
-      tags: tags.length ? tags : ["新订单"],
+      tags: tags.length ? tags : [],
+      products: [],
+      photos: [],
       areaSize: newOrderForm.areaSize.trim() || "待确认",
       expectedDate: newOrderForm.expectedDate.trim() || "待确认",
       address: newOrderForm.address.trim(),
@@ -1982,9 +2031,9 @@ function App() {
       budget: newOrderForm.budget.trim(),
       merchantNote: newOrderForm.merchantNote.trim(),
       areaNote: newOrderForm.areaNote.trim(),
-      assignedStaffId: newOrderForm.assignedStaffId || DEFAULT_STAFF_ID,
-      assignedStaffName: getStaffMemberById(newOrderForm.assignedStaffId)?.name || "",
-      assignedStaffEmail: getStaffMemberById(newOrderForm.assignedStaffId)?.email || "",
+      assignedStaffId: assignedStaff?.id || "",
+      assignedStaffName: assignedStaff?.name || "",
+      assignedStaffEmail: assignedStaff?.email || "",
       communicationQrUrl: newOrderForm.communicationQrUrl || "",
       fieldNote: "",
       internalNote: "",
@@ -2831,7 +2880,7 @@ ${rentalText}`;
   }
 
   function renderPhotoUploadBlock(title, group, tip) {
-    const values = completeForm[group] || ["", "", ""];
+    const values = Array.isArray(completeForm[group]) ? completeForm[group] : ["", "", ""];
     return (
       <section className="plan-summary-card" style={{ padding: 18 }}>
         <div className="section-title-row">
@@ -2911,7 +2960,7 @@ ${rentalText}`;
     return (
       <div className="app">
         <header className="plan-header">
-          <button className="back-button" onClick={() => setCurrentPage("plan")}>←</button>
+          <button className="back-button" onClick={() => setCurrentPage(currentPlan ? "plan" : "orders")}>←</button>
           <div>
             <p className="eyebrow">Task Complete · v3.8</p>
             <h1>任务完成</h1>
@@ -2945,7 +2994,7 @@ ${rentalText}`;
         </section>
 
         <nav className="bottom-actions">
-          <button onClick={() => setCurrentPage("plan")}>返回方案</button>
+          <button onClick={() => setCurrentPage(currentPlan ? "plan" : "orders")}>返回方案</button>
           <button onClick={() => copyCustomerPlanLink(currentOrder)}>客户链接</button>
           <button className="submit-plan-button" onClick={submitCompleteUpload}>提交完成</button>
         </nav>
@@ -2970,6 +3019,8 @@ ${rentalText}`;
     const completePhotos = currentOrder.completePhotos || {};
     const scenePhotos = safePhotos(completePhotos.scenePhotos);
     const plantPhotos = safePhotos(completePhotos.plantPhotos);
+    const productCount = getPlanStats(orderPlan).productCount || 0;
+    const completedAt = currentOrder.completedAt || orderPlan?.completedAt || currentOrder.archivedAt || "暂无服务记录";
 
     return (
       <div className="app">
@@ -2987,9 +3038,11 @@ ${rentalText}`;
             <div><p>当前状态</p><strong>{currentOrder.status || "暂无内容"}</strong></div>
           </div>
           <div className="plan-info-line"><span>方案类型</span><strong>{orderPlan?.planType || currentOrder.planType || "暂无内容"}</strong></div>
+          <div className="plan-info-line"><span>商品数量</span><strong>{productCount ? `${productCount} 件` : "暂无服务记录"}</strong></div>
           <div className="plan-info-line"><span>联系人</span><strong>{currentOrder.contactName || "暂无内容"} {currentOrder.phone ? `｜${currentOrder.phone}` : ""}</strong></div>
           <div className="plan-info-line"><span>地址</span><strong>{currentOrder.address || "暂无内容"}</strong></div>
           <div className="plan-info-line"><span>最终报价</span><strong>¥{money(stats.finalRent)}</strong></div>
+          <div className="plan-info-line"><span>完成时间</span><strong>{completedAt}</strong></div>
         </section>
 
         <section className="plan-summary-card">
@@ -4044,6 +4097,7 @@ ${rentalText}`;
 
     // 独立抽出的审核台组件：左右分栏沉浸式
     function MerchantReviewPage({ order }) {
+      order = ensureOrderDefaults(order);
       const orderPlan = order.plan || null;
       const stats = getPlanStats(orderPlan);
       const isRetailPlan = orderPlan?.planType === "零售方案";
@@ -4076,9 +4130,13 @@ ${rentalText}`;
                 <div className="plan-info-line"><span>联系人</span><strong>{order.contactName || "-"} {order.phone ? `｜${order.phone}` : ""}</strong></div>
                 <div className="plan-info-line"><span>地址</span><strong>{order.address || "暂无内容"}</strong></div>
                 <div className="sheet-block" style={{ marginTop: 14 }}>
-                  <p className="sheet-label">需求类型</p>
-                  <div className="option-grid payment-grid">
-                    {["租赁", "零售", "养护"].map((serviceType) => (
+                  <p className="sheet-label">方案类型</p>
+                  <div className="plan-type-grid">
+                    {[
+                      ["租赁", "租赁方案"],
+                      ["零售", "零售方案"],
+                      ["养护", "养护服务"],
+                    ].map(([serviceType, label]) => (
                       <button
                         key={serviceType}
                         className={(order.serviceType || "租赁") === serviceType ? "selected" : ""}
@@ -4091,7 +4149,7 @@ ${rentalText}`;
                           }, "订单需求类型已同步");
                         }}
                       >
-                        {serviceType}
+                        {label}
                       </button>
                     ))}
                   </div>
@@ -4211,15 +4269,15 @@ ${rentalText}`;
                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
                     <div className="metric-box" style={{ borderLeft: "none", padding: 16 }}>
                        <h3>{isMaintenancePlan ? "养护套餐" : isRetailPlan ? "系统建议总价" : "系统预估总租金"}</h3>
-                      <strong style={{ fontSize: isMaintenancePlan ? 18 : 24 }}>{isMaintenancePlan ? orderPlan?.maintenancePackage || "标准养护" : `¥${money(stats.systemTotalRent)}`}</strong>
+                      <strong style={{ fontSize: isMaintenancePlan ? 18 : 24 }}>{isMaintenancePlan ? orderPlan?.maintenancePackage || "标准养护" : <MoneyAmount value={stats.systemTotalRent} />}</strong>
                     </div>
                    <div className="metric-box" style={{ borderLeft: "none", padding: 16, background: "#f0fdf4" }}>
                      <h3>最终销售报价</h3>
-                     <strong style={{ fontSize: 24, color: "#166534" }}>¥{money(stats.finalRent)}</strong>
+                     <strong style={{ fontSize: 24, color: "#166534" }}><MoneyAmount value={stats.finalRent} /></strong>
                      </div>
                      <div className="metric-box" style={{ borderLeft: "none", padding: 16 }}>
                       <h3>{isMaintenancePlan ? "方案类型" : isRetailPlan ? "方案类型" : "租期及支付"}</h3>
-                      <strong style={{ fontSize: 16, marginTop: 8 }}>{isMaintenancePlan ? "养护服务" : isRetailPlan ? "零售方案" : `${orderPlan?.leaseMonths || 12}个月 ｜ ${orderPlan?.paymentMethod || "月付"}`}</strong>
+                      <strong style={{ fontSize: 16, marginTop: 8 }}>{isMaintenancePlan ? "养护服务" : isRetailPlan ? "零售方案" : `${orderPlan?.leaseMonths || 12}个月 / ${orderPlan?.paymentMethod || "月付"}`}</strong>
                     </div>
                  </div>
                  {isMaintenancePlan && (
@@ -4310,7 +4368,7 @@ ${rentalText}`;
               <span className="admin-auth-chip">{authUserEmail}</span>
               <button className="ghost-button" onClick={refreshOrdersFromCloud}><GardenIcons.Cloud size={16} /><span>云端刷新</span></button>
               <button className="ghost-button" onClick={handleSignOut}><GardenIcons.Close size={16} /><span>退出登录</span></button>
-              <button className="merchant-create-button" onClick={() => setShowCreateOrderSheet(true)}><GardenIcons.Create size={17} /><span>创建新派单</span></button>
+              <button className="merchant-create-button" onClick={openCreateOrderSheet}><GardenIcons.Create size={17} /><span>创建新派单</span></button>
             </div>
           </header>
 
@@ -4514,8 +4572,7 @@ ${rentalText}`;
                   const activeCount = assignedOrders.filter((order) => order.status !== "已完成").length;
 
                   return (
-                    <details className="staff-member-detail" key={member.id}>
-                      <summary className="admin-table-row">
+                    <div className="admin-table-row" key={member.id}>
                         <span>
                           <strong>{member.name}</strong>
                           <em>{member.staffNo} · {member.area}</em>
@@ -4536,44 +4593,7 @@ ${rentalText}`;
                             setEditingStaffId(member.id);
                           }}>管理</button>
                         </span>
-                      </summary>
-
-                      <div className="staff-member-panel">
-                        <div className="admin-setting-grid">
-                          <div><strong>姓名</strong><span>{member.name}</span></div>
-                          <div><strong>工号</strong><span>{member.staffNo}</span></div>
-                          <div><strong>邮箱</strong><span>{member.email}</span></div>
-                          <div><strong>手机号</strong><span>{member.phone}</span></div>
-                          <div><strong>角色</strong><span>{ROLE_LABELS[member.role] || member.role}</span></div>
-                          <div><strong>负责区域</strong><span>{member.area}</span></div>
-                        </div>
-
-                        <div className="staff-assigned-orders">
-                          <strong>已分配订单</strong>
-                          {assignedOrders.length === 0 ? (
-                            <p>暂无分配订单</p>
-                          ) : (
-                            assignedOrders.map((order) => (
-                              <button
-                                key={order.id}
-                                className="staff-assigned-order"
-                                onClick={() => {
-                                  if (order.plan) {
-                                    openMerchantPlanWorkbench(order);
-                                    return;
-                                  }
-                                  setSelectedOrderDetail(order);
-                                  setMerchantViewingOrder(null);
-                                }}
-                              >
-                                <span>{order.customerName}</span>
-                                <em>{order.status} · {order.address || "暂无地址"}</em>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    </details>
+                    </div>
                   );
                 })}
               </div>
@@ -5161,7 +5181,11 @@ ${rentalText}`;
               <section className="plan-summary-card" style={{ margin: 0 }}>
                 <div className="section-title-row"><div><p className="eyebrow">Project</p><h2>项目需求</h2></div></div>
                 <div className="sheet-block"><p className="sheet-label">订单来源</p><div className="option-grid payment-grid">{ORDER_SOURCES.map((source) => (<button key={source} className={newOrderForm.source === source ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, source }))}>{source}</button>))}</div></div>
-                <div className="sheet-block"><p className="sheet-label">需求类型</p><div className="option-grid payment-grid">{["租赁", "零售", "养护"].map((serviceType) => (<button key={serviceType} className={newOrderForm.serviceType === serviceType ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, serviceType }))}>{serviceType}</button>))}</div></div>
+                <div className="sheet-block"><p className="sheet-label">方案类型</p><div className="plan-type-grid">{[
+                  ["租赁", "租赁方案"],
+                  ["零售", "零售方案"],
+                  ["养护", "养护服务"],
+                ].map(([serviceType, label]) => (<button key={serviceType} className={newOrderForm.serviceType === serviceType ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, serviceType }))}>{label}</button>))}</div></div>
                 <div className="sheet-block">
                   <p className="sheet-label">需求标签</p>
                   <div className="merchant-tag-picker">
@@ -5174,13 +5198,17 @@ ${rentalText}`;
                 </div>
                 <div className="sheet-block">
                   <p className="sheet-label">分配员工</p>
-                  <select className="area-input" value={newOrderForm.assignedStaffId} onChange={(e) => setNewOrderForm((form) => ({ ...form, assignedStaffId: e.target.value }))}>
-                    {activeStaffMembers.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.name} · {member.staffNo} · {ROLE_LABELS[member.role] || member.role}
-                      </option>
-                    ))}
-                  </select>
+                  {activeStaffMembers.length === 0 ? (
+                    <div className="empty-card"><p>暂无员工</p><span>请稍后配置员工后再分配。</span></div>
+                  ) : (
+                    <select className="area-input" value={newOrderForm.assignedStaffId} onChange={(e) => setNewOrderForm((form) => ({ ...form, assignedStaffId: e.target.value }))}>
+                      {activeStaffMembers.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.name} · {member.staffNo} · {ROLE_LABELS[member.role] || member.role}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div className="sheet-block">
                   <p className="sheet-label">客户沟通群二维码</p>
@@ -5381,11 +5409,15 @@ ${rentalText}`;
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
-            <p className="sheet-label">需求类型</p>
-            <div className="option-grid">
-              {["租赁", "零售", "养护"].map((serviceType) => (
+            <p className="sheet-label">方案类型</p>
+            <div className="plan-type-grid">
+              {[
+                ["租赁", "租赁方案"],
+                ["零售", "零售方案"],
+                ["养护", "养护服务"],
+              ].map(([serviceType, label]) => (
                 <button key={serviceType} className={newOrderForm.serviceType === serviceType ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, serviceType }))}>
-                  {serviceType}
+                  {label}
                 </button>
               ))}
             </div>
@@ -5403,13 +5435,17 @@ ${rentalText}`;
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">分配员工</p>
-            <select className={inputClass} value={newOrderForm.assignedStaffId} onChange={(e) => setNewOrderForm((form) => ({ ...form, assignedStaffId: e.target.value }))}>
-              {activeStaffMembers.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.name} · {member.staffNo}
-                </option>
-              ))}
-            </select>
+            {activeStaffMembers.length === 0 ? (
+              <div className="empty-card"><p>暂无员工</p><span>请稍后配置员工后再分配。</span></div>
+            ) : (
+              <select className={inputClass} value={newOrderForm.assignedStaffId} onChange={(e) => setNewOrderForm((form) => ({ ...form, assignedStaffId: e.target.value }))}>
+                {activeStaffMembers.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name} · {member.staffNo}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
@@ -5547,9 +5583,20 @@ ${rentalText}`;
   if (!session) return <AuthPage onSignedOut={handleSignOut} />;
 
   if (customerPlanId) return renderCustomerPlanView();
+  if (["archiveDetail", "completeUpload", "plan"].includes(currentPage) && !currentOrder) {
+    return (
+      <div className="app">
+        <section className="empty-card">
+          <p>暂无内容</p>
+          <span>没有找到对应订单，请返回任务列表重新进入。</span>
+          <button onClick={() => setCurrentPage("orders")}>返回任务列表</button>
+        </section>
+      </div>
+    );
+  }
   if (currentPage === "archiveDetail" && currentOrder) return renderArchiveDetailPage();
   if (currentPage === "completeUpload" && currentOrder) return renderCompleteUploadPage();
-  if (currentPage === "plan" && currentOrder && currentPlan) return renderPlanPage();
+  if (currentPage === "plan" && currentOrder) return renderPlanPage();
   if (activeRole === "merchant") return renderMerchantPage();
 
  return (
