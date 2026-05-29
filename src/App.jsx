@@ -263,6 +263,7 @@ function cloudHeaders(extra = {}) {
 function ensureOrderDefaults(order = {}) {
   const assignedStaff = getStaffMemberById(order.assignedStaffId) || getDefaultAssignedStaff();
   return {
+    ...order,
     id: order.id || Date.now(),
     customerName: order.customerName || "未命名客户",
     areaSize: order.areaSize || "暂无内容",
@@ -303,9 +304,15 @@ function ensureOrderDefaults(order = {}) {
     products: Array.isArray(order.products) ? order.products : [],
     photos: Array.isArray(order.photos) ? order.photos : [],
     timeline: Array.isArray(order.timeline) ? order.timeline : [],
-    completePhotos: order.completePhotos && typeof order.completePhotos === "object" ? order.completePhotos : null,
+    serviceRecords: Array.isArray(order.serviceRecords) ? order.serviceRecords : [],
+    completePhotos: order.completePhotos && typeof order.completePhotos === "object"
+      ? {
+          scenePhotos: Array.isArray(order.completePhotos.scenePhotos) ? order.completePhotos.scenePhotos : [],
+          plantPhotos: Array.isArray(order.completePhotos.plantPhotos) ? order.completePhotos.plantPhotos : [],
+          remark: order.completePhotos.remark || "",
+        }
+      : { scenePhotos: [], plantPhotos: [], remark: "" },
     plan: order.plan || null,
-    ...order,
   };
 }
 
@@ -3267,7 +3274,7 @@ ${rentalText}`;
       );
     }
 
-    const videoBlue = "#2d5f8f";
+    const videoBlue = "#405a38";
     const selectedRows = planAreas.flatMap((area) =>
       safeItems(area).map((item) => ({ ...item, areaId: area.id, areaName: area.name }))
     );
@@ -3448,6 +3455,7 @@ ${rentalText}`;
                     <strong>{pack.name}</strong>
                     <span>{pack.frequency}</span>
                     <small>{pack.scene}</small>
+                    <em>{pack.content}</em>
                   </button>
                 );
               })}
@@ -3504,7 +3512,7 @@ ${rentalText}`;
             </div>
             <div style={{ background: "#f6f8fb", borderRadius: 10, padding: 12 }}>
               <span style={{ color: "#7b899a", fontSize: 12, fontWeight: 700 }}>系统建议总价</span>
-              <strong style={{ display: "block", marginTop: 4, fontSize: 18, color: "#2f6fb3" }}>¥{money(currentStats.systemTotalRent)}</strong>
+              <strong style={{ display: "block", marginTop: 4, fontSize: 18, color: "#20251d" }}>¥{money(currentStats.systemTotalRent)}</strong>
             </div>
           </div>
 
@@ -3545,8 +3553,8 @@ ${rentalText}`;
                     key={m}
                     onClick={() => updateCurrentPlanField("leaseMonths", m)}
                     style={{
-                      border: selected ? "1px solid #2f6fb3" : "1px solid #d8e1ec",
-                      background: selected ? "#2f6fb3" : "#fff",
+                      border: selected ? "1px solid #405a38" : "1px solid #d8e1ec",
+                      background: selected ? "#405a38" : "#fff",
                       color: selected ? "#fff" : "#526274",
                       borderRadius: 8,
                       padding: "9px 0",
@@ -3572,8 +3580,8 @@ ${rentalText}`;
                     key={method}
                     onClick={() => updateCurrentPlanField("paymentMethod", method)}
                     style={{
-                      border: selected ? "1px solid #2f6fb3" : "1px solid #d8e1ec",
-                      background: selected ? "#2f6fb3" : "#fff",
+                      border: selected ? "1px solid #405a38" : "1px solid #d8e1ec",
+                      background: selected ? "#405a38" : "#fff",
                       color: selected ? "#fff" : "#526274",
                       borderRadius: 8,
                       padding: "9px 0",
@@ -3595,9 +3603,9 @@ ${rentalText}`;
               <button
                 onClick={() => updateCurrentPlanField("needDeposit", true)}
                 style={{
-                  border: currentPlan.needDeposit ? "1px solid #2f6fb3" : "1px solid #d8e1ec",
+                  border: currentPlan.needDeposit ? "1px solid #405a38" : "1px solid #d8e1ec",
                   background: currentPlan.needDeposit ? "#eaf3ff" : "#fff",
-                  color: currentPlan.needDeposit ? "#2f6fb3" : "#526274",
+                  color: currentPlan.needDeposit ? "#405a38" : "#526274",
                   borderRadius: 8,
                   padding: "9px 0",
                   fontSize: 13,
@@ -3609,9 +3617,9 @@ ${rentalText}`;
               <button
                 onClick={() => updateCurrentPlanField("needDeposit", false)}
                 style={{
-                  border: !currentPlan.needDeposit ? "1px solid #2f6fb3" : "1px solid #d8e1ec",
+                  border: !currentPlan.needDeposit ? "1px solid #405a38" : "1px solid #d8e1ec",
                   background: !currentPlan.needDeposit ? "#eaf3ff" : "#fff",
-                  color: !currentPlan.needDeposit ? "#2f6fb3" : "#526274",
+                  color: !currentPlan.needDeposit ? "#405a38" : "#526274",
                   borderRadius: 8,
                   padding: "9px 0",
                   fontSize: 13,
@@ -3670,13 +3678,13 @@ ${rentalText}`;
             更多
           </button>
 
-          {/* 2. 保留【客户链接】功能，做成蓝色线框按钮 */}
+          {/* 2. 保留【客户链接】功能，使用 Garden Estate OS 次按钮 */}
           <button
             style={{ 
-              border: "1px solid #2f6fb3", 
+              border: "1px solid #405a38", 
               borderRadius: 10, 
               background: "#fff", 
-              color: "#2f6fb3", 
+              color: "#405a38", 
               fontWeight: 900, 
               padding: "13px 10px", 
               fontSize: 15 
@@ -3686,12 +3694,12 @@ ${rentalText}`;
             客户链接
           </button>
           
-          {/* 3. 保留【提交方案】功能，做成蓝色主按钮 */}
+          {/* 3. 保留【提交方案】功能，使用 Garden Estate OS 主按钮 */}
           <button
             style={{ 
               border: 0, 
               borderRadius: 10, 
-              background: "#2f6fb3", 
+              background: "#405a38", 
               color: "#fff", 
               fontWeight: 900, 
               padding: "13px 10px", 
@@ -3743,7 +3751,7 @@ ${rentalText}`;
   }
 
   function renderProductSheet() {
-    const videoBlue = "#2d5f8f";
+    const videoBlue = "#405a38";
     const sheetStyle = {
       height: "92vh",
       maxHeight: "92vh",
@@ -3881,9 +3889,9 @@ ${rentalText}`;
     const optionStyle = (selected) =>
       selected
         ? {
-            background: "#2f6fae",
+            background: "#405a38",
             color: "#fff",
-            borderColor: "#2f6fae",
+            borderColor: "#405a38",
             fontWeight: 800,
             boxShadow: "0 10px 24px rgba(58, 117, 196, 0.22)",
           }
@@ -4149,7 +4157,7 @@ ${rentalText}`;
           <div className="brand">
             <p className="eyebrow" style={{ color: "#64748b" }}>SaaS Admin · V4.0</p>
             <h2 style={{ margin: "4px 0 0", color: "#f8fafc", fontSize: 20 }}>绿植租赁中枢</h2>
-            <span style={{ color: "#3b82f6", fontSize: 12, fontWeight: 800 }}>总控商户端</span>
+            <span style={{ color: "#b7c3a6", fontSize: 12, fontWeight: 800 }}>总控商户端</span>
           </div>
 
           {navItems.map((item) => {
@@ -4209,7 +4217,7 @@ ${rentalText}`;
               <div className="admin-card merchant-project-summary-card" style={{ marginBottom: 0 }}>
                 <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>项目档案</h2>
                 <div className="plan-info-line"><span>客户名</span><strong>{order.customerName || "暂无内容"}</strong></div>
-                <div className="plan-info-line"><span>状态</span><strong style={{ color: "#3b82f6" }}>{order.status}</strong></div>
+                <div className="plan-info-line"><span>状态</span><strong style={{ color: "#405a38" }}>{order.status}</strong></div>
                 <div className="plan-info-line"><span>方案类型</span><strong>{orderPlan?.planType || order.planType || "-"}</strong></div>
                 <div className="plan-info-line"><span>员工</span><strong>{order.assignedStaffName || "-"} {order.assignedStaffEmail ? `｜${order.assignedStaffEmail}` : ""}</strong></div>
                 <div className="plan-info-line"><span>联系人</span><strong>{order.contactName || "-"} {order.phone ? `｜${order.phone}` : ""}</strong></div>
@@ -4219,6 +4227,22 @@ ${rentalText}`;
                     <span key={tag}>{tag}</span>
                   ))}
                 </div>
+              </div>
+              <div className="admin-card merchant-side-note-card" style={{ marginBottom: 0 }}>
+                <h2 style={{ fontSize: 16, marginBottom: 12, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>客户沟通二维码</h2>
+                {order.communicationQrUrl ? (
+                  <div className="merchant-side-qr">
+                    <img src={order.communicationQrUrl} alt="客户沟通二维码" />
+                    <span>员工可扫码进入客户沟通群。</span>
+                  </div>
+                ) : (
+                  <div className="empty-card"><p>暂无客户沟通二维码</p><span>可在右侧沟通与备注中上传。</span></div>
+                )}
+              </div>
+              <div className="admin-card merchant-side-note-card" style={{ marginBottom: 0 }}>
+                <h2 style={{ fontSize: 16, marginBottom: 12, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>订单备注</h2>
+                <div className="plan-info-line"><span>商户备注</span><strong>{order.merchantNote || "暂无内容"}</strong></div>
+                <div className="plan-info-line"><span>客户描述</span><strong>{order.description || "暂无内容"}</strong></div>
               </div>
             </div>
 
@@ -4394,7 +4418,7 @@ ${rentalText}`;
           <div className="brand">
             <p className="eyebrow" style={{ color: "#64748b" }}>SaaS Admin · V4.0</p>
             <h2 style={{ margin: "4px 0 0", color: "#f8fafc", fontSize: 20 }}>绿植租赁中枢</h2>
-            <span style={{ color: "#3b82f6", fontSize: 12, fontWeight: 800 }}>总控商户端</span>
+            <span style={{ color: "#b7c3a6", fontSize: 12, fontWeight: 800 }}>总控商户端</span>
           </div>
 
           {navItems.map((item) => {
@@ -5182,7 +5206,7 @@ ${rentalText}`;
               onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}
             >取消</button>
             <button
-              style={{ minWidth: 180, border: 0, borderRadius: 18, padding: "14px 24px", background: "#2f6fae", color: "#fff", fontWeight: 900, cursor: "pointer", boxShadow: "0 14px 28px rgba(33, 118, 66, 0.22)" }}
+              style={{ minWidth: 180, border: 0, borderRadius: 18, padding: "14px 24px", background: "#405a38", color: "#fff", fontWeight: 900, cursor: "pointer", boxShadow: "0 14px 28px rgba(33, 118, 66, 0.22)" }}
               onClick={createMerchantProduct}
             >{editingProductId ? "保存修改" : "保存商品"}</button>
           </div>
@@ -5369,7 +5393,7 @@ ${rentalText}`;
                   border: 0,
                   borderRadius: 18,
                   padding: "14px 24px",
-                  background: "#2f6fae",
+                  background: "#405a38",
                   color: "#fff",
                   fontWeight: 900,
                   cursor: "pointer",
