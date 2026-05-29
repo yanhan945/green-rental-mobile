@@ -1,18 +1,25 @@
+import { GardenIcons } from "../../GardenIcons";
+
 export function StaffHome({
-  orders,
+  orders = [],
   refreshOrdersFromCloud,
   setStaffAppTab,
   setActiveStaffTab,
   autoSyncState,
   syncMessage,
 }) {
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const currentTaskCount = safeOrders.filter((order) =>
+    ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "待商户归档"].includes(order.status)
+  ).length;
+
   const serviceFlowItems = [
     {
       label: "待接单",
-      value: orders.filter((order) => order.status === "待接单").length,
+      value: safeOrders.filter((order) => order.status === "待接单").length,
       hint: "等待接收",
-      accent: "#6f8063",
-      background: "rgba(237, 241, 231, 0.82)",
+      Icon: GardenIcons.TodayTask,
+      tone: "olive",
       onClick: () => {
         setStaffAppTab("任务");
         setActiveStaffTab("待接单");
@@ -20,10 +27,10 @@ export function StaffHome({
     },
     {
       label: "做方案",
-      value: orders.filter((order) => ["配置中", "待商户确认"].includes(order.status)).length,
+      value: safeOrders.filter((order) => ["配置中", "待商户确认"].includes(order.status)).length,
       hint: "配置 / 确认",
-      accent: "#b89658",
-      background: "rgba(248, 234, 208, 0.82)",
+      Icon: GardenIcons.ServiceRoute,
+      tone: "sand",
       onClick: () => {
         setStaffAppTab("任务");
         setActiveStaffTab("做方案");
@@ -31,10 +38,10 @@ export function StaffHome({
     },
     {
       label: "执行中",
-      value: orders.filter((order) => ["方案已确认", "执行中"].includes(order.status)).length,
+      value: safeOrders.filter((order) => ["方案已确认", "执行中"].includes(order.status)).length,
       hint: "现场推进",
-      accent: "#74678b",
-      background: "rgba(238, 234, 242, 0.82)",
+      Icon: GardenIcons.Map,
+      tone: "sage",
       onClick: () => {
         setStaffAppTab("任务");
         setActiveStaffTab("执行中");
@@ -42,10 +49,10 @@ export function StaffHome({
     },
     {
       label: "归档 / 完成",
-      value: orders.filter((order) => ["待商户归档", "已完成"].includes(order.status)).length,
+      value: safeOrders.filter((order) => ["待商户归档", "已完成"].includes(order.status)).length,
       hint: "归档收尾",
-      accent: "#8d4e38",
-      background: "rgba(242, 219, 205, 0.72)",
+      Icon: GardenIcons.Archive,
+      tone: "clay",
       onClick: () => {
         setStaffAppTab("任务");
         setActiveStaffTab("已完成");
@@ -61,100 +68,48 @@ export function StaffHome({
           <h1>GardenOS</h1>
           <span>城市园林服务交付台</span>
         </div>
-        <button className="garden-head-refresh" onClick={refreshOrdersFromCloud}>
-          ↻
+        <button className="garden-head-refresh" onClick={refreshOrdersFromCloud} aria-label="刷新订单">
+          <GardenIcons.Refresh />
         </button>
       </section>
 
-      <section className="garden-clean-card">
+      <section className="garden-clean-card garden-service-card">
         <div className="garden-clean-title">
           <div>
             <p className="garden-kicker">SERVICE FLOW</p>
             <h2>服务流转</h2>
           </div>
-          <button onClick={() => setStaffAppTab("任务")}>进入任务</button>
+          <button onClick={() => setStaffAppTab("任务")}>
+            <GardenIcons.ServiceRoute size={17} />
+            <span>进入任务</span>
+          </button>
         </div>
 
-        <div
-          className="garden-service-flow-grid"
-          style={{
-            position: "relative",
-            zIndex: 1,
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 10,
-            marginTop: 14,
-          }}
-        >
-          {serviceFlowItems.map((item) => (
-            <button
-              key={item.label}
-              className="garden-service-flow-item"
-              onClick={item.onClick}
-              style={{
-                minHeight: 86,
-                border: "1px solid rgba(116, 102, 74, 0.12)",
-                borderRadius: 20,
-                padding: 13,
-                background: `linear-gradient(180deg, rgba(255, 252, 246, 0.94), ${item.background})`,
-                boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.74), 0 12px 26px rgba(58, 47, 30, 0.05)",
-                textAlign: "left",
-              }}
-            >
-              <span
-                style={{
-                  display: "block",
-                  color: "#827b6d",
-                  fontSize: 12,
-                  fontWeight: 950,
-                }}
+        <div className="garden-service-flow-grid">
+          {serviceFlowItems.map((item) => {
+            const Icon = item.Icon;
+
+            return (
+              <button
+                key={item.label}
+                className={`garden-service-flow-item ${item.tone}`}
+                onClick={item.onClick}
               >
-                {item.label}
-              </span>
-              <strong
-                style={{
-                  display: "block",
-                  marginTop: 9,
-                  color: "#20251d",
-                  fontSize: 31,
-                  lineHeight: 1,
-                  fontWeight: 950,
-                }}
-              >
-                {item.value}
-              </strong>
-              <em
-                style={{
-                  display: "block",
-                  marginTop: 8,
-                  color: item.accent,
-                  fontSize: 11,
-                  fontStyle: "normal",
-                  fontWeight: 850,
-                }}
-              >
-                {item.hint}
-              </em>
-            </button>
-          ))}
+                <span className="garden-flow-icon">
+                  <Icon size={18} />
+                </span>
+                <span className="garden-flow-label">{item.label}</span>
+                <strong>{item.value}</strong>
+                <em>{item.hint}</em>
+              </button>
+            );
+          })}
         </div>
 
-        <p
-          style={{
-            position: "relative",
-            zIndex: 1,
-            margin: "12px 0 0",
-            color: "#827b6d",
-            fontSize: 12,
-            lineHeight: 1.55,
-            fontWeight: 800,
-          }}
-        >
-          点击状态进入对应任务列表。
-        </p>
+        <p className="garden-flow-note">点击状态进入对应任务列表。</p>
       </section>
 
-      <section className="garden-live-progress-card">
+      <section className="garden-live-progress-card refined">
         <div className="garden-live-title-row">
           <div>
             <p className="garden-kicker">WEEK PROGRESS</p>
@@ -164,18 +119,15 @@ export function StaffHome({
         </div>
 
         <div className="garden-live-progress-body">
-          <div className="garden-live-bars">
+          <div className="garden-live-bars" aria-hidden="true">
             {[3, 5, 2, 7, 4, 6, 8].map((height, index) => (
-              <i key={index} style={{ "--h": `${height * 9 + 18}px` }} />
+              <i key={index} style={{ "--h": `${height * 8 + 16}px` }} />
             ))}
           </div>
 
           <div className="garden-live-number">
-            <strong>
-              {orders.filter((order) =>
-                ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "待商户归档"].includes(order.status)
-              ).length}
-            </strong>
+            <GardenIcons.Rhythm size={18} />
+            <strong>{currentTaskCount}</strong>
             <span>current tasks</span>
           </div>
         </div>
