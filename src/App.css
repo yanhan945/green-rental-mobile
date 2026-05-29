@@ -9069,3 +9069,202 @@ button:disabled,
     width: 96px !important;
   }
 }
+
+/* Staff legacy pages: Garden Estate OS visual unification */
+.staff-legacy-page {
+  min-height: 100vh !important;
+  padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)) !important;
+  color: var(--estate-ink, #20251d) !important;
+  background:
+    var(--estate-texture-limestone, none),
+    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.76), transparent 30%),
+    radial-gradient(circle at 88% 18%, rgba(211, 184, 132, 0.18), transparent 34%),
+    linear-gradient(180deg, #fbf8f0 0%, #f0eadc 54%, #e9e1cf 100%) !important;
+  background-size: 260px 260px, cover, cover, cover !important;
+}
+
+.staff-legacy-page .plan-header,
+.staff-plan-page > header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 30 !important;
+  display: grid !important;
+  grid-template-columns: 44px minmax(0, 1fr) 44px !important;
+  align-items: center !important;
+  min-height: 62px !important;
+  height: auto !important;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 14px 8px !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(102, 93, 70, 0.12) !important;
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.92), rgba(248, 242, 231, 0.78)) !important;
+  box-shadow: 0 12px 30px rgba(72, 60, 38, 0.08) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
+}
+
+.staff-legacy-page .plan-header h1,
+.staff-plan-page > header strong,
+.staff-legacy-page h1,
+.staff-legacy-page h2,
+.staff-legacy-page h3 {
+  color: var(--estate-ink, #20251d) !important;
+  letter-spacing: 0 !important;
+}
+
+.staff-legacy-page .eyebrow,
+.staff-legacy-page .sheet-label,
+.staff-legacy-page .plan-info-line span,
+.staff-legacy-page .plan-summary-top p {
+  color: var(--estate-muted, #746e61) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.staff-legacy-page .plan-summary-card,
+.staff-legacy-page .price-card,
+.staff-legacy-page .area-section,
+.staff-legacy-page .area-card,
+.staff-legacy-page .empty-card,
+.staff-legacy-page .sheet-block,
+.staff-legacy-page .selected-product-list,
+.staff-legacy-page table,
+.staff-legacy-page section[style*="#fff"],
+.staff-legacy-page section[style*="rgb(255, 255, 255)"] {
+  border: 1px solid rgba(102, 93, 70, 0.13) !important;
+  border-radius: 24px !important;
+  background:
+    var(--estate-texture-limestone, none),
+    linear-gradient(145deg, rgba(255, 252, 246, 0.94), rgba(245, 239, 226, 0.84)) !important;
+  background-size: 260px 260px, cover !important;
+  box-shadow: 0 18px 44px rgba(65, 55, 33, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+}
+
+.staff-legacy-page .plan-summary-card,
+.staff-legacy-page .price-card,
+.staff-legacy-page .area-section,
+.staff-legacy-page section[style*="#fff"],
+.staff-legacy-page section[style*="rgb(255, 255, 255)"] {
+  width: calc(100% - 28px) !important;
+  max-width: 460px !important;
+  margin: 14px auto 0 !important;
+  padding: 16px !important;
+}
+
+.staff-legacy-page .plan-summary-top div,
+.staff-legacy-page [style*="#f6f8fb"],
+.staff-legacy-page [style*="#f8fafc"],
+.staff-legacy-page [style*="#f2f5f8"],
+.staff-legacy-page [style*="#eaf2fb"] {
+  background: rgba(255, 252, 246, 0.62) !important;
+  border-color: rgba(102, 93, 70, 0.11) !important;
+  color: var(--estate-ink, #20251d) !important;
+}
+
+.staff-legacy-page table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  overflow: hidden !important;
+}
+
+.staff-legacy-page thead tr,
+.staff-legacy-page tr[style*="#f6f8fb"] {
+  background: rgba(237, 241, 231, 0.56) !important;
+  color: var(--estate-muted, #746e61) !important;
+}
+
+.staff-legacy-page tr,
+.staff-legacy-page td,
+.staff-legacy-page th {
+  border-color: rgba(102, 93, 70, 0.1) !important;
+}
+
+.staff-legacy-page .area-input,
+.staff-legacy-page .price-input,
+.staff-legacy-page textarea,
+.staff-legacy-page input,
+.staff-legacy-page select {
+  border: 1px solid rgba(102, 93, 70, 0.14) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 252, 246, 0.78) !important;
+  color: var(--estate-ink, #20251d) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74) !important;
+}
+
+.staff-legacy-page .area-input:focus,
+.staff-legacy-page .price-input:focus,
+.staff-legacy-page textarea:focus,
+.staff-legacy-page input:focus,
+.staff-legacy-page select:focus {
+  border-color: rgba(83, 95, 68, 0.42) !important;
+  box-shadow: 0 0 0 4px rgba(95, 113, 86, 0.12) !important;
+}
+
+.staff-legacy-page button,
+.staff-legacy-page .staff-legacy-secondary,
+.staff-legacy-page .back-button,
+.staff-legacy-page .bottom-actions button {
+  border: 1px solid rgba(83, 95, 68, 0.16) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  color: var(--estate-olive-deep, #31452f) !important;
+  box-shadow: 0 8px 18px rgba(65, 55, 33, 0.07) !important;
+  font-weight: 900 !important;
+}
+
+.staff-legacy-page .submit-plan-button,
+.staff-legacy-page .submit-sheet-button,
+.staff-legacy-page button[style*="#2d5f8f"],
+.staff-legacy-page button[style*="#2f6fae"],
+.staff-legacy-page button[style*="#2f6fb3"],
+.staff-legacy-page button[style*="rgb(45, 95, 143)"],
+.staff-legacy-page button[style*="rgb(47, 111, 174)"] {
+  border-color: rgba(83, 95, 68, 0.24) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 45%),
+    linear-gradient(135deg, #31472c, #657a52) !important;
+  color: #fffaf0 !important;
+  box-shadow: 0 12px 24px rgba(48, 63, 38, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.staff-legacy-page [style*="#2d5f8f"],
+.staff-legacy-page [style*="#2f6fae"],
+.staff-legacy-page [style*="#2f6fb3"],
+.staff-legacy-page [style*="#3b82f6"] {
+  color: var(--estate-olive-deep, #31452f) !important;
+  border-color: rgba(83, 95, 68, 0.18) !important;
+}
+
+.staff-legacy-page [style*="#eaf2fb"],
+.staff-legacy-page [style*="#eaf3ff"] {
+  background: rgba(95, 113, 86, 0.12) !important;
+}
+
+.staff-legacy-page .bottom-actions {
+  position: fixed !important;
+  left: 50% !important;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 60 !important;
+  width: min(calc(100% - 24px), 430px) !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  padding: 8px !important;
+  border: 1px solid rgba(102, 93, 70, 0.14) !important;
+  border-radius: 26px !important;
+  background: rgba(255, 252, 246, 0.82) !important;
+  box-shadow: 0 18px 46px rgba(65, 55, 33, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.84) !important;
+  transform: translateX(-50%) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
+}
+
+.staff-legacy-page .merchant-photo-grid img,
+.staff-legacy-page .image-uploader-empty,
+.staff-legacy-page .image-uploader-preview {
+  border-color: rgba(102, 93, 70, 0.13) !important;
+  border-radius: 20px !important;
+}
+
+@media (max-width: 420px) {
+  .staff-legacy-page .bottom-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
