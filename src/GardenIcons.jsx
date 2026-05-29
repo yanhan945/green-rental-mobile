@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   House,
   ClipboardList,
   Camera,
@@ -22,6 +23,17 @@ import {
   CircleAlert,
   CircleCheck,
   Archive,
+  X,
+  Search,
+  Phone,
+  MapPin,
+  BadgeDollarSign,
+  Sprout,
+  Check,
+  TriangleAlert,
+  ListFilter,
+  Image,
+  UserCog,
 } from "lucide-react";
 
 const defaultIconProps = {
@@ -53,6 +65,7 @@ export const GardenIcons = {
   Products: (props) => <Package {...defaultIconProps} {...props} />,
   Customers: (props) => <UsersRound {...defaultIconProps} {...props} />,
   Settings: (props) => <Settings {...defaultIconProps} {...props} />,
+  Team: (props) => <UsersRound {...defaultIconProps} {...props} />,
 
   // 商户端操作图标
   Create: (props) => <Plus {...defaultIconProps} {...props} />,
@@ -62,4 +75,19 @@ export const GardenIcons = {
   Warning: (props) => <CircleAlert {...defaultIconProps} {...props} />,
   Done: (props) => <CircleCheck {...defaultIconProps} {...props} />,
   Archive: (props) => <Archive {...defaultIconProps} {...props} />,
+  Filter: (props) => <ListFilter {...defaultIconProps} {...props} />,
+  Image: (props) => <Image {...defaultIconProps} {...props} />,
+  UserSettings: (props) => <UserCog {...defaultIconProps} {...props} />,
+
+  // 通用操作图标
+  Back: (props) => <ArrowLeft {...defaultIconProps} {...props} />,
+  Close: (props) => <X {...defaultIconProps} {...props} />,
+  Search: (props) => <Search {...defaultIconProps} {...props} />,
+  Phone: (props) => <Phone {...defaultIconProps} {...props} />,
+  Location: (props) => <MapPin {...defaultIconProps} {...props} />,
+  Price: (props) => <BadgeDollarSign {...defaultIconProps} {...props} />,
+  Plant: (props) => <Sprout {...defaultIconProps} {...props} />,
+  Camera: (props) => <Camera {...defaultIconProps} {...props} />,
+  Check: (props) => <Check {...defaultIconProps} {...props} />,
+  Alert: (props) => <TriangleAlert {...defaultIconProps} {...props} />,
 };
