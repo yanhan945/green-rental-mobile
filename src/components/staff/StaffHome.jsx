@@ -64,7 +64,7 @@ export function StaffHome({
     <>
       <section className="garden-clean-head">
         <div>
-          <p>Good evening,</p>
+          <p>今日服务</p>
           <h1>GardenOS</h1>
           <span>城市园林服务交付台</span>
         </div>
@@ -76,7 +76,7 @@ export function StaffHome({
       <section className="garden-clean-card garden-service-card">
         <div className="garden-clean-title">
           <div>
-            <p className="garden-kicker">SERVICE FLOW</p>
+            <p className="garden-kicker">服务流转</p>
             <h2>服务流转</h2>
           </div>
           <button onClick={() => setStaffAppTab("任务")}>
@@ -112,7 +112,7 @@ export function StaffHome({
       <section className="garden-live-progress-card refined">
         <div className="garden-live-title-row">
           <div>
-            <p className="garden-kicker">WEEK PROGRESS</p>
+            <p className="garden-kicker">交付节奏</p>
             <h2>交付节奏</h2>
           </div>
           <span>{autoSyncState}</span>
@@ -128,7 +128,7 @@ export function StaffHome({
           <div className="garden-live-number">
             <GardenIcons.Rhythm size={18} />
             <strong>{currentTaskCount}</strong>
-            <span>current tasks</span>
+            <span>当前任务</span>
           </div>
         </div>
 
