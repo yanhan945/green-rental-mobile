@@ -26,6 +26,7 @@ export function StaffMobile({
   CoreOrderCard,
   setCurrentOrderId,
   setCurrentPage,
+  openCompleteUploadForOrder,
   syncState,
   autoSyncState,
   syncMessage,
@@ -150,6 +151,10 @@ export function StaffMobile({
                     key={order.id}
                     className="staff-report-row"
                     onClick={() => {
+                      if (openCompleteUploadForOrder) {
+                        openCompleteUploadForOrder(order);
+                        return;
+                      }
                       setCurrentOrderId(order.id);
                       setCurrentPage("completeUpload");
                     }}
@@ -171,23 +176,7 @@ export function StaffMobile({
       <span>个人资料、账号状态与服务设置</span>
     </section>
 
-    <section className="staff-profile-card refined">
-      <div className="staff-avatar large">
-        {staffAvatar ? <img src={staffAvatar} alt="员工头像" /> : "G"}
-      </div>
-      <div>
-        <h2>{currentStaff?.name || "园林服务人员"}</h2>
-        <p>{authUserEmail || currentStaff?.email || "暂无邮箱"}</p>
-        <b className="staff-login-pill">{accountStatusLabels[currentStaff?.status] || "账号正常"}</b>
-      </div>
-    </section>
-
-    <section className="staff-profile-card refined staff-avatar-upload-card">
-      <div>
-        <p className="staff-kicker">头像资料</p>
-        <h2>{staffAvatar ? "更换头像" : "上传头像"}</h2>
-        <p>用于首页头像和个人资料展示。</p>
-      </div>
+    <section className="staff-profile-card refined staff-avatar-upload-card staff-avatar-profile-card">
       <ImageUploader
         value={staffAvatar}
         avatar
@@ -195,6 +184,13 @@ export function StaffMobile({
         helper=""
         onChange={setStaffAvatar}
       />
+      <div className="staff-avatar-profile-copy">
+        <p className="staff-kicker">头像资料</p>
+        <h2>{currentStaff?.name || "园林服务人员"}</h2>
+        <p>{authUserEmail || currentStaff?.email || "暂无邮箱"}</p>
+        <b className="staff-login-pill">{accountStatusLabels[currentStaff?.status] || "账号正常"}</b>
+        <span>用于首页头像和个人资料展示。</span>
+      </div>
     </section>
 
     <section className="staff-visible-info">
