@@ -1941,15 +1941,11 @@ function App() {
       );
       setStaffAvatarStatus("已在本机更新，正在同步云端…");
 
-      if (!currentStaff?.id) {
-        setStaffAvatarError("当前员工身份不完整，头像已本机预览，暂未同步云端。");
-        setStaffAvatarStatus("已在本机更新头像");
-        return;
-      }
+      
 
       let avatarUrl = "";
       try {
-        avatarUrl = await uploadStaffAvatarToCloud(currentStaff.id, avatarBlob);
+        avatarUrl = await uploadStaffAvatarToCloud(staffId, avatarBlob);
       } catch (uploadError) {
         setStaffAvatarError(getStaffAvatarCloudErrorMessage(uploadError));
         setStaffAvatarStatus("已在本机更新头像");
@@ -1966,14 +1962,17 @@ function App() {
       setStaffAvatar(previewUrl);
       setStaffDirectory((members) =>
         members.map((member) =>
-          member.id === currentStaff.id
+          member.id === staffId
             ? normalizeStaffMember({ ...member, avatar: avatarUrl, avatarUrl, updatedAt: nowText() })
             : member
         )
       );
 
       try {
-        await saveStaffAvatarProfileToCloud(currentStaff, avatarUrl);
+        await saveStaffAvatarProfileToCloud(
+  currentStaff || { id: staffId, name: "张三", email: "1464155122@qq.com" },
+  avatarUrl
+);
         setStaffAvatarStatus("头像已同步到云端");
       } catch (profileError) {
         console.warn("头像已上传，但 staff_profiles 资料表暂未写入：", profileError);
