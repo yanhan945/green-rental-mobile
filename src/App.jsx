@@ -5638,6 +5638,12 @@ ${rentalText}`;
   }
 
   function renderCreateOrderSheet() {
+    const createOrderTagsText = String(newOrderForm?.tagsText || "");
+    const createOrderSelectedTags = createOrderTagsText.split(",").map((item) => item.trim()).filter(Boolean);
+    const createOrderSourceOptions = Array.isArray(ORDER_SOURCES) ? ORDER_SOURCES : [];
+    const createOrderMaintenancePackages = Array.isArray(MAINTENANCE_PACKAGES) ? MAINTENANCE_PACKAGES : [];
+    const createOrderAssignableStaff = Array.isArray(assignableStaffMembers) ? assignableStaffMembers : [];
+
     if (activeRole === "merchant") {
       const overlayStyle = {
         position: "fixed",
@@ -5691,7 +5697,7 @@ ${rentalText}`;
 
               <section className="plan-summary-card merchant-create-stage" style={{ margin: 0 }}>
                 <div className="section-title-row"><div><p className="eyebrow">Step 02</p><h2>项目需求</h2></div></div>
-                <div className="sheet-block"><p className="sheet-label">订单来源</p><div className="option-grid payment-grid order-source-segmented">{ORDER_SOURCES.map((source) => (<button key={source} className={newOrderForm.source === source ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, source }))}>{source}</button>))}</div></div>
+                <div className="sheet-block"><p className="sheet-label">订单来源</p><div className="option-grid payment-grid order-source-segmented">{createOrderSourceOptions.map((source) => (<button key={source} className={newOrderForm.source === source ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, source }))}>{source}</button>))}</div></div>
                 <div className="sheet-block"><p className="sheet-label">方案类型</p><div className="plan-type-grid">{[
                   ["租赁", "租赁方案"],
                   ["零售", "零售方案"],
@@ -5701,7 +5707,7 @@ ${rentalText}`;
                   <p className="sheet-label">需求标签</p>
                   <div className="merchant-tag-picker">
                     {["需比价", "租过绿植", "室内", "室外", "办公室", "商业空间", "其他", "急单", "重点客户"].map((tag) => {
-                      const selected = newOrderForm.tagsText.split(",").map((item) => item.trim()).includes(tag);
+                      const selected = createOrderSelectedTags.includes(tag);
                       return <button key={tag} className={selected ? "selected" : ""} onClick={() => toggleNewOrderTag(tag)}>{tag}</button>;
                     })}
                   </div>
@@ -5709,11 +5715,11 @@ ${rentalText}`;
                 </div>
                 <div className="sheet-block">
                   <p className="sheet-label">分配员工</p>
-                  {assignableTeamMembers.length === 0 ? (
+                  {createOrderAssignableStaff.length === 0 ? (
                     <div className="empty-card"><p>暂无员工，请先邀请员工</p><span>邀请员工后再分配订单。</span></div>
                   ) : (
                     <select className="area-input" value={newOrderForm.assignedStaffId} onChange={(e) => setNewOrderForm((form) => ({ ...form, assignedStaffId: e.target.value }))}>
-                      {assignableTeamMembers.map((member) => (
+                      {createOrderAssignableStaff.map((member) => (
                         <option key={member.id} value={member.id}>
                           {member.name} · {member.staffNo} · {ROLE_LABELS[member.role] || member.role}
                         </option>
@@ -5768,7 +5774,7 @@ ${rentalText}`;
               )}
               {newOrderForm.serviceType === "养护" && (
                 <div className="merchant-plan-draft-grid">
-                  <div className="sheet-block"><p className="sheet-label">套餐</p><select className="area-input" value={newOrderForm.maintenancePackage} onChange={(e) => { const pack = getMaintenancePackage(e.target.value); setNewOrderForm((form) => ({ ...form, maintenancePackage: pack.name, maintenanceCycle: pack.cycle, maintenanceFrequency: pack.frequency, maintenanceContent: pack.content })); }}>{MAINTENANCE_PACKAGES.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select></div>
+                  <div className="sheet-block"><p className="sheet-label">套餐</p><select className="area-input" value={newOrderForm.maintenancePackage} onChange={(e) => { const pack = getMaintenancePackage(e.target.value); setNewOrderForm((form) => ({ ...form, maintenancePackage: pack.name, maintenanceCycle: pack.cycle, maintenanceFrequency: pack.frequency, maintenanceContent: pack.content })); }}>{createOrderMaintenancePackages.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select></div>
                   <div className="sheet-block"><p className="sheet-label">周期</p><input className="area-input" value={newOrderForm.maintenanceCycle} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceCycle: e.target.value }))} /></div>
                   <div className="sheet-block"><p className="sheet-label">频次</p><input className="area-input" value={newOrderForm.maintenanceFrequency} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceFrequency: e.target.value }))} /></div>
                   <div className="sheet-block"><p className="sheet-label">最终报价</p><input className="area-input" type="number" value={newOrderForm.maintenanceFinalPrice} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceFinalPrice: e.target.value }))} /></div>
@@ -5911,7 +5917,7 @@ ${rentalText}`;
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">订单来源</p>
             <div className="option-grid order-source-segmented">
-              {ORDER_SOURCES.map((source) => (
+              {createOrderSourceOptions.map((source) => (
                 <button key={source} className={newOrderForm.source === source ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, source }))}>
                   {source}
                 </button>
@@ -5938,7 +5944,7 @@ ${rentalText}`;
             <p className="sheet-label">需求标签</p>
             <div className="merchant-tag-picker">
               {["需比价", "租过绿植", "室内", "室外", "办公室", "商业空间", "急单", "重点客户"].map((tag) => {
-                const selected = newOrderForm.tagsText.split(",").map((item) => item.trim()).includes(tag);
+                const selected = createOrderSelectedTags.includes(tag);
                 return <button key={tag} className={selected ? "selected" : ""} onClick={() => toggleNewOrderTag(tag)}>{tag}</button>;
               })}
             </div>
@@ -5946,11 +5952,11 @@ ${rentalText}`;
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">分配员工</p>
-            {activeStaffMembers.length === 0 ? (
+            {createOrderAssignableStaff.length === 0 ? (
               <div className="empty-card"><p>暂无员工，请先邀请员工</p><span>邀请员工后再分配订单。</span></div>
             ) : (
               <select className={inputClass} value={newOrderForm.assignedStaffId} onChange={(e) => setNewOrderForm((form) => ({ ...form, assignedStaffId: e.target.value }))}>
-                {activeStaffMembers.map((member) => (
+                {createOrderAssignableStaff.map((member) => (
                   <option key={member.id} value={member.id}>
                     {member.name} · {member.staffNo}
                   </option>
@@ -6043,7 +6049,7 @@ ${rentalText}`;
             <div className="sheet-block" style={compactBlockStyle}>
               <p className="sheet-label">养护套餐</p>
               <select className={inputClass} value={newOrderForm.maintenancePackage} onChange={(e) => { const pack = getMaintenancePackage(e.target.value); setNewOrderForm((form) => ({ ...form, maintenancePackage: pack.name, maintenanceCycle: pack.cycle, maintenanceFrequency: pack.frequency, maintenanceContent: pack.content })); }}>
-                {MAINTENANCE_PACKAGES.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
+                {createOrderMaintenancePackages.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
               </select>
               <input className={inputClass} inputMode="numeric" {...inputFocusProps} value={newOrderForm.maintenanceFinalPrice} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceFinalPrice: e.target.value }))} placeholder="最终报价" />
             </div>
