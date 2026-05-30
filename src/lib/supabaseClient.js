@@ -150,4 +150,24 @@ export const supabase = {
       return localSubscription;
     },
   },
+  storage: {
+    from(bucket) {
+      return {
+        async upload(path, file, options) {
+          const client = await getClient();
+          if (!client.storage?.from) {
+            return { data: null, error: { message: "Supabase Storage 未初始化" } };
+          }
+          return client.storage.from(bucket).upload(path, file, options);
+        },
+        getPublicUrl(path) {
+          return {
+            data: {
+              publicUrl: `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`,
+            },
+          };
+        },
+      };
+    },
+  },
 };
