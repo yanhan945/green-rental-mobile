@@ -16,6 +16,8 @@ const CUSTOMER_STORAGE_KEY = "green-rental-customers-v31";
 const STAFF_DIRECTORY_STORAGE_KEY = "green-rental-staff-directory-v1";
 const STAFF_AVATAR_STORAGE_KEY = "green-rental-staff-avatar-v1";
 const CURRENT_STAFF_STORAGE_KEY = "green-rental-current-staff-v1";
+const STAFF_AVATAR_BUCKET = "staff-avatars";
+const STAFF_PROFILE_API = `${SUPABASE_URL}/rest/v1/staff_profiles`;
 const PRODUCT_CLOUD_ID = 999999001;
 
 const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "待商户归档", "已完成"];
@@ -311,6 +313,7 @@ function normalizeStaffMember(member = {}) {
     organizationId: member.organizationId || organizations[0]?.id || "org-001",
     area: member.area || "杭州 / 滨江",
     avatar: member.avatar || "",
+    avatarUrl: member.avatarUrl || member.avatar || "",
     inviteCode: member.inviteCode || "",
     createdAt: member.createdAt || nowText(),
     updatedAt: member.updatedAt || "",
@@ -592,6 +595,147 @@ function persistStaffAvatarToLocalStore(staffAvatar) {
   } catch (error) {
     console.error("保存员工头像失败：", error);
   }
+}
+
+function getSafeStaffAvatarId(staffId) {
+  return String(staffId || DEFAULT_STAFF_ID).trim().replace(/[^a-zA-Z0-9_-]/g, "-") || DEFAULT_STAFF_ID;
+}
+
+function getStaffAvatarStoragePath(staffId) {
+  return `${getSafeStaffAvatarId(staffId)}/avatar.jpg`;
+}
+
+function getStaffAvatarPublicUrl(staffId, version = "") {
+  const path = getStaffAvatarStoragePath(staffId)
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+  const baseUrl = `${SUPABASE_URL}/storage/v1/object/public/${STAFF_AVATAR_BUCKET}/${path}`;
+  return version ? `${baseUrl}?v=${encodeURIComponent(version)}` : baseUrl;
+}
+
+async function publicImageExists(url) {
+  try {
+    const response = await fetch(url, { method: "HEAD", cache: "no-store" });
+    if (response.ok) return true;
+    if (response.status === 404) return false;
+  } catch {
+    // Some storage/CDN layers do not allow HEAD; try a normal request before giving up.
+  }
+
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function loadStaffAvatarProfileFromCloud(staffId) {
+  try {
+    const response = await fetch(
+      `${STAFF_PROFILE_API}?staff_id=eq.${encodeURIComponent(staffId)}&select=avatar_url,updated_at&limit=1`,
+      { headers: cloudHeaders() }
+    );
+    if (!response.ok) return "";
+
+    const data = await response.json();
+    return Array.isArray(data) ? data[0]?.avatar_url || "" : "";
+  } catch (error) {
+    console.warn("读取云端员工头像资料失败：", error);
+    return "";
+  }
+}
+
+async function saveStaffAvatarProfileToCloud(staff, avatarUrl) {
+  // First-stage cloud sync: write avatar_url when a staff_profiles table exists.
+  // Production should bind this to real auth.uid + organization_id RLS policies.
+  const payload = {
+    staff_id: staff?.id || DEFAULT_STAFF_ID,
+    name: staff?.name || "",
+    email: staff?.email || "",
+    avatar_url: avatarUrl,
+    updated_at: new Date().toISOString(),
+  };
+
+  const response = await fetch(`${STAFF_PROFILE_API}?on_conflict=staff_id`, {
+    method: "POST",
+    headers: {
+      ...cloudHeaders({ Prefer: "resolution=merge-duplicates,return=representation" }),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(text || "staff_profiles 写入失败");
+  }
+
+  return response.json().catch(() => null);
+}
+
+async function createCompressedAvatarBlob(file) {
+  if (!file?.type?.startsWith("image/")) {
+    throw new Error("请选择图片文件。");
+  }
+
+  const maxBytes = 5 * 1024 * 1024;
+  if (file.size > maxBytes) {
+    throw new Error("头像图片不能超过 5MB。");
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("图片读取失败，请换一张图片。"));
+      img.src = objectUrl;
+    });
+
+    const sourceSize = Math.min(image.naturalWidth || image.width, image.naturalHeight || image.height);
+    const sourceX = ((image.naturalWidth || image.width) - sourceSize) / 2;
+    const sourceY = ((image.naturalHeight || image.height) - sourceSize) / 2;
+    const targetSize = Math.min(800, sourceSize || 800);
+    const canvas = document.createElement("canvas");
+    canvas.width = targetSize;
+    canvas.height = targetSize;
+    const context = canvas.getContext("2d");
+    context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, targetSize, targetSize);
+
+    return await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("头像压缩失败，请重试。"));
+            return;
+          }
+          resolve(blob);
+        },
+        "image/jpeg",
+        0.86
+      );
+    });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function uploadStaffAvatarToCloud(staffId, file) {
+  const avatarBlob = await createCompressedAvatarBlob(file);
+  const path = getStaffAvatarStoragePath(staffId);
+  const { error } = await supabase.storage.from(STAFF_AVATAR_BUCKET).upload(path, avatarBlob, {
+    cacheControl: "3600",
+    contentType: "image/jpeg",
+    upsert: true,
+  });
+
+  if (error) {
+    throw new Error(error.message || "头像上传失败");
+  }
+
+  return getStaffAvatarPublicUrl(staffId);
 }
 
 function loadCurrentStaffIdFromLocalStore() {
@@ -1101,6 +1245,9 @@ function App() {
   const [showDetailBlock, setShowDetailBlock] = useState(false);
   const [completeForm, setCompleteForm] = useState({ scenePhotos: ["", "", ""], plantPhotos: ["", "", ""], remark: "" });
   const [staffAvatar, setStaffAvatar] = useState(() => loadStaffAvatarFromLocalStore());
+  const [staffAvatarStatus, setStaffAvatarStatus] = useState("");
+  const [staffAvatarError, setStaffAvatarError] = useState("");
+  const [isUploadingStaffAvatar, setIsUploadingStaffAvatar] = useState(false);
   const [currentStaffId, setCurrentStaffId] = useState(() => loadCurrentStaffIdFromLocalStore());
   const [qrPreviewOrder, setQrPreviewOrder] = useState(null);
 
@@ -1382,6 +1529,48 @@ function App() {
   }, [currentStaffId]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function syncStaffAvatarFromCloud() {
+      if (!currentStaffId) return;
+
+      setStaffAvatarError("");
+      const localProfileAvatar = currentStaff?.avatarUrl || currentStaff?.avatar || "";
+      const profileAvatarUrl = await loadStaffAvatarProfileFromCloud(currentStaffId);
+
+      if (cancelled) return;
+
+      if (profileAvatarUrl) {
+        setStaffAvatar(profileAvatarUrl);
+        setStaffDirectory((members) =>
+          members.map((member) =>
+            member.id === currentStaffId
+              ? normalizeStaffMember({ ...member, avatar: profileAvatarUrl, avatarUrl: profileAvatarUrl, updatedAt: nowText() })
+              : member
+          )
+        );
+        return;
+      }
+
+      const deterministicCloudUrl = getStaffAvatarPublicUrl(currentStaffId, Date.now());
+      if (await publicImageExists(deterministicCloudUrl)) {
+        if (cancelled) return;
+        setStaffAvatar(deterministicCloudUrl);
+        return;
+      }
+
+      if (localProfileAvatar && !cancelled) {
+        setStaffAvatar(localProfileAvatar);
+      }
+    }
+
+    syncStaffAvatarFromCloud();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentStaffId, currentStaff?.avatarUrl, currentStaff?.avatar]);
+
+  useEffect(() => {
     activeViewRef.current = {
       currentPage,
       activeRole,
@@ -1554,6 +1743,7 @@ function App() {
       orderPermission: member.orderPermission || "public",
       status: member.status || "active",
       avatar: member.avatar || "",
+      avatarUrl: member.avatarUrl || member.avatar || "",
     });
     setStaffFormError("");
     setLastInviteCode("");
@@ -1600,6 +1790,48 @@ function App() {
     }
 
     closeManageStaff();
+  }
+
+  async function handleStaffAvatarUpload(file) {
+    if (!currentStaff?.id) {
+      setStaffAvatarError("当前员工身份不完整，无法保存头像。");
+      return;
+    }
+
+    setIsUploadingStaffAvatar(true);
+    setStaffAvatarError("");
+    setStaffAvatarStatus("上传中…");
+
+    try {
+      const avatarUrl = await uploadStaffAvatarToCloud(currentStaff.id, file);
+      const previewUrl = `${avatarUrl}?v=${Date.now()}`;
+
+      setStaffAvatar(previewUrl);
+      setStaffDirectory((members) =>
+        members.map((member) =>
+          member.id === currentStaff.id
+            ? normalizeStaffMember({ ...member, avatar: avatarUrl, avatarUrl, updatedAt: nowText() })
+            : member
+        )
+      );
+
+      saveStaffAvatarProfileToCloud(currentStaff, avatarUrl).catch((error) => {
+        console.warn("头像已上传，但 staff_profiles 资料表暂未写入：", error);
+      });
+
+      setStaffAvatarStatus("头像已同步");
+    } catch (error) {
+      console.error("员工头像上传失败：", error);
+      setStaffAvatarError(error?.message || "头像上传失败，请稍后重试。");
+      setStaffAvatarStatus("");
+    } finally {
+      setIsUploadingStaffAvatar(false);
+    }
+  }
+
+  function handleStaffAvatarImageError() {
+    setStaffAvatar("");
+    setStaffAvatarError("头像加载失败，已切回默认头像。");
   }
 
   function sendStaffInvite() {
@@ -6408,6 +6640,11 @@ ${rentalText}`;
         acceptOrderAndCreatePlan={acceptOrderAndCreatePlan}
         staffAvatar={staffAvatar}
         setStaffAvatar={setStaffAvatar}
+        onStaffAvatarFile={handleStaffAvatarUpload}
+        staffAvatarUploading={isUploadingStaffAvatar}
+        staffAvatarStatus={staffAvatarStatus}
+        staffAvatarError={staffAvatarError}
+        onStaffAvatarError={handleStaffAvatarImageError}
         currentStaff={currentStaff}
         currentOrganization={currentOrganization}
         roleLabels={ROLE_LABELS}
