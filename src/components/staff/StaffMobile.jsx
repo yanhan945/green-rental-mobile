@@ -38,6 +38,11 @@ export function StaffMobile({
   acceptOrderAndCreatePlan,
   staffAvatar,
   setStaffAvatar,
+  onStaffAvatarFile,
+  staffAvatarUploading = false,
+  staffAvatarStatus = "",
+  staffAvatarError = "",
+  onStaffAvatarError,
   currentStaff,
   currentOrganization,
   roleLabels = {},
@@ -71,7 +76,7 @@ export function StaffMobile({
         onClick={() => setStaffAppTab("我的")}
         aria-label="进入我的页面"
       >
-        {staffAvatar ? <img src={staffAvatar} alt="员工头像" /> : <span>G</span>}
+        {staffAvatar ? <img src={staffAvatar} alt="员工头像" onError={onStaffAvatarError} /> : <span>G</span>}
       </button>
 
       <div className="staff-topbar-title">
@@ -200,6 +205,10 @@ export function StaffMobile({
         avatarActionLabel="更换头像"
         helper=""
         onChange={setStaffAvatar}
+        onFileSelect={onStaffAvatarFile}
+        loading={staffAvatarUploading}
+        statusText={staffAvatarStatus}
+        errorText={staffAvatarError}
       />
       <div className="staff-avatar-profile-copy">
         <p className="staff-kicker">头像资料</p>
