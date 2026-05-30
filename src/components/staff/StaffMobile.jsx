@@ -182,7 +182,8 @@ export function StaffMobile({
       <ImageUploader
         value={staffAvatar}
         avatar
-        label={staffAvatar ? "更换头像" : "上传头像"}
+        label="更换头像"
+        avatarActionLabel="更换头像"
         helper=""
         onChange={setStaffAvatar}
       />
