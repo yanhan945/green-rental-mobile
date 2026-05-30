@@ -15,6 +15,7 @@ const PRODUCT_STORAGE_KEY = "green-rental-products-v29";
 const CUSTOMER_STORAGE_KEY = "green-rental-customers-v31";
 const STAFF_DIRECTORY_STORAGE_KEY = "green-rental-staff-directory-v1";
 const STAFF_AVATAR_STORAGE_KEY = "green-rental-staff-avatar-v1";
+const STAFF_AVATAR_CACHE_STORAGE_KEY = "green-rental-staff-avatar-cache-v1";
 const CURRENT_STAFF_STORAGE_KEY = "green-rental-current-staff-v1";
 const STAFF_AVATAR_BUCKET = "staff-avatars";
 const STAFF_PROFILE_API = `${SUPABASE_URL}/rest/v1/staff_profiles`;
@@ -301,6 +302,7 @@ class AppErrorBoundary extends React.Component {
 }
 
 function normalizeStaffMember(member = {}) {
+  const avatarUrl = member.avatarUrl || member.avatar_url || member.avatar || "";
   return {
     id: member.id || `staff-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     staffNo: String(member.staffNo || "").trim() || "YG001",
@@ -312,13 +314,31 @@ function normalizeStaffMember(member = {}) {
     orderPermission: ["public", "assigned", "paused"].includes(member.orderPermission) ? member.orderPermission : "public",
     organizationId: member.organizationId || organizations[0]?.id || "org-001",
     area: member.area || "杭州 / 滨江",
-    avatar: member.avatar || "",
-    avatarUrl: member.avatarUrl || member.avatar || "",
+    avatar: member.avatar || avatarUrl,
+    avatarUrl,
     inviteCode: member.inviteCode || "",
     createdAt: member.createdAt || nowText(),
     updatedAt: member.updatedAt || "",
     lastLoginAt: member.lastLoginAt || "",
   };
+}
+
+function getStaffAvatar(member = {}) {
+  return member?.avatarUrl || member?.avatar || "";
+}
+
+function getStaffInitial(member = {}) {
+  return String(member?.name || member?.email || "G").trim().slice(0, 1).toUpperCase() || "G";
+}
+
+function StaffAvatarBadge({ member, className = "" }) {
+  const avatar = getStaffAvatar(member);
+
+  return (
+    <span className={`staff-cloud-avatar ${className}`.trim()} aria-label={`${member?.name || "员工"}头像`}>
+      {avatar ? <img src={avatar} alt={`${member?.name || "员工"}头像`} /> : <span>{getStaffInitial(member)}</span>}
+    </span>
+  );
 }
 
 function normalizeStaffDirectory(data) {
@@ -577,20 +597,41 @@ function persistStaffDirectoryToLocalStore(staff) {
   }
 }
 
-function loadStaffAvatarFromLocalStore() {
+function loadStaffAvatarCacheFromLocalStore() {
   try {
-    // Demo only: avatar is stored as a local data URL in this browser.
-    // Future production sync should upload to cloud storage and persist the URL on the staff profile.
-    return localStorage.getItem(STAFF_AVATAR_STORAGE_KEY) || "";
+    const raw = localStorage.getItem(STAFF_AVATAR_CACHE_STORAGE_KEY);
+    return raw ? JSON.parse(raw) || {} : {};
+  } catch (error) {
+    console.error("读取员工头像缓存失败：", error);
+    return {};
+  }
+}
+
+function loadStaffAvatarFromLocalStore(staffId = "") {
+  try {
+    const cache = loadStaffAvatarCacheFromLocalStore();
+    const cached = staffId ? cache[staffId] : "";
+    return cached || localStorage.getItem(STAFF_AVATAR_STORAGE_KEY) || "";
   } catch (error) {
     console.error("读取员工头像失败：", error);
     return "";
   }
 }
 
-function persistStaffAvatarToLocalStore(staffAvatar) {
+function persistStaffAvatarToLocalStore(staffId, staffAvatar) {
   try {
-    // Keep localStorage compatibility for the demo; this is not shared across browsers/devices.
+    if (!staffId) {
+      localStorage.setItem(STAFF_AVATAR_STORAGE_KEY, staffAvatar || "");
+      return;
+    }
+
+    const cache = loadStaffAvatarCacheFromLocalStore();
+    if (staffAvatar) {
+      cache[staffId] = staffAvatar;
+    } else {
+      delete cache[staffId];
+    }
+    localStorage.setItem(STAFF_AVATAR_CACHE_STORAGE_KEY, JSON.stringify(cache));
     localStorage.setItem(STAFF_AVATAR_STORAGE_KEY, staffAvatar || "");
   } catch (error) {
     console.error("保存员工头像失败：", error);
@@ -631,6 +672,46 @@ async function publicImageExists(url) {
   }
 }
 
+function readBlobAsDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("头像预览生成失败，请重试。"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function withAvatarCacheBust(url) {
+  if (!url) return "";
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}v=${Date.now()}`;
+}
+
+function getStaffAvatarCloudErrorMessage(error) {
+  const rawMessage = String(error?.message || error || "云端上传失败").trim();
+  const lowerMessage = rawMessage.toLowerCase();
+  const looksLikeBucketIssue =
+    lowerMessage.includes("bucket") ||
+    lowerMessage.includes("not found") ||
+    lowerMessage.includes("storage");
+  const looksLikePolicyIssue =
+    lowerMessage.includes("row-level security") ||
+    lowerMessage.includes("policy") ||
+    lowerMessage.includes("permission") ||
+    lowerMessage.includes("unauthorized") ||
+    lowerMessage.includes("jwt");
+
+  if (looksLikeBucketIssue) {
+    return `已在本机更新头像。云端头像桶 ${STAFF_AVATAR_BUCKET} 可能尚未创建或不可访问：${rawMessage}`;
+  }
+
+  if (looksLikePolicyIssue) {
+    return `已在本机更新头像。Supabase Storage 上传策略暂未放行：${rawMessage}`;
+  }
+
+  return `已在本机更新头像，云端同步失败：${rawMessage}`;
+}
+
 async function loadStaffAvatarProfileFromCloud(staffId) {
   try {
     const response = await fetch(
@@ -644,6 +725,24 @@ async function loadStaffAvatarProfileFromCloud(staffId) {
   } catch (error) {
     console.warn("读取云端员工头像资料失败：", error);
     return "";
+  }
+}
+
+async function loadStaffAvatarProfilesFromCloud() {
+  try {
+    const response = await fetch(
+      `${STAFF_PROFILE_API}?select=staff_id,avatar_url,updated_at`,
+      { headers: cloudHeaders() }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return Array.isArray(data)
+      ? data.filter((item) => item?.staff_id && item?.avatar_url)
+      : [];
+  } catch (error) {
+    console.warn("读取云端员工头像目录失败：", error);
+    return [];
   }
 }
 
@@ -722,12 +821,11 @@ async function createCompressedAvatarBlob(file) {
   }
 }
 
-async function uploadStaffAvatarToCloud(staffId, file) {
-  const avatarBlob = await createCompressedAvatarBlob(file);
+async function uploadStaffAvatarToCloud(staffId, avatarBlob) {
   const path = getStaffAvatarStoragePath(staffId);
   const { error } = await supabase.storage.from(STAFF_AVATAR_BUCKET).upload(path, avatarBlob, {
     cacheControl: "3600",
-    contentType: "image/jpeg",
+    contentType: avatarBlob?.type || "image/jpeg",
     upsert: true,
   });
 
@@ -735,7 +833,7 @@ async function uploadStaffAvatarToCloud(staffId, file) {
     throw new Error(error.message || "头像上传失败");
   }
 
-  return getStaffAvatarPublicUrl(staffId);
+  return supabase.storage.from(STAFF_AVATAR_BUCKET).getPublicUrl(path)?.data?.publicUrl || getStaffAvatarPublicUrl(staffId);
 }
 
 function loadCurrentStaffIdFromLocalStore() {
@@ -1521,8 +1619,8 @@ function App() {
   }, [session, appShellMode]);
 
   useEffect(() => {
-    persistStaffAvatarToLocalStore(staffAvatar);
-  }, [staffAvatar]);
+    persistStaffAvatarToLocalStore(currentStaffId, staffAvatar);
+  }, [currentStaffId, staffAvatar]);
 
   useEffect(() => {
     persistCurrentStaffIdToLocalStore(currentStaffId);
@@ -1531,11 +1629,42 @@ function App() {
   useEffect(() => {
     let cancelled = false;
 
+    async function syncStaffDirectoryAvatarsFromCloud() {
+      if (!session) return;
+
+      const profiles = await loadStaffAvatarProfilesFromCloud();
+      if (cancelled || profiles.length === 0) return;
+
+      const avatarByStaffId = new Map(profiles.map((profile) => [profile.staff_id, profile.avatar_url]));
+      setStaffDirectory((members) =>
+        members.map((member) => {
+          const avatarUrl = avatarByStaffId.get(member.id);
+          return avatarUrl
+            ? normalizeStaffMember({ ...member, avatar: avatarUrl, avatarUrl, updatedAt: nowText() })
+            : member;
+        })
+      );
+
+      const currentAvatarUrl = avatarByStaffId.get(currentStaffId);
+      if (currentAvatarUrl) {
+        setStaffAvatar(currentAvatarUrl);
+      }
+    }
+
+    syncStaffDirectoryAvatarsFromCloud();
+    return () => {
+      cancelled = true;
+    };
+  }, [session, currentStaffId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
     async function syncStaffAvatarFromCloud() {
       if (!currentStaffId) return;
 
       setStaffAvatarError("");
-      const localProfileAvatar = currentStaff?.avatarUrl || currentStaff?.avatar || "";
+      const localProfileAvatar = getStaffAvatar(currentStaff) || loadStaffAvatarFromLocalStore(currentStaffId);
       const profileAvatarUrl = await loadStaffAvatarProfileFromCloud(currentStaffId);
 
       if (cancelled) return;
@@ -1786,25 +1915,53 @@ function App() {
     );
 
     if (editingStaffId === currentStaffId && editingStaffForm.avatar) {
-      setStaffAvatar(editingStaffForm.avatar);
+      setStaffAvatar(editingStaffForm.avatarUrl || editingStaffForm.avatar);
     }
 
     closeManageStaff();
   }
 
   async function handleStaffAvatarUpload(file) {
-    if (!currentStaff?.id) {
-      setStaffAvatarError("当前员工身份不完整，无法保存头像。");
-      return;
-    }
-
     setIsUploadingStaffAvatar(true);
     setStaffAvatarError("");
-    setStaffAvatarStatus("上传中…");
+    setStaffAvatarStatus("正在读取头像…");
 
     try {
-      const avatarUrl = await uploadStaffAvatarToCloud(currentStaff.id, file);
-      const previewUrl = `${avatarUrl}?v=${Date.now()}`;
+      const avatarBlob = await createCompressedAvatarBlob(file);
+      const localPreviewUrl = await readBlobAsDataUrl(avatarBlob);
+      const staffId = currentStaff?.id || currentStaffId || DEFAULT_STAFF_ID;
+
+      setStaffAvatar(localPreviewUrl);
+      setStaffDirectory((members) =>
+        members.map((member) =>
+          member.id === staffId
+            ? { ...member, avatar: localPreviewUrl, updatedAt: nowText() }
+            : member
+        )
+      );
+      setStaffAvatarStatus("已在本机更新，正在同步云端…");
+
+      if (!currentStaff?.id) {
+        setStaffAvatarError("当前员工身份不完整，头像已本机预览，暂未同步云端。");
+        setStaffAvatarStatus("已在本机更新头像");
+        return;
+      }
+
+      let avatarUrl = "";
+      try {
+        avatarUrl = await uploadStaffAvatarToCloud(currentStaff.id, avatarBlob);
+      } catch (uploadError) {
+        setStaffAvatarError(getStaffAvatarCloudErrorMessage(uploadError));
+        setStaffAvatarStatus("已在本机更新头像");
+        return;
+      }
+
+      const previewUrl = withAvatarCacheBust(avatarUrl);
+      if (!(await publicImageExists(previewUrl))) {
+        setStaffAvatarError(`已在本机更新头像。云端文件已上传，但公开地址暂不可读取，请确认 ${STAFF_AVATAR_BUCKET} 是 public bucket。`);
+        setStaffAvatarStatus("已在本机更新头像");
+        return;
+      }
 
       setStaffAvatar(previewUrl);
       setStaffDirectory((members) =>
@@ -1815,11 +1972,15 @@ function App() {
         )
       );
 
-      saveStaffAvatarProfileToCloud(currentStaff, avatarUrl).catch((error) => {
-        console.warn("头像已上传，但 staff_profiles 资料表暂未写入：", error);
-      });
+      try {
+        await saveStaffAvatarProfileToCloud(currentStaff, avatarUrl);
+        setStaffAvatarStatus("头像已同步到云端");
+      } catch (profileError) {
+        console.warn("头像已上传，但 staff_profiles 资料表暂未写入：", profileError);
+        setStaffAvatarError("头像文件已上传，但员工资料 avatarUrl 未保存。需要配置 Supabase staff_profiles 表或写入权限。");
+        setStaffAvatarStatus("需要配置 Supabase Storage / 员工资料表");
+      }
 
-      setStaffAvatarStatus("头像已同步");
     } catch (error) {
       console.error("员工头像上传失败：", error);
       setStaffAvatarError(error?.message || "头像上传失败，请稍后重试。");
@@ -5345,6 +5506,15 @@ ${rentalText}`;
                       </span>
                       <span>{order.areaSize || "-"}</span>
                       <span>
+                        {selectedStaff && (
+                          <span className="merchant-staff-inline">
+                            <StaffAvatarBadge member={selectedStaff} className="compact" />
+                            <span>
+                              <strong>{selectedStaff.name}</strong>
+                              <em>{selectedStaff.staffNo} · {selectedStaff.area}</em>
+                            </span>
+                          </span>
+                        )}
                         <select
                           className="admin-inline-select"
                           value={order.assignedStaffId || ""}
@@ -5438,8 +5608,13 @@ ${rentalText}`;
                   return (
                     <div className="admin-table-row" key={member.id}>
                         <span>
-                          <strong>{member.name}</strong>
-                          <em>{member.staffNo} · {member.area}</em>
+                          <span className="merchant-staff-identity">
+                            <StaffAvatarBadge member={member} />
+                            <span>
+                              <strong>{member.name}</strong>
+                              <em>{member.staffNo} · {member.area}</em>
+                            </span>
+                          </span>
                         </span>
                         <span>
                           <strong>{member.email}</strong>
@@ -5724,11 +5899,11 @@ ${rentalText}`;
                     <div className="merchant-staff-profile-grid">
                       <div className="merchant-staff-avatar-block">
                         <ImageUploader
-                          value={editingStaffForm.avatar || (editingStaffMember.id === currentStaffId ? staffAvatar : "")}
+                          value={getStaffAvatar(editingStaffForm) || (editingStaffMember.id === currentStaffId ? staffAvatar : "")}
                           avatar
                           label="更换头像"
                           helper=""
-                          onChange={(avatar) => setEditingStaffForm((form) => ({ ...form, avatar }))}
+                          onChange={(avatar) => setEditingStaffForm((form) => ({ ...form, avatar, avatarUrl: avatar }))}
                         />
                       </div>
                       <div className="merchant-staff-edit-grid">
