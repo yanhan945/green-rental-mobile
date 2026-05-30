@@ -3670,7 +3670,7 @@ ${rentalText}`;
     const finalQuoteFieldStyle = {
       display: "flex",
       alignItems: "center",
-      gap: 12,
+      gap: 14,
       width: "100%",
       boxSizing: "border-box",
       background: "rgba(250, 247, 238, 0.94)",
@@ -3995,14 +3995,14 @@ ${rentalText}`;
           <div>
             <span style={{ display: "block", color: "#7f755f", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>实际销售报价 (元)</span>
             <label className="staff-final-quote-field" style={finalQuoteFieldStyle}>
-              <span style={{ flex: "0 0 18px", color: "#46583d", fontSize: 17, fontWeight: 850, lineHeight: 1, textAlign: "center" }}>¥</span>
+              <span style={{ flex: "0 0 auto", color: "#46583d", fontSize: 17, fontWeight: 850, lineHeight: 1 }}>¥</span>
               <input
                 className="staff-final-quote-input"
                 type="number"
                 value={currentPlan.customFinalRent || ""}
                 onChange={(e) => updateCurrentPlanField("customFinalRent", e.target.value)}
                 placeholder={`默认按 ¥${money(currentStats.systemTotalRent)}`}
-                style={{ flex: 1, minWidth: 0, width: "100%", border: 0, background: "transparent", padding: "5px 0 5px 6px", fontSize: 16, fontWeight: 800, lineHeight: 1.35, color: "#20261f", outline: "none" }}
+                style={{ flex: 1, minWidth: 0, width: "100%", border: 0, background: "transparent", padding: "5px 0 5px 8px", textAlign: "left", fontSize: 16, fontWeight: 800, lineHeight: 1.35, color: "#20261f", outline: "none" }}
               />
             </label>
           </div>
