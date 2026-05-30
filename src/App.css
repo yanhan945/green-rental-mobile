@@ -11044,3 +11044,249 @@ select:focus {
 .image-uploader-avatar-status.error {
   color: #9b4d42 !important;
 }
+
+/* Staff mobile app frame: fixed top, isolated scroll body, fixed bottom tab. */
+.staff-app-shell {
+  --staff-frame-width: 460px;
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100dvh !important;
+  min-height: 100svh !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  color: var(--estate-ink, #20251d) !important;
+}
+
+@supports not (height: 100dvh) {
+  .staff-app-shell {
+    height: 100vh !important;
+  }
+}
+
+.staff-app-topbar {
+  position: relative !important;
+  top: auto !important;
+  z-index: 70 !important;
+  justify-self: center !important;
+  width: min(100%, var(--staff-frame-width)) !important;
+  min-height: auto !important;
+  display: grid !important;
+  grid-template-columns: 52px minmax(0, 1fr) 52px !important;
+  align-items: center !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(102, 93, 70, 0.12) !important;
+  border-radius: 0 0 24px 24px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(248, 242, 231, 0.86)) !important;
+  box-shadow: 0 12px 30px rgba(72, 60, 38, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.86) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
+}
+
+.staff-app-topbar .staff-avatar-entry {
+  justify-self: start !important;
+  width: 44px !important;
+  height: 44px !important;
+  flex: 0 0 44px !important;
+  border: 2px solid rgba(255, 252, 246, 0.96) !important;
+  border-radius: 16px !important;
+  background: linear-gradient(145deg, #657a58, #324a2e) !important;
+  box-shadow: 0 10px 22px rgba(48, 66, 42, 0.16) !important;
+}
+
+.staff-app-topbar .staff-avatar-entry img,
+.staff-app-topbar .staff-avatar-entry span {
+  border-radius: 14px !important;
+}
+
+.staff-app-topbar .staff-avatar-entry span {
+  color: #fffaf1 !important;
+  font-size: 18px !important;
+  font-weight: 950 !important;
+}
+
+.staff-app-topbar .staff-topbar-title {
+  min-width: 0 !important;
+  justify-self: center !important;
+  text-align: center !important;
+}
+
+.staff-app-topbar .staff-topbar-title strong,
+.staff-app-topbar .staff-topbar-title span {
+  white-space: nowrap !important;
+}
+
+.staff-app-topbar .merchant-switch {
+  justify-self: end !important;
+}
+
+.staff-app-main {
+  position: relative !important;
+  z-index: 1 !important;
+  width: min(100%, var(--staff-frame-width)) !important;
+  min-height: 0 !important;
+  height: auto !important;
+  margin: 0 auto !important;
+  padding: 16px 14px 18px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.staff-app-main::-webkit-scrollbar,
+.staff-status-tabs::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+.staff-status-tabs {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.staff-bottom-tab {
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  z-index: 70 !important;
+  justify-self: center !important;
+  align-self: end !important;
+  width: min(calc(100% - 24px), 430px) !important;
+  min-height: 0 !important;
+  margin: 0 0 8px !important;
+  box-sizing: border-box !important;
+  transform: none !important;
+  padding: 7px 7px calc(7px + env(safe-area-inset-bottom, 0px)) !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+  border: 1px solid rgba(102, 93, 70, 0.14) !important;
+  border-radius: 26px !important;
+  background: rgba(255, 252, 246, 0.9) !important;
+  box-shadow: 0 14px 34px rgba(65, 55, 33, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.84) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
+}
+
+.staff-bottom-item {
+  min-width: 0 !important;
+  min-height: 50px !important;
+}
+
+.staff-avatar-inline-status {
+  display: block !important;
+  margin-top: 8px !important;
+  color: rgba(83, 95, 68, 0.8) !important;
+  font-size: 12px !important;
+  font-weight: 820 !important;
+  line-height: 1.45 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.staff-avatar-inline-status.error {
+  color: #9b4d42 !important;
+}
+
+.staff-cloud-avatar {
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 40px !important;
+  height: 40px !important;
+  flex: 0 0 40px !important;
+  border: 1px solid rgba(116, 102, 74, 0.18) !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+  background: linear-gradient(145deg, #6f8063, #324a2e) !important;
+  color: #fffaf1 !important;
+  box-shadow: 0 8px 18px rgba(60, 77, 52, 0.14) !important;
+}
+
+.staff-cloud-avatar.compact {
+  width: 34px !important;
+  height: 34px !important;
+  flex-basis: 34px !important;
+}
+
+.staff-cloud-avatar img,
+.staff-cloud-avatar span {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: inherit !important;
+}
+
+.staff-cloud-avatar img {
+  display: block !important;
+  object-fit: cover !important;
+  object-position: center !important;
+}
+
+.staff-cloud-avatar span {
+  display: grid !important;
+  place-items: center !important;
+  color: #fffaf1 !important;
+  font-size: 15px !important;
+  font-weight: 950 !important;
+}
+
+.merchant-staff-identity,
+.merchant-staff-inline {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  gap: 10px !important;
+}
+
+.merchant-staff-inline {
+  width: 100% !important;
+  margin-bottom: 8px !important;
+}
+
+.merchant-staff-identity > span,
+.merchant-staff-inline > span {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 2px !important;
+}
+
+.merchant-staff-identity strong,
+.merchant-staff-identity em,
+.merchant-staff-inline strong,
+.merchant-staff-inline em {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 420px) {
+  .staff-app-topbar {
+    grid-template-columns: 48px minmax(0, 1fr) 48px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    border-radius: 0 0 22px 22px !important;
+  }
+
+  .staff-app-topbar .staff-avatar-entry {
+    width: 42px !important;
+    height: 42px !important;
+    flex-basis: 42px !important;
+  }
+
+  .staff-app-main {
+    padding: 14px 12px 16px !important;
+  }
+
+  .staff-bottom-tab {
+    width: calc(100% - 20px) !important;
+    margin-bottom: 7px !important;
+  }
+}
