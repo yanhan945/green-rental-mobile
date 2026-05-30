@@ -646,13 +646,24 @@ function getStaffAvatarStoragePath(staffId) {
   return `${getSafeStaffAvatarId(staffId)}/avatar.jpg`;
 }
 
-function getStaffAvatarPublicUrl(staffId, version = "") {
-  const path = getStaffAvatarStoragePath(staffId)
+function createStaffAvatarStoragePath(staffId) {
+  return `${getSafeStaffAvatarId(staffId)}/avatar-${Date.now()}.jpg`;
+}
+
+function encodeStoragePath(path) {
+  return String(path || "")
     .split("/")
     .map((part) => encodeURIComponent(part))
     .join("/");
-  const baseUrl = `${SUPABASE_URL}/storage/v1/object/public/${STAFF_AVATAR_BUCKET}/${path}`;
+}
+
+function getStaffAvatarPublicUrlByPath(path, version = "") {
+  const baseUrl = `${SUPABASE_URL}/storage/v1/object/public/${STAFF_AVATAR_BUCKET}/${encodeStoragePath(path)}`;
   return version ? `${baseUrl}?v=${encodeURIComponent(version)}` : baseUrl;
+}
+
+function getStaffAvatarPublicUrl(staffId, version = "") {
+  return getStaffAvatarPublicUrlByPath(getStaffAvatarStoragePath(staffId), version);
 }
 
 async function publicImageExists(url) {
@@ -687,6 +698,44 @@ function withAvatarCacheBust(url) {
   return `${url}${separator}v=${Date.now()}`;
 }
 
+async function readCloudResponseError(response) {
+  const text = await response.text().catch(() => "");
+  if (!text) {
+    return {
+      message: response.statusText || "Supabase 请求失败",
+      status: response.status,
+    };
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      message: text,
+      raw: text,
+      status: response.status,
+    };
+  }
+}
+
+function getCloudErrorText(error, fallbackMessage) {
+  if (!error) return fallbackMessage;
+  if (typeof error === "string") return error || fallbackMessage;
+  if (error.message) return error.message;
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return fallbackMessage;
+  }
+}
+
+function createCloudError(fallbackMessage, details) {
+  const error = new Error(getCloudErrorText(details, fallbackMessage));
+  error.details = details;
+  return error;
+}
+
 function getStaffAvatarCloudErrorMessage(error) {
   const rawMessage = String(error?.message || error || "云端上传失败").trim();
   const lowerMessage = rawMessage.toLowerCase();
@@ -702,14 +751,14 @@ function getStaffAvatarCloudErrorMessage(error) {
     lowerMessage.includes("jwt");
 
   if (looksLikeBucketIssue) {
-    return `已在本机更新头像。云端头像桶 ${STAFF_AVATAR_BUCKET} 可能尚未创建或不可访问：${rawMessage}`;
+    return `仅本地预览，云端未同步。云端头像桶 ${STAFF_AVATAR_BUCKET} 可能尚未创建或不可访问：${rawMessage}`;
   }
 
   if (looksLikePolicyIssue) {
-    return `已在本机更新头像。Supabase Storage 上传策略暂未放行：${rawMessage}`;
+    return `仅本地预览，云端未同步。Supabase Storage 上传策略暂未放行：${rawMessage}`;
   }
 
-  return `已在本机更新头像，云端同步失败：${rawMessage}`;
+  return `仅本地预览，云端未同步：${rawMessage}`;
 }
 
 async function loadStaffAvatarProfileFromCloud(staffId) {
@@ -746,9 +795,7 @@ async function loadStaffAvatarProfilesFromCloud() {
   }
 }
 
-async function saveStaffAvatarProfileToCloud(staff, avatarUrl) {
-  // First-stage cloud sync: write avatar_url when a staff_profiles table exists.
-  // Production should bind this to real auth.uid + organization_id RLS policies.
+async function saveStaffAvatarProfileToCloud(staff, avatarUrl, accessToken = "") {
   const payload = {
     staff_id: staff?.id || DEFAULT_STAFF_ID,
     name: staff?.name || "",
@@ -757,21 +804,39 @@ async function saveStaffAvatarProfileToCloud(staff, avatarUrl) {
     updated_at: new Date().toISOString(),
   };
 
+  console.info("[staff-avatar] staff_profiles upsert start", {
+    staff_id: payload.staff_id,
+    avatar_url: payload.avatar_url,
+  });
+
   const response = await fetch(`${STAFF_PROFILE_API}?on_conflict=staff_id`, {
     method: "POST",
     headers: {
-      ...cloudHeaders({ Prefer: "resolution=merge-duplicates,return=representation" }),
+      ...cloudHeaders({
+        Authorization: `Bearer ${accessToken || SUPABASE_KEY}`,
+        Prefer: "resolution=merge-duplicates,return=representation",
+      }),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(text || "staff_profiles 写入失败");
+    const error = await readCloudResponseError(response);
+    console.error("[staff-avatar] staff_profiles upsert failed", {
+      status: response.status,
+      error,
+      payload,
+    });
+    throw createCloudError("staff_profiles 写入失败", error);
   }
 
-  return response.json().catch(() => null);
+  const data = await response.json().catch(() => null);
+  console.info("[staff-avatar] staff_profiles upsert success", {
+    staff_id: payload.staff_id,
+    avatar_url: payload.avatar_url,
+  });
+  return data;
 }
 
 async function createCompressedAvatarBlob(file) {
@@ -821,19 +886,51 @@ async function createCompressedAvatarBlob(file) {
   }
 }
 
-async function uploadStaffAvatarToCloud(staffId, avatarBlob) {
-  const path = getStaffAvatarStoragePath(staffId);
-  const { error } = await supabase.storage.from(STAFF_AVATAR_BUCKET).upload(path, avatarBlob, {
-    cacheControl: "3600",
-    contentType: avatarBlob?.type || "image/jpeg",
-    upsert: true,
+async function uploadStaffAvatarToCloud(staffId, avatarBlob, accessToken = "") {
+  const path = createStaffAvatarStoragePath(staffId);
+  const contentType = avatarBlob?.type || "image/jpeg";
+  const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${STAFF_AVATAR_BUCKET}/${encodeStoragePath(path)}`;
+
+  console.info("[staff-avatar] storage upload start", {
+    bucket: STAFF_AVATAR_BUCKET,
+    path,
+    contentType,
+    size: avatarBlob?.size || 0,
   });
 
-  if (error) {
-    throw new Error(error.message || "头像上传失败");
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${accessToken || SUPABASE_KEY}`,
+      "Content-Type": contentType,
+      "cache-control": "3600",
+      "x-upsert": "true",
+    },
+    body: avatarBlob,
+  });
+
+  if (!response.ok) {
+    const error = await readCloudResponseError(response);
+    console.error("[staff-avatar] storage upload failed", {
+      status: response.status,
+      bucket: STAFF_AVATAR_BUCKET,
+      path,
+      error,
+    });
+    throw createCloudError("头像上传失败", error);
   }
 
-  return supabase.storage.from(STAFF_AVATAR_BUCKET).getPublicUrl(path)?.data?.publicUrl || getStaffAvatarPublicUrl(staffId);
+  const data = await response.json().catch(() => null);
+  const avatarUrl = getStaffAvatarPublicUrlByPath(path);
+  console.info("[staff-avatar] storage upload success", {
+    bucket: STAFF_AVATAR_BUCKET,
+    path,
+    avatarUrl,
+    data,
+  });
+
+  return avatarUrl;
 }
 
 function loadCurrentStaffIdFromLocalStore() {
@@ -1662,14 +1759,15 @@ function App() {
 
     async function syncStaffAvatarFromCloud() {
       if (!currentStaffId) return;
+      if (isUploadingStaffAvatar) return;
 
-      setStaffAvatarError("");
       const localProfileAvatar = getStaffAvatar(currentStaff) || loadStaffAvatarFromLocalStore(currentStaffId);
       const profileAvatarUrl = await loadStaffAvatarProfileFromCloud(currentStaffId);
 
       if (cancelled) return;
 
       if (profileAvatarUrl) {
+        setStaffAvatarError("");
         setStaffAvatar(profileAvatarUrl);
         setStaffDirectory((members) =>
           members.map((member) =>
@@ -1684,6 +1782,7 @@ function App() {
       const deterministicCloudUrl = getStaffAvatarPublicUrl(currentStaffId, Date.now());
       if (await publicImageExists(deterministicCloudUrl)) {
         if (cancelled) return;
+        setStaffAvatarError("");
         setStaffAvatar(deterministicCloudUrl);
         return;
       }
@@ -1697,7 +1796,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [currentStaffId, currentStaff?.avatarUrl, currentStaff?.avatar]);
+  }, [currentStaffId, currentStaff?.avatarUrl, currentStaff?.avatar, isUploadingStaffAvatar]);
 
   useEffect(() => {
     activeViewRef.current = {
@@ -1922,6 +2021,20 @@ function App() {
   }
 
   async function handleStaffAvatarUpload(file) {
+    console.info("[staff-avatar] handleStaffAvatarUpload triggered", {
+      fileName: file?.name || "",
+      fileType: file?.type || "",
+      fileSize: file?.size || 0,
+    });
+
+    const staffId = currentStaff?.id || currentStaffId || DEFAULT_STAFF_ID;
+    console.info("[staff-avatar] staff context", {
+      currentStaffObjectId: currentStaff?.id || "",
+      currentStaffId,
+      staffId,
+      bucket: STAFF_AVATAR_BUCKET,
+    });
+
     setIsUploadingStaffAvatar(true);
     setStaffAvatarError("");
     setStaffAvatarStatus("正在读取头像…");
@@ -1929,7 +2042,7 @@ function App() {
     try {
       const avatarBlob = await createCompressedAvatarBlob(file);
       const localPreviewUrl = await readBlobAsDataUrl(avatarBlob);
-      const staffId = currentStaff?.id || currentStaffId || DEFAULT_STAFF_ID;
+      const accessToken = session?.access_token || "";
 
       setStaffAvatar(localPreviewUrl);
       setStaffDirectory((members) =>
@@ -1937,28 +2050,24 @@ function App() {
           member.id === staffId
             ? { ...member, avatar: localPreviewUrl, updatedAt: nowText() }
             : member
-        )
+          )
       );
       setStaffAvatarStatus("已在本机更新，正在同步云端…");
 
-      
-
       let avatarUrl = "";
       try {
-        avatarUrl = await uploadStaffAvatarToCloud(staffId, avatarBlob);
+        avatarUrl = await uploadStaffAvatarToCloud(staffId, avatarBlob, accessToken);
       } catch (uploadError) {
+        console.error("[staff-avatar] upload step failed", {
+          error: uploadError,
+          details: uploadError?.details,
+        });
         setStaffAvatarError(getStaffAvatarCloudErrorMessage(uploadError));
-        setStaffAvatarStatus("已在本机更新头像");
+        setStaffAvatarStatus("仅本地预览，云端未同步");
         return;
       }
 
       const previewUrl = withAvatarCacheBust(avatarUrl);
-      if (!(await publicImageExists(previewUrl))) {
-        setStaffAvatarError(`已在本机更新头像。云端文件已上传，但公开地址暂不可读取，请确认 ${STAFF_AVATAR_BUCKET} 是 public bucket。`);
-        setStaffAvatarStatus("已在本机更新头像");
-        return;
-      }
-
       setStaffAvatar(previewUrl);
       setStaffDirectory((members) =>
         members.map((member) =>
@@ -1970,14 +2079,23 @@ function App() {
 
       try {
         await saveStaffAvatarProfileToCloud(
-  currentStaff || { id: staffId, name: "张三", email: "1464155122@qq.com" },
-  avatarUrl
-);
+          {
+            ...currentStaff,
+            id: staffId,
+            name: currentStaff?.name || authAccount?.name || authUserEmail || "",
+            email: currentStaff?.email || authUserEmail || "",
+          },
+          avatarUrl,
+          accessToken
+        );
         setStaffAvatarStatus("头像已同步到云端");
       } catch (profileError) {
-        console.warn("头像已上传，但 staff_profiles 资料表暂未写入：", profileError);
-        setStaffAvatarError("头像文件已上传，但员工资料 avatarUrl 未保存。需要配置 Supabase staff_profiles 表或写入权限。");
-        setStaffAvatarStatus("需要配置 Supabase Storage / 员工资料表");
+        console.error("[staff-avatar] profile save step failed", {
+          error: profileError,
+          details: profileError?.details,
+        });
+        setStaffAvatarError(`头像文件已上传，但员工资料未同步：${getCloudErrorText(profileError?.details || profileError, "staff_profiles 写入失败")}`);
+        setStaffAvatarStatus("头像文件已上传，员工资料未同步");
       }
 
     } catch (error) {
