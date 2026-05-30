@@ -50,6 +50,18 @@ export function StaffMobile({
   const safeStaffOrders = Array.isArray(staffOrders) ? staffOrders : [];
   const safeFilteredStaffOrders = Array.isArray(filteredStaffOrders) ? filteredStaffOrders : [];
   const executableOrders = safeStaffOrders.filter((order) => classifyOrderStatus(order.status) === "执行中");
+  const hasUsefulPrefillText = (value) => {
+    const text = String(value || "").trim();
+    return Boolean(text && !["暂无内容", "待确认"].includes(text));
+  };
+  const selectedOrderHasMerchantPrefill = Boolean(
+    selectedOrder?.plan?.merchantDraft ||
+    selectedOrder?.plan?.merchantDraftNote ||
+    hasUsefulPrefillText(selectedOrder?.budget) ||
+    hasUsefulPrefillText(selectedOrder?.areaNote) ||
+    hasUsefulPrefillText(selectedOrder?.plannedPlantCount) ||
+    hasUsefulPrefillText(selectedOrder?.areaSize)
+  );
 
   return (
   <div className="staff-app-shell">
@@ -314,6 +326,10 @@ export function StaffMobile({
             </div>
 
             <div className="staff-confirm-sheet-body">
+            <div className="empty-card staff-confirm-prefill-note">
+              <p>{selectedOrderHasMerchantPrefill ? "商户已预填方案信息" : "暂无预填方案"}</p>
+              <span>{selectedOrderHasMerchantPrefill ? "确认接单后可在方案页按现场情况微调。" : "确认接单后可根据现场情况创建方案。"}</span>
+            </div>
             <div className="sheet-block">
               <p className="sheet-label">选择方案类型</p>
               <div className="plan-type-grid">
