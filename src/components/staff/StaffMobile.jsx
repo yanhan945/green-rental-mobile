@@ -45,10 +45,11 @@ export function StaffMobile({
   authUserEmail = "",
   canOpenMerchant = false,
   onSignOut,
+  classifyOrderStatus = (status) => status || "做方案",
 }) {
   const safeStaffOrders = Array.isArray(staffOrders) ? staffOrders : [];
   const safeFilteredStaffOrders = Array.isArray(filteredStaffOrders) ? filteredStaffOrders : [];
-  const executableOrders = safeStaffOrders.filter((order) => order.status === "执行中");
+  const executableOrders = safeStaffOrders.filter((order) => classifyOrderStatus(order.status) === "执行中");
 
   return (
   <div className="staff-app-shell">
@@ -83,6 +84,7 @@ export function StaffMobile({
             setActiveStaffTab={setActiveStaffTab}
             autoSyncState={autoSyncState}
             syncMessage={syncMessage}
+            classifyOrderStatus={classifyOrderStatus}
           />
         )}
 
