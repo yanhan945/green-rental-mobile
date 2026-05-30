@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ImageUploader } from "./components/common/ImageUploader";
 import { AuthPage } from "./components/auth/AuthPage";
 import { GardenIcons } from "./GardenIcons";
@@ -13,12 +13,17 @@ const ORDERS_API = `${SUPABASE_URL}/rest/v1/orders`;
 const STORAGE_KEY = "green-rental-mobile-v24";
 const PRODUCT_STORAGE_KEY = "green-rental-products-v29";
 const CUSTOMER_STORAGE_KEY = "green-rental-customers-v31";
+const STAFF_DIRECTORY_STORAGE_KEY = "green-rental-staff-directory-v1";
 const STAFF_AVATAR_STORAGE_KEY = "green-rental-staff-avatar-v1";
 const CURRENT_STAFF_STORAGE_KEY = "green-rental-current-staff-v1";
 const PRODUCT_CLOUD_ID = 999999001;
 
 const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "待商户归档", "已完成"];
 const MERCHANT_STATUS_TABS = ["全部", ...ORDER_STATUS];
+const STAFF_TABS = ["待接单", "做方案", "执行中", "已完成"];
+const STAFF_APP_TABS = ["首页", "任务", "上报", "我的"];
+const MERCHANT_TABS = ["工作台", "订单管理", "团队成员", "执行监测", "商品库", "客户库", "设置"];
+const APP_PAGES = ["orders", "plan", "completeUpload", "archiveDetail", "serviceRecord"];
 
 const ORDER_SOURCES = ["商户派单", "客户预约", "电话登记", "线下登记"];
 const DELIVERY_STATUS = ["未出发", "前往中", "已到达"];
@@ -44,8 +49,10 @@ const staffMembers = [
     phone: "13800000001",
     role: "staff",
     status: "active",
+    orderPermission: "public",
     organizationId: "org-001",
     area: "杭州 / 滨江",
+    avatar: "",
     createdAt: "2026-05-01 09:00",
     lastLoginAt: "2026-05-29 09:20",
   },
@@ -57,8 +64,10 @@ const staffMembers = [
     phone: "13800000002",
     role: "manager",
     status: "active",
+    orderPermission: "assigned",
     organizationId: "org-001",
     area: "杭州 / 上城",
+    avatar: "",
     createdAt: "2026-05-03 10:15",
     lastLoginAt: "2026-05-28 18:40",
   },
@@ -70,8 +79,10 @@ const staffMembers = [
     phone: "13800000003",
     role: "staff",
     status: "paused",
+    orderPermission: "paused",
     organizationId: "org-001",
     area: "杭州 / 西湖",
+    avatar: "",
     createdAt: "2026-05-06 14:20",
     lastLoginAt: "2026-05-22 11:10",
   },
@@ -104,10 +115,19 @@ const ROLE_LABELS = {
 };
 
 const ACCOUNT_STATUS_LABELS = {
+  invited: "待邀请",
   active: "启用",
-  paused: "停用账号",
+  paused: "已停用",
   disabled: "停用",
 };
+
+const STAFF_ORDER_PERMISSION_LABELS = {
+  public: "可接公共单",
+  assigned: "仅接指定派单",
+  paused: "暂停接单",
+};
+
+const STAFF_AREA_OPTIONS = ["杭州 / 滨江", "杭州 / 上城", "杭州 / 西湖", "杭州 / 拱墅"];
 
 const DEFAULT_STAFF_ID = "staff-001";
 
@@ -209,6 +229,104 @@ function getOrganizationById(organizationId) {
 
 function getDefaultAssignedStaff() {
   return getStaffMemberById(DEFAULT_STAFF_ID) || staffMembers[0] || null;
+}
+
+function ErrorFallback({ mode = "staff", onReset }) {
+  return (
+    <main className={mode === "merchant" ? "admin-main app-error-shell" : "app staff-legacy-page app-error-shell"}>
+      <section className="empty-card app-error-card">
+        <p>页面加载失败</p>
+        <span>当前页面数据不完整，请返回工作台后重试。</span>
+        <button className="primary-button" onClick={onReset}>返回工作台</button>
+      </section>
+    </main>
+  );
+}
+
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, info) {
+    console.error("页面渲染失败：", error, info);
+  }
+
+  componentDidUpdate(prevProps) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <ErrorFallback mode={this.props.mode} onReset={this.props.onReset} />;
+    }
+
+    return this.props.children;
+  }
+}
+
+function normalizeStaffMember(member = {}) {
+  return {
+    id: member.id || `staff-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    staffNo: String(member.staffNo || "").trim() || "YG001",
+    name: member.name || "未命名员工",
+    email: member.email || "",
+    phone: member.phone || "",
+    role: ["staff", "manager", "admin"].includes(member.role) ? member.role : "staff",
+    status: ["invited", "active", "paused", "disabled"].includes(member.status) ? member.status : "active",
+    orderPermission: ["public", "assigned", "paused"].includes(member.orderPermission) ? member.orderPermission : "public",
+    organizationId: member.organizationId || organizations[0]?.id || "org-001",
+    area: member.area || "杭州 / 滨江",
+    avatar: member.avatar || "",
+    inviteCode: member.inviteCode || "",
+    createdAt: member.createdAt || nowText(),
+    updatedAt: member.updatedAt || "",
+    lastLoginAt: member.lastLoginAt || "",
+  };
+}
+
+function normalizeStaffDirectory(data) {
+  const list = Array.isArray(data) && data.length ? data : staffMembers;
+  return list.map(normalizeStaffMember);
+}
+
+function canAssignStaff(member) {
+  return member?.status === "active" && member?.orderPermission !== "paused";
+}
+
+function generateNextStaffNo(members = []) {
+  const maxNo = members.reduce((max, member) => {
+    const match = String(member.staffNo || "").trim().match(/^YG(\d+)$/i);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+
+  return `YG${String(maxNo + 1).padStart(3, "0")}`;
+}
+
+function isStaffNoTaken(members = [], staffNo, ignoreId = "") {
+  const normalizedStaffNo = String(staffNo || "").trim().toUpperCase();
+  return members.some((member) => member.id !== ignoreId && String(member.staffNo || "").trim().toUpperCase() === normalizedStaffNo);
+}
+
+function createStaffForm(defaultStaffNo = "YG001") {
+  return {
+    name: "",
+    phone: "",
+    email: "",
+    staffNo: defaultStaffNo,
+    role: "staff",
+    area: "杭州 / 滨江",
+    orderPermission: "public",
+    status: "invited",
+    avatar: "",
+  };
 }
 
 function resolveAuthAccountByEmail(email) {
@@ -398,6 +516,34 @@ function getProductImage(product) {
 
 function isImageUrl(value) {
   return /^(https?:\/\/|data:image\/|blob:)/i.test(String(value || "").trim());
+}
+
+function loadStaffDirectoryFromLocalStore() {
+  try {
+    const raw = localStorage.getItem(STAFF_DIRECTORY_STORAGE_KEY);
+    if (!raw) return normalizeStaffDirectory(staffMembers);
+
+    const parsed = JSON.parse(raw);
+    return normalizeStaffDirectory(parsed?.staff);
+  } catch (error) {
+    console.error("读取本地员工目录失败：", error);
+    return normalizeStaffDirectory(staffMembers);
+  }
+}
+
+function persistStaffDirectoryToLocalStore(staff) {
+  try {
+    localStorage.setItem(
+      STAFF_DIRECTORY_STORAGE_KEY,
+      JSON.stringify({
+        source: "localStorage",
+        savedAt: nowText(),
+        staff,
+      })
+    );
+  } catch (error) {
+    console.error("保存本地员工目录失败：", error);
+  }
 }
 
 function loadStaffAvatarFromLocalStore() {
@@ -769,15 +915,7 @@ function getOrderSignalTags(order) {
   return signals.slice(0, 8);
 }
 
-function getStaffStatuses(tab) {
-  if (tab === "待接单") return ["待接单"];
-  if (tab === "做方案") return ["配置中", "待商户确认"];
-  if (tab === "执行中") return ["方案已确认", "执行中"];
-  if (tab === "已完成") return ["待商户归档", "已完成"];
-  return ["待接单"];
-}
-
-function getStaffTabByOrderStatus(status) {
+function classifyOrderStatus(status) {
   const normalized = String(status || "").toLowerCase();
 
   if (
@@ -790,23 +928,25 @@ function getStaffTabByOrderStatus(status) {
   }
 
   if (
-    normalized.includes("配置") ||
-    normalized.includes("做方案") ||
-    normalized.includes("待商户确认") ||
-    normalized.includes("plan") ||
-    normalized.includes("draft") ||
-    normalized.includes("confirm")
+    normalized.includes("已完成") ||
+    normalized.includes("已归档") ||
+    normalized.includes("待商户归档") ||
+    normalized.includes("完工待验") ||
+    normalized.includes("done") ||
+    normalized.includes("completed") ||
+    normalized.includes("complete") ||
+    normalized.includes("archived") ||
+    normalized.includes("archive")
   ) {
-    return "做方案";
+    return "已完成";
   }
 
   if (
-    normalized.includes("方案已确认") ||
-    normalized.includes("执行") ||
-    normalized.includes("施工") ||
-    normalized.includes("进行") ||
+    normalized.includes("执行中") ||
+    normalized.includes("施工中") ||
     normalized.includes("现场推进") ||
-    normalized.includes("progress") ||
+    normalized.includes("in_progress") ||
+    normalized.includes("executing") ||
     normalized.includes("execut") ||
     normalized.includes("service")
   ) {
@@ -814,25 +954,37 @@ function getStaffTabByOrderStatus(status) {
   }
 
   if (
-    normalized.includes("完成") ||
-    normalized.includes("归档") ||
-    normalized.includes("完工待验") ||
-    normalized.includes("done") ||
-    normalized.includes("complete") ||
-    normalized.includes("archive")
+    normalized.includes("配置") ||
+    normalized.includes("做方案") ||
+    normalized.includes("方案草稿") ||
+    normalized.includes("方案已确认") ||
+    normalized.includes("待商户确认") ||
+    normalized.includes("planning") ||
+    normalized.includes("plan") ||
+    normalized.includes("draft") ||
+    normalized.includes("confirmed") ||
+    normalized.includes("confirm")
   ) {
-    return "已完成";
+    return "做方案";
   }
 
   return "做方案";
 }
 
+function getStaffStatuses(tab) {
+  return STAFF_TABS.includes(tab) ? [tab] : ["待接单"];
+}
+
+function getStaffTabByOrderStatus(status) {
+  return classifyOrderStatus(status);
+}
+
 function getMerchantStatusClass(status) {
-  if (status === "待接单") return "is-waiting";
-  if (["配置中", "待商户确认", "方案已确认"].includes(status)) return "is-plan";
-  if (status === "执行中") return "is-running";
-  if (status === "待商户归档") return "is-warning";
-  if (status === "已完成") return "is-done";
+  const group = classifyOrderStatus(status);
+  if (group === "待接单") return "is-waiting";
+  if (group === "做方案") return "is-plan";
+  if (group === "执行中") return "is-running";
+  if (group === "已完成") return status === "待商户归档" ? "is-warning" : "is-done";
   return "is-muted";
 }
 
@@ -861,7 +1013,7 @@ function App() {
   const [orders, setOrders] = useState(() => loadOrdersFromLocalStore());
   const [merchantProducts, setMerchantProducts] = useState(() => loadProductsFromLocalStore());
   const [merchantCustomers, setMerchantCustomers] = useState(() => loadCustomersFromLocalStore());
-  const [staffDirectory, setStaffDirectory] = useState(staffMembers);
+  const [staffDirectory, setStaffDirectory] = useState(() => loadStaffDirectoryFromLocalStore());
 
   const [currentPage, setCurrentPage] = useState("orders");
   const [currentOrderId, setCurrentOrderId] = useState(null);
@@ -869,6 +1021,11 @@ function App() {
   const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
   const [merchantViewingOrder, setMerchantViewingOrder] = useState(null);
   const [editingStaffId, setEditingStaffId] = useState(null);
+  const [editingStaffForm, setEditingStaffForm] = useState(null);
+  const [showInviteStaffSheet, setShowInviteStaffSheet] = useState(false);
+  const [staffInviteForm, setStaffInviteForm] = useState(() => createStaffForm(generateNextStaffNo(staffMembers)));
+  const [staffFormError, setStaffFormError] = useState("");
+  const [lastInviteCode, setLastInviteCode] = useState("");
 
   const [planType, setPlanType] = useState("租赁方案");
 
@@ -953,7 +1110,11 @@ function App() {
     status: "已上架",
   });
 
-  const currentOrder = orders.find((order) => String(order.id) === String(currentOrderId)) || null;
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const safeStaffDirectory = Array.isArray(staffDirectory) ? staffDirectory : [];
+  const safeMerchantProducts = Array.isArray(merchantProducts) ? merchantProducts : [];
+  const safeMerchantCustomers = Array.isArray(merchantCustomers) ? merchantCustomers : [];
+  const currentOrder = safeOrders.find((order) => String(order.id) === String(currentOrderId)) || null;
   const currentPlan =
     currentOrder?.plan ||
     (currentPage === "plan" && currentOrder ? createEmptyPlan(currentOrder, getInitialPlanTypeForOrder(currentOrder)) : null);
@@ -962,31 +1123,35 @@ function App() {
   const currentStats = getPlanStats(currentPlan);
   const authUserEmail = session?.user?.email || "";
   const authAccount = useMemo(() => resolveAuthAccountByEmail(authUserEmail), [authUserEmail]);
-  const currentStaff = staffDirectory.find((member) => member.id === currentStaffId) || getStaffMemberById(currentStaffId) || (authAccount?.userType === "staff" ? authAccount : null) || getDefaultAssignedStaff();
+  const currentStaff = safeStaffDirectory.find((member) => member.id === currentStaffId) || getStaffMemberById(currentStaffId) || (authAccount?.userType === "staff" ? authAccount : null) || getDefaultAssignedStaff();
   const currentOrganization = getOrganizationById(currentStaff?.organizationId);
   const currentMerchantUser = authAccount?.userType === "merchant" ? authAccount : merchantUsers[0];
   const canUseMerchant = ["owner", "admin", "manager"].includes(authRole);
   const activeStaffMembers = useMemo(() => {
-    const members = Array.isArray(staffDirectory) ? staffDirectory : [];
+    const members = safeStaffDirectory;
     const organizationId = currentMerchantUser?.organizationId;
     return organizationId ? members.filter((member) => member.organizationId === organizationId) : members;
-  }, [staffDirectory, currentMerchantUser?.organizationId]);
+  }, [safeStaffDirectory, currentMerchantUser?.organizationId]);
+
+  const assignableStaffMembers = useMemo(() => {
+    return activeStaffMembers.filter(canAssignStaff);
+  }, [activeStaffMembers]);
 
   const staffScopedOrders = useMemo(() => {
-    return orders.filter((order) => order.assignedStaffId === currentStaff?.id);
-  }, [orders, currentStaff?.id]);
+    return safeOrders.filter((order) => order.assignedStaffId === currentStaff?.id);
+  }, [safeOrders, currentStaff?.id]);
 
   const filteredStaffOrders = useMemo(() => {
     const statuses = getStaffStatuses(activeStaffTab);
-    return staffScopedOrders.filter((order) => statuses.includes(order.status));
+    return staffScopedOrders.filter((order) => statuses.includes(classifyOrderStatus(order.status)));
   }, [staffScopedOrders, activeStaffTab]);
 
   const merchantOrders = useMemo(() => {
     const keyword = merchantSearchText.trim();
     const baseOrders =
       merchantStatusFilter === "全部"
-        ? orders
-        : orders.filter((order) => order.status === merchantStatusFilter);
+        ? safeOrders
+        : safeOrders.filter((order) => order.status === merchantStatusFilter || classifyOrderStatus(order.status) === merchantStatusFilter);
 
     if (!keyword) return baseOrders;
 
@@ -1006,29 +1171,29 @@ function App() {
 
       return text.includes(keyword);
     });
-  }, [orders, merchantStatusFilter, merchantSearchText]);
+  }, [safeOrders, merchantStatusFilter, merchantSearchText]);
 
   const pendingMerchantConfirmOrders = useMemo(() => {
-    return orders.filter((order) => order.status === "待商户确认");
-  }, [orders]);
+    return safeOrders.filter((order) => order.status === "待商户确认");
+  }, [safeOrders]);
 
   const pendingArchiveOrders = useMemo(() => {
-    return orders.filter((order) => order.status === "待商户归档");
-  }, [orders]);
+    return safeOrders.filter((order) => order.status === "待商户归档");
+  }, [safeOrders]);
 
   const submittedOrders = useMemo(() => {
-    return orders.filter((order) =>
+    return safeOrders.filter((order) =>
       ["待商户确认", "方案已确认", "执行中", "待商户归档", "已完成"].includes(order.status)
     );
-  }, [orders]);
+  }, [safeOrders]);
 
   const monitoredOrders = useMemo(() => {
-    return orders.filter((order) =>
+    return safeOrders.filter((order) =>
       ["方案已确认", "执行中", "待商户归档"].includes(order.status)
     );
-  }, [orders]);
+  }, [safeOrders]);
 
-  const filteredProducts = merchantProducts.filter((product) => {
+  const filteredProducts = safeMerchantProducts.filter((product) => {
     const keyword = searchText.trim();
     const visible = product.status !== "停用" && product.status !== "未上架";
     const matchCategory = activeCategory === "全部商品" || product.category === activeCategory;
@@ -1040,7 +1205,7 @@ function App() {
     return matchCategory && matchSubCategory;
   });
 
-  const allCustomers = useMemo(() => mergeCustomers(merchantCustomers, orders), [merchantCustomers, orders]);
+  const allCustomers = useMemo(() => mergeCustomers(safeMerchantCustomers, safeOrders), [safeMerchantCustomers, safeOrders]);
 
   const filteredCustomers = useMemo(() => {
     const keyword = customerSearchText.trim();
@@ -1054,7 +1219,7 @@ function App() {
   }, [allCustomers, customerSearchText]);
 
   const customerPlanId = new URLSearchParams(window.location.search).get("planId");
-  const customerViewOrder = orders.find((order) => order.plan?.id === customerPlanId) || null;
+  const customerViewOrder = safeOrders.find((order) => order.plan?.id === customerPlanId) || null;
 
   useEffect(() => {
     persistOrdersToLocalStore(orders);
@@ -1067,6 +1232,29 @@ function App() {
   useEffect(() => {
     persistCustomersToLocalStore(merchantCustomers);
   }, [merchantCustomers]);
+
+  useEffect(() => {
+    persistStaffDirectoryToLocalStore(staffDirectory);
+  }, [staffDirectory]);
+
+  useEffect(() => {
+    if (!APP_PAGES.includes(currentPage)) {
+      console.error("未知页面，已回退：", currentPage);
+      setCurrentPage("orders");
+    }
+    if (!STAFF_TABS.includes(activeStaffTab)) {
+      console.error("未知员工任务标签，已回退：", activeStaffTab);
+      setActiveStaffTab("待接单");
+    }
+    if (!STAFF_APP_TABS.includes(staffAppTab)) {
+      console.error("未知员工页面标签，已回退：", staffAppTab);
+      setStaffAppTab("首页");
+    }
+    if (!MERCHANT_TABS.includes(merchantTab)) {
+      console.error("未知商户页面标签，已回退：", merchantTab);
+      setMerchantTab("工作台");
+    }
+  }, [currentPage, activeStaffTab, staffAppTab, merchantTab]);
 
   useEffect(() => {
     let mounted = true;
@@ -1124,7 +1312,7 @@ function App() {
   }, [currentPage, activeRole, merchantViewingOrder?.id, selectedOrderDetail?.id]);
 
   useEffect(() => {
-    if (["plan", "completeUpload", "archiveDetail"].includes(currentPage) && !currentOrder) setCurrentPage("orders");
+    if (["plan", "completeUpload", "archiveDetail", "serviceRecord"].includes(currentPage) && !currentOrder) setCurrentPage("orders");
     if (currentPage === "plan" && currentOrder && !currentOrder.plan) {
       const initialPlanType = getInitialPlanTypeForOrder(currentOrder);
       updateOrder(currentOrder.id, { planType: initialPlanType, plan: createEmptyPlan(currentOrder, initialPlanType) }, "方案已创建");
@@ -1134,10 +1322,10 @@ function App() {
 
     useEffect(() => {
     if (activeRole !== "staff") return;
-    if (!["plan", "completeUpload", "archiveDetail"].includes(currentPage)) return;
+    if (!["plan", "completeUpload", "archiveDetail", "serviceRecord"].includes(currentPage)) return;
 
     const targetOrder =
-      currentOrder || orders.find((order) => order.id === currentOrderId) || null;
+      currentOrder || safeOrders.find((order) => order.id === currentOrderId) || null;
 
     if (targetOrder) {
       setActiveStaffTab(getStaffTabByOrderStatus(targetOrder.status));
@@ -1145,7 +1333,7 @@ function App() {
 
     setStaffAppTab("任务");
     setShowDetailBlock(false);
-  }, [activeRole, currentPage, currentOrder, currentOrderId, orders]);
+  }, [activeRole, currentPage, currentOrder, currentOrderId, safeOrders]);
 
   useEffect(() => {
     silentRefreshFromCloud("启动自动同步");
@@ -1228,6 +1416,10 @@ function App() {
   function assignOrderToStaff(orderId, staffId) {
     const staff = staffDirectory.find((member) => member.id === staffId) || getStaffMemberById(staffId) || getDefaultAssignedStaff();
     if (!staff) return;
+    if (!canAssignStaff(staff)) {
+      alert("该员工当前不可接单，请选择已启用且未暂停接单的员工。");
+      return;
+    }
 
     updateOrder(
       orderId,
@@ -1243,6 +1435,113 @@ function App() {
         ),
       "订单派单员工已同步"
     );
+  }
+
+  function openInviteStaffSheet() {
+    const nextStaffNo = generateNextStaffNo(staffDirectory);
+    setStaffInviteForm(createStaffForm(nextStaffNo));
+    setStaffFormError("");
+    setLastInviteCode("");
+    setShowInviteStaffSheet(true);
+  }
+
+  function openManageStaff(member) {
+    setEditingStaffId(member.id);
+    setEditingStaffForm({
+      name: member.name || "",
+      phone: member.phone || "",
+      email: member.email || "",
+      staffNo: member.staffNo || "",
+      role: member.role || "staff",
+      area: member.area || "杭州 / 滨江",
+      orderPermission: member.orderPermission || "public",
+      status: member.status || "active",
+      avatar: member.avatar || "",
+    });
+    setStaffFormError("");
+    setLastInviteCode("");
+  }
+
+  function closeManageStaff() {
+    setEditingStaffId(null);
+    setEditingStaffForm(null);
+    setStaffFormError("");
+  }
+
+  function saveEditingStaff() {
+    if (!editingStaffId || !editingStaffForm) return;
+
+    const staffNo = editingStaffForm.staffNo.trim().toUpperCase();
+    if (!staffNo) {
+      setStaffFormError("请填写工号。");
+      return;
+    }
+    if (isStaffNoTaken(staffDirectory, staffNo, editingStaffId)) {
+      setStaffFormError("该工号已被占用，请换一个工号。");
+      return;
+    }
+
+    setStaffDirectory((members) =>
+      members.map((member) =>
+        member.id === editingStaffId
+          ? normalizeStaffMember({
+              ...member,
+              ...editingStaffForm,
+              staffNo,
+              name: editingStaffForm.name.trim() || member.name,
+              phone: editingStaffForm.phone.trim(),
+              email: editingStaffForm.email.trim(),
+              area: editingStaffForm.area.trim() || "杭州 / 滨江",
+              updatedAt: nowText(),
+            })
+          : member
+      )
+    );
+
+    if (editingStaffId === currentStaffId && editingStaffForm.avatar) {
+      setStaffAvatar(editingStaffForm.avatar);
+    }
+
+    closeManageStaff();
+  }
+
+  function sendStaffInvite() {
+    const staffNo = staffInviteForm.staffNo.trim().toUpperCase();
+    const name = staffInviteForm.name.trim();
+    if (!name) {
+      setStaffFormError("请填写员工姓名。");
+      return;
+    }
+    if (!staffNo) {
+      setStaffFormError("请填写工号。");
+      return;
+    }
+    if (isStaffNoTaken(staffDirectory, staffNo)) {
+      setStaffFormError("该工号已被占用，请换一个工号。");
+      return;
+    }
+
+    const inviteCode = `INVITE-${staffNo}`;
+    const newStaff = normalizeStaffMember({
+      ...staffInviteForm,
+      id: `staff-${Date.now()}`,
+      staffNo,
+      name,
+      phone: staffInviteForm.phone.trim(),
+      email: staffInviteForm.email.trim(),
+      area: staffInviteForm.area.trim() || "杭州 / 滨江",
+      status: "invited",
+      organizationId: currentMerchantUser?.organizationId || organizations[0]?.id || "org-001",
+      inviteCode,
+      createdAt: nowText(),
+      updatedAt: nowText(),
+      lastLoginAt: "",
+    });
+
+    setStaffDirectory((members) => [newStaff, ...members]);
+    setLastInviteCode(inviteCode);
+    setStaffFormError("");
+    setStaffInviteForm(createStaffForm(generateNextStaffNo([...staffDirectory, newStaff])));
   }
 
   function replaceAllOrders(nextOrders) {
@@ -1625,14 +1924,20 @@ function App() {
     setShowDetailBlock(false);
   }
 
+  function openServiceRecordForOrder(order) {
+    openArchiveDetailForOrder(order);
+  }
+
   function openCreateOrderSheet() {
-    const firstStaff = activeStaffMembers[0] || getDefaultAssignedStaff();
+    const firstStaff = assignableStaffMembers[0] || activeStaffMembers.find(canAssignStaff) || getDefaultAssignedStaff();
 
     setNewOrderForm((form) => ({
       ...form,
       tagsText: form.tagsText || "",
       serviceType: form.serviceType || "租赁",
-      assignedStaffId: form.assignedStaffId || firstStaff?.id || "",
+      assignedStaffId: canAssignStaff(activeStaffMembers.find((member) => member.id === form.assignedStaffId))
+        ? form.assignedStaffId
+        : firstStaff?.id || "",
       communicationQrUrl: form.communicationQrUrl || "",
     }));
     setIsCreateOrderInputFocused(false);
@@ -2065,7 +2370,13 @@ function App() {
     const assignedStaff =
       staffDirectory.find((member) => member.id === newOrderForm.assignedStaffId) ||
       getStaffMemberById(newOrderForm.assignedStaffId) ||
+      assignableStaffMembers[0] ||
       getDefaultAssignedStaff();
+
+    if (!assignedStaff || !canAssignStaff(assignedStaff)) {
+      alert("请先选择已启用且未暂停接单的员工。");
+      return;
+    }
     const planDraft = {
       ...createEmptyPlan({ id: orderId }, planType),
       leaseMonths: Number(newOrderForm.leaseMonths || 12),
@@ -2155,7 +2466,7 @@ function App() {
       maintenanceContent: "浇水、修剪、清洁、病虫检查、简单更换建议",
       maintenanceFinalPrice: "",
       maintenanceInternalNote: "",
-      assignedStaffId: DEFAULT_STAFF_ID,
+      assignedStaffId: assignableStaffMembers[0]?.id || DEFAULT_STAFF_ID,
       communicationQrUrl: "",
     });
 
@@ -2482,10 +2793,11 @@ ${rentalText}`;
     const hint = getOrderHint(order);
 
     if (mode === "staff") {
-  const isPending = order.status === "待接单";
-  const canBuild = ["配置中", "待商户确认"].includes(order.status);
-  const canExecute = ["方案已确认", "执行中"].includes(order.status);
-  const isServiceRecord = ["待商户归档", "已完成"].includes(order.status);
+  const statusGroup = classifyOrderStatus(order.status);
+  const isPending = statusGroup === "待接单";
+  const canBuild = statusGroup === "做方案";
+  const canExecute = statusGroup === "执行中";
+  const isServiceRecord = statusGroup === "已完成";
   const orderSignals = getOrderSignalTags(order);
 
   const statusClass = isPending
@@ -2494,7 +2806,7 @@ ${rentalText}`;
       ? "build"
       : canExecute
         ? "execute"
-        : order.status === "已完成"
+        : statusGroup === "已完成" && order.status !== "待商户归档"
           ? "done"
           : "archive";
 
@@ -2752,7 +3064,7 @@ ${rentalText}`;
     );
   }
 
-  function ExtraDetails({ order, editable = false }) {
+  function ExtraDetails({ order, editable = false, hideNotes = false }) {
     return (
       <>
         <section className="plan-summary-card">
@@ -2841,7 +3153,7 @@ ${rentalText}`;
           )}
         </section>
 
-        <NotesCard order={order} editable={editable} />
+        {!hideNotes && <NotesCard order={order} editable={editable} />}
         <TimelineCard order={order} />
       </>
     );
@@ -3039,8 +3351,8 @@ ${rentalText}`;
       return (
         <div className="app staff-legacy-page staff-complete-page">
           <section className="empty-card">
-            <p>暂无内容</p>
-            <span>没有找到对应订单，请返回任务列表重新进入。</span>
+            <p>页面加载失败</p>
+            <span>当前页面数据不完整，请返回工作台后重试。</span>
             <button className="staff-legacy-secondary" onClick={() => setCurrentPage("orders")}>返回任务</button>
           </section>
         </div>
@@ -3096,8 +3408,8 @@ ${rentalText}`;
       return (
         <div className="app staff-legacy-page staff-archive-page">
           <section className="empty-card">
-            <p>暂无内容</p>
-            <span>没有找到对应订单，请返回任务列表重新进入。</span>
+            <p>页面加载失败</p>
+            <span>当前页面数据不完整，请返回工作台后重试。</span>
           </section>
         </div>
       );
@@ -3139,7 +3451,7 @@ ${rentalText}`;
             <div><p className="eyebrow">Photos</p><h2>现场记录</h2></div>
           </div>
           {[...scenePhotos, ...plantPhotos].length === 0 ? (
-            <div className="empty-card"><p>暂无现场照片</p><span>员工上传完成资料后会显示在这里。</span></div>
+            <div className="empty-card"><p>暂无现场图片</p><span>员工上传完成资料后会显示在这里。</span></div>
           ) : (
             <div className="merchant-photo-grid">
               {[...scenePhotos, ...plantPhotos].slice(0, 6).map((photo, index) => (
@@ -3154,6 +3466,10 @@ ${rentalText}`;
         <TimelineCard order={currentOrder} />
       </div>
     );
+  }
+
+  function renderServiceRecordPage() {
+    return renderArchiveDetailPage();
   }
 
   function renderCustomerPlanView() {
@@ -4113,10 +4429,13 @@ ${rentalText}`;
 
   // ===================== 【起点】替换整个商户端渲染逻辑 =====================
   function renderMerchantPage() {
-    const statusCounts = ORDER_STATUS.reduce((result, status) => {
-      result[status] = orders.filter((order) => order.status === status).length;
+    const safeMerchantOrders = Array.isArray(orders) ? orders : [];
+    const statusCounts = ["待接单", "做方案", "执行中", "已完成"].reduce((result, status) => {
+      result[status] = safeMerchantOrders.filter((order) => classifyOrderStatus(order.status) === status).length;
       return result;
     }, {});
+    statusCounts["待商户确认"] = safeMerchantOrders.filter((order) => order.status === "待商户确认").length;
+    statusCounts["待商户归档"] = safeMerchantOrders.filter((order) => order.status === "待商户归档").length;
 
     const navItems = [
       { key: "工作台", Icon: GardenIcons.Dashboard },
@@ -4127,12 +4446,13 @@ ${rentalText}`;
       { key: "客户库", Icon: GardenIcons.Customers },
       { key: "设置", Icon: GardenIcons.Settings },
     ];
-    const todoOrders = [...pendingMerchantConfirmOrders, ...pendingArchiveOrders];
-    const displayOrders = merchantOrders;
-    const activeStaffMembers = staffDirectory.filter((member) => member.organizationId === currentMerchantUser.organizationId);
+    const todoOrders = [...(Array.isArray(pendingMerchantConfirmOrders) ? pendingMerchantConfirmOrders : []), ...(Array.isArray(pendingArchiveOrders) ? pendingArchiveOrders : [])];
+    const displayOrders = Array.isArray(merchantOrders) ? merchantOrders : [];
+    const activeStaffMembers = (Array.isArray(staffDirectory) ? staffDirectory : []).filter((member) => member.organizationId === currentMerchantUser?.organizationId);
+    const assignableTeamMembers = activeStaffMembers.filter(canAssignStaff);
     const editingStaffMember = activeStaffMembers.find((member) => member.id === editingStaffId) || null;
     
-    const filteredMerchantProducts = merchantProducts.filter((product) => {
+    const filteredMerchantProducts = (Array.isArray(merchantProducts) ? merchantProducts : []).filter((product) => {
       const keyword = productSearchText.trim();
       const matchCategory = productCategoryFilter === "全部" || product.category === productCategoryFilter;
       const text = [product.name, product.category, product.subCategory, product.description, product.note, product.status].join(" ");
@@ -4197,6 +4517,12 @@ ${rentalText}`;
       const isMaintenancePlan = orderPlan?.planType === "养护服务";
       const isWaitingConfirm = order.status === "待商户确认";
       const isWaitingArchive = order.status === "待商户归档";
+      const orderNotes = [order.merchantNote, order.description].map((item) => String(item || "").trim());
+      const hasOrderNotes = orderNotes.some(Boolean);
+      const sitePhotos = order.completePhotos
+        ? [...safePhotos(order.completePhotos.scenePhotos), ...safePhotos(order.completePhotos.plantPhotos)]
+        : [];
+      const hasMaterialItems = isMaintenancePlan || stats.productCount > 0;
 
       return (
         <div className="admin-main admin-review-main">
@@ -4214,10 +4540,10 @@ ${rentalText}`;
           <div className="admin-review-desk">
             {/* 左侧栏：客户与项目基础信息 */}
             <div className="merchant-project-summary-column">
-              <div className="admin-card merchant-project-summary-card" style={{ marginBottom: 0 }}>
-                <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>项目档案</h2>
+              <div className="admin-card merchant-project-summary-card merchant-review-card">
+                <h2>项目档案</h2>
                 <div className="plan-info-line"><span>客户名</span><strong>{order.customerName || "暂无内容"}</strong></div>
-                <div className="plan-info-line"><span>状态</span><strong style={{ color: "#405a38" }}>{order.status}</strong></div>
+                <div className="plan-info-line"><span>状态</span><strong>{order.status}</strong></div>
                 <div className="plan-info-line"><span>方案类型</span><strong>{orderPlan?.planType || order.planType || "-"}</strong></div>
                 <div className="plan-info-line"><span>员工</span><strong>{order.assignedStaffName || "-"} {order.assignedStaffEmail ? `｜${order.assignedStaffEmail}` : ""}</strong></div>
                 <div className="plan-info-line"><span>联系人</span><strong>{order.contactName || "-"} {order.phone ? `｜${order.phone}` : ""}</strong></div>
@@ -4228,80 +4554,96 @@ ${rentalText}`;
                   ))}
                 </div>
               </div>
-              <div className="admin-card merchant-side-note-card" style={{ marginBottom: 0 }}>
-                <h2 style={{ fontSize: 16, marginBottom: 12, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>客户沟通二维码</h2>
+              <div className="admin-card merchant-side-note-card merchant-review-card">
+                <h2>客户沟通二维码</h2>
                 {order.communicationQrUrl ? (
                   <div className="merchant-side-qr">
                     <img src={order.communicationQrUrl} alt="客户沟通二维码" />
-                    <span>员工可扫码进入客户沟通群。</span>
+                    <span>用于员工扫码进入客户沟通群。</span>
                   </div>
                 ) : (
-                  <div className="empty-card"><p>暂无客户沟通二维码</p><span>可在右侧沟通与备注中上传。</span></div>
+                  <div className="empty-card"><p>暂无客户沟通二维码</p><span>用于员工扫码进入客户沟通群。</span></div>
                 )}
+                <div className="merchant-side-upload">
+                  <ImageUploader
+                    value={order.communicationQrUrl || ""}
+                    label="上传或替换二维码"
+                    helper="用于员工扫码进入客户沟通群。"
+                    onChange={(nextImage) => updateOrder(order.id, { communicationQrUrl: nextImage }, "沟通群二维码已同步")}
+                  />
+                  <input
+                    className="area-input"
+                    value={order.communicationQrUrl || ""}
+                    onChange={(event) => updateOrder(order.id, { communicationQrUrl: event.target.value }, "沟通群二维码已同步")}
+                    placeholder="也可以粘贴二维码图片地址"
+                  />
+                </div>
               </div>
-              <div className="admin-card merchant-side-note-card" style={{ marginBottom: 0 }}>
-                <h2 style={{ fontSize: 16, marginBottom: 12, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>订单备注</h2>
-                <div className="plan-info-line"><span>商户备注</span><strong>{order.merchantNote || "暂无内容"}</strong></div>
-                <div className="plan-info-line"><span>客户描述</span><strong>{order.description || "暂无内容"}</strong></div>
+              <div className="admin-card merchant-side-note-card merchant-review-card">
+                <h2>订单备注</h2>
+                {hasOrderNotes ? (
+                  <>
+                    <div className="plan-info-line"><span>商户备注</span><strong>{order.merchantNote || "暂无备注"}</strong></div>
+                    <div className="plan-info-line"><span>客户描述</span><strong>{order.description || "暂无备注"}</strong></div>
+                  </>
+                ) : (
+                  <div className="empty-card"><p>暂无备注</p></div>
+                )}
               </div>
             </div>
 
-            {/* 右侧栏：方案明细、报价与核心决策操作 */}
+            {/* 右侧栏：方案明细、现场记录、财务信息与执行记录 */}
             <div className="merchant-review-workspace">
-              {(isWaitingConfirm || isWaitingArchive) && (
-                <div className="admin-card" style={{ marginBottom: 0, border: "2px solid #bfdbfe", background: "#f8fafc" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <strong style={{ fontSize: 16, color: "#1e3a8a", display: "block", marginBottom: 4 }}>
-                        {isWaitingConfirm ? "等待商户定价并确认方案" : "员工已完工，等待商户归档"}
-                      </strong>
-                      <span style={{ color: "#64748b", fontSize: 13 }}>
-                        {isWaitingConfirm ? "请核对下方商品明细和总价，确认无误后点击右侧审核通过。" : "请核对现场施工照片，确认无误后归档。"}
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      {isWaitingConfirm && <button className="ghost-button danger" onClick={() => merchantRequestRevision(order.id)}>打回修改</button>}
-                      {isWaitingConfirm && <button className="primary-button" onClick={() => merchantConfirmPlan(order.id)}>✅ 确认方案并定价</button>}
-                      {isWaitingArchive && <button className="primary-button" onClick={() => merchantArchiveOrder(order.id)}>✅ 确认完工并归档</button>}
-                    </div>
+              <div className="admin-card merchant-review-card merchant-material-card">
+                <div className="merchant-review-card-head">
+                  <div>
+                    <h2>方案物料明细</h2>
+                    {isMaintenancePlan && <span>养护服务明细</span>}
                   </div>
+                  {(isWaitingConfirm || isWaitingArchive) && (
+                    <div className="merchant-review-actions">
+                      {isWaitingConfirm && <button className="ghost-button danger" onClick={() => merchantRequestRevision(order.id)}>打回修改</button>}
+                      {isWaitingConfirm && <button className="primary-button" onClick={() => merchantConfirmPlan(order.id)}>确认方案并定价</button>}
+                      {isWaitingArchive && <button className="primary-button" onClick={() => merchantArchiveOrder(order.id)}>确认完工并归档</button>}
+                    </div>
+                  )}
                 </div>
-              )}
-
-              <div className="admin-card" style={{ marginBottom: 0 }}>
-                <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>{isMaintenancePlan ? "养护服务明细" : "方案物料明细"}</h2>
                 {!orderPlan ? (
                   <div className="empty-card"><p>暂无方案内容</p><span>商户已创建派单，但还没有方案草稿或员工提交内容。</span></div>
                 ) : isMaintenancePlan ? (
-                  <div className="area-card" style={{ border: "1px solid #e2e8f0" }}>
-                    <div style={{ background: "#f8fafc", padding: "12px 16px", borderBottom: "1px solid #e2e8f0" }}>
-                      <h3 style={{ margin: 0, fontSize: 15 }}>{order.plan?.maintenancePackage || "标准养护"}</h3>
-                      <span style={{ fontSize: 12, color: "#64748b" }}>{order.plan?.maintenanceFrequency || "-"} ｜ {order.plan?.maintenanceCycle || "-"}</span>
+                  <div className="merchant-material-area">
+                    <div className="merchant-material-area-head">
+                      <h3>{order.plan?.maintenancePackage || "标准养护"}</h3>
+                      <span>{order.plan?.maintenanceFrequency || "-"} ｜ {order.plan?.maintenanceCycle || "-"}</span>
                     </div>
-                    <div style={{ padding: 16, color: "#475569", lineHeight: 1.7 }}>
-                      <strong style={{ color: "#182536" }}>适合场景</strong>
-                      <p style={{ margin: "6px 0 12px" }}>{order.plan?.maintenanceScene || "-"}</p>
-                      <strong style={{ color: "#182536" }}>服务内容</strong>
-                      <p style={{ margin: "6px 0 0" }}>{order.plan?.maintenanceContent || "-"}</p>
+                    <div className="merchant-material-service">
+                      <strong>适合场景</strong>
+                      <p>{order.plan?.maintenanceScene || "-"}</p>
+                      <strong>服务内容</strong>
+                      <p>{order.plan?.maintenanceContent || "-"}</p>
                     </div>
                   </div>
-                ) : safeAreas(order.plan).length === 0 ? (
-                  <div className="empty-card"><p>暂无区域</p><span>员工尚未添加任何植物。</span></div>
+                ) : !hasMaterialItems ? (
+                  <div className="empty-card"><p>暂无物料</p><span>员工尚未添加区域、商品、数量或价格。</span></div>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div className="merchant-material-grid">
                     {safeAreas(order.plan).map((area) => (
-                      <div className="area-card" key={area.id} style={{ border: "1px solid #e2e8f0" }}>
-                        <div style={{ background: "#f8fafc", padding: "12px 16px", borderBottom: "1px solid #e2e8f0" }}>
-                          <h3 style={{ margin: 0, fontSize: 15 }}>{area.name}</h3>
-                          <span style={{ fontSize: 12, color: "#64748b" }}>共 {getAreaProductCount(area)} 件 ｜ 区域预估: ¥{money(getAreaDailyRent(area))}{isRetailPlan ? "" : "/天"}</span>
+                      <div className="merchant-material-area" key={area.id}>
+                        <div className="merchant-material-area-head">
+                          <h3>{area.name}</h3>
+                          <span>共 {getAreaProductCount(area)} 件 ｜ 区域预估: ¥{money(getAreaDailyRent(area))}{isRetailPlan ? "" : "/天"}</span>
                         </div>
-                        <div style={{ padding: "8px 16px" }}>
-                          {safeItems(area).map((item) => (
-                            <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px dashed #e2e8f0" }} key={item.productId}>
-                              <strong style={{ fontSize: 13 }}>{item.name}</strong>
-                              <span style={{ fontSize: 13, color: "#64748b" }}>¥{item.pricePerDay}{isRetailPlan ? "/件" : "/天"} × {item.quantity}</span>
-                            </div>
-                          ))}
+                        <div className="merchant-material-lines">
+                          {safeItems(area).length === 0 ? (
+                            <div className="merchant-material-line muted"><strong>暂无商品</strong><span>待补充数量和价格</span></div>
+                          ) : (
+                            safeItems(area).map((item) => (
+                              <div className="merchant-material-line" key={item.productId}>
+                                <strong>{item.name}</strong>
+                                <span>¥{money(item.pricePerDay)}{isRetailPlan ? "/件" : "/天"} × {item.quantity}</span>
+                              </div>
+                            ))
+                          )}
                         </div>
                       </div>
                     ))}
@@ -4309,13 +4651,12 @@ ${rentalText}`;
                 )}
               </div>
 
-              <div className="admin-card" style={{ marginBottom: 0 }}>
-                <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>现场记录</h2>
-                {order.completePhotos ? (
+              <div className="admin-card merchant-review-card">
+                <h2>现场记录</h2>
+                {sitePhotos.length > 0 ? (
                   <>
                     <div className="merchant-photo-grid">
-                      {[...safePhotos(order.completePhotos.scenePhotos), ...safePhotos(order.completePhotos.plantPhotos)]
-                        .slice(0, 6)
+                      {sitePhotos.slice(0, 6)
                         .map((photo, index) => (
                           <img key={`${photo}-${index}`} src={photo} alt={`现场图片 ${index + 1}`} />
                         ))}
@@ -4327,46 +4668,24 @@ ${rentalText}`;
                 )}
               </div>
 
-              <div className="admin-card merchant-communication-card" style={{ marginBottom: 0 }}>
-                <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>沟通与备注</h2>
-                <div className="merchant-review-communication-grid">
-                  <div className="sheet-block">
-                    <p className="sheet-label">客户沟通群二维码</p>
-                    <ImageUploader
-                      value={order.communicationQrUrl || ""}
-                      label="上传或替换二维码"
-                      helper="用于员工扫码进入客户沟通群。"
-                      onChange={(nextImage) => updateOrder(order.id, { communicationQrUrl: nextImage }, "沟通群二维码已同步")}
-                    />
-                    <input
-                      className="area-input"
-                      value={order.communicationQrUrl || ""}
-                      onChange={(event) => updateOrder(order.id, { communicationQrUrl: event.target.value }, "沟通群二维码已同步")}
-                      placeholder="也可以粘贴二维码图片地址"
-                    />
-                  </div>
-                  <div className="merchant-review-note-lines">
-                    <div className="plan-info-line"><span>商户备注</span><strong>{order.merchantNote || "暂无内容"}</strong></div>
-                    <div className="plan-info-line"><span>现场备注</span><strong>{order.fieldNote || "暂无内容"}</strong></div>
-                    <div className="plan-info-line"><span>内部备注</span><strong>{order.internalNote || "暂无内容"}</strong></div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="admin-card" style={{ marginBottom: 0 }}>
-                <h2 style={{ fontSize: 16, marginBottom: 16, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>财务与租约</h2>
-                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-                    <div className="metric-box" style={{ borderLeft: "none", padding: 16 }}>
-                       <h3>{isMaintenancePlan ? "养护套餐" : isRetailPlan ? "系统建议总价" : "系统预估总租金"}</h3>
-                      <strong style={{ fontSize: isMaintenancePlan ? 18 : 24 }}>{isMaintenancePlan ? orderPlan?.maintenancePackage || "标准养护" : <MoneyAmount value={stats.systemTotalRent} />}</strong>
+              <div className="admin-card merchant-review-card merchant-finance-card">
+                <h2>财务与租约</h2>
+                 <div className="merchant-finance-grid">
+                    <div className="merchant-finance-cell">
+                      <span>预算</span>
+                      <strong>{order.budget ? <MoneyAmount value={order.budget} /> : "暂无预算"}</strong>
                     </div>
-                   <div className="metric-box" style={{ borderLeft: "none", padding: 16, background: "#f0fdf4" }}>
-                     <h3>最终销售报价</h3>
-                     <strong style={{ fontSize: 24, color: "#166534" }}><MoneyAmount value={stats.finalRent} /></strong>
-                     </div>
-                     <div className="metric-box" style={{ borderLeft: "none", padding: 16 }}>
-                      <h3>{isMaintenancePlan ? "方案类型" : isRetailPlan ? "方案类型" : "租期及支付"}</h3>
-                      <strong style={{ fontSize: 16, marginTop: 8 }}>{isMaintenancePlan ? "养护服务" : isRetailPlan ? "零售方案" : `${orderPlan?.leaseMonths || 12}个月 / ${orderPlan?.paymentMethod || "月付"}`}</strong>
+                    <div className="merchant-finance-cell">
+                      <span>{isMaintenancePlan ? "养护报价" : isRetailPlan ? "最终报价" : "最终租金"}</span>
+                      <strong><MoneyAmount value={stats.finalRent} /></strong>
+                    </div>
+                    <div className="merchant-finance-cell">
+                      <span>租期</span>
+                      <strong>{isMaintenancePlan ? "按服务约定" : isRetailPlan ? "一次性" : `${orderPlan?.leaseMonths || 12}个月`}</strong>
+                    </div>
+                    <div className="merchant-finance-cell">
+                      <span>支付方式</span>
+                      <strong>{isMaintenancePlan ? "按项目约定" : isRetailPlan ? "一次性支付" : orderPlan?.paymentMethod || "月付"}</strong>
                     </div>
                  </div>
                  {isMaintenancePlan && (
@@ -4394,7 +4713,7 @@ ${rentalText}`;
                  )}
                </div>
 
-              <ExtraDetails order={order} />
+              <ExtraDetails order={order} hideNotes />
 
             </div>
           </div>
@@ -4454,6 +4773,9 @@ ${rentalText}`;
               </span>
             </div>
             <div style={{ display: "flex", gap: 12 }}>
+              <span className="merchant-account-avatar" aria-label="商户账号头像">
+                {staffAvatar ? <img src={staffAvatar} alt="商户账号头像" /> : <span>G</span>}
+              </span>
               <span className="admin-auth-chip">{authUserEmail}</span>
               <button className="ghost-button" onClick={refreshOrdersFromCloud}><GardenIcons.Cloud size={16} /><span>云端刷新</span></button>
               <button className="ghost-button" onClick={handleSignOut}><GardenIcons.Close size={16} /><span>退出登录</span></button>
@@ -4464,7 +4786,7 @@ ${rentalText}`;
           {merchantTab === "工作台" && (
             <>
               <div className="admin-metric-grid">
-                <MetricCard label="云端总池" value={`${orders.length}`} hint="笔订单" />
+                <MetricCard label="云端总池" value={`${safeMerchantOrders.length}`} hint="笔订单" />
                 <MetricCard label="等待接单" value={`${statusCounts["待接单"] || 0}`} hint="需催促员工" />
                 <MetricCard label="方案待审" value={`${statusCounts["待商户确认"] || 0}`} hint="需老板定价" />
                 <MetricCard label="现场施工" value={`${statusCounts["执行中"] || 0}`} hint="正在服务中" />
@@ -4549,7 +4871,7 @@ ${rentalText}`;
 
               {displayOrders.length === 0 ? (
                 <div className="empty-card">
-                  <p>暂无匹配订单</p>
+                  <p>暂无订单</p>
                   <span>可以切换状态筛选，或创建一条新派单。</span>
                 </div>
               ) : (
@@ -4564,6 +4886,13 @@ ${rentalText}`;
                   </div>
 
                   {displayOrders.map((order) => (
+                    (() => {
+                      const selectedStaff = activeStaffMembers.find((member) => member.id === order.assignedStaffId);
+                      const staffOptions = selectedStaff && !assignableTeamMembers.some((member) => member.id === selectedStaff.id)
+                        ? [selectedStaff, ...assignableTeamMembers]
+                        : assignableTeamMembers;
+
+                      return (
                     <div className="admin-table-row" key={order.id}>
                       <span>
                         <strong>{order.customerName}</strong>
@@ -4583,7 +4912,7 @@ ${rentalText}`;
                           value={order.assignedStaffId || DEFAULT_STAFF_ID}
                           onChange={(event) => assignOrderToStaff(order.id, event.target.value)}
                         >
-                          {activeStaffMembers.map((member) => (
+                          {staffOptions.map((member) => (
                             <option key={member.id} value={member.id}>
                               {member.name} · {member.staffNo}
                             </option>
@@ -4612,6 +4941,8 @@ ${rentalText}`;
                         </button>
                       </span>
                     </div>
+                      );
+                    })()
                   ))}
                 </div>
               )}
@@ -4625,6 +4956,10 @@ ${rentalText}`;
                   <h2>团队成员</h2>
                   <p>本地模拟组织账号、员工角色与派单关系；不保存或展示任何密码。</p>
                 </div>
+                <button className="primary-button" onClick={openInviteStaffSheet}>
+                  <GardenIcons.Create size={16} />
+                  <span>邀请员工</span>
+                </button>
               </div>
 
               <div className="admin-setting-grid team-summary-grid">
@@ -4642,7 +4977,7 @@ ${rentalText}`;
                 </div>
                 <div>
                   <strong>登录方式</strong>
-                  <span>邮箱 + 密码</span>
+                  <span>邀请确认后启用账号</span>
                 </div>
               </div>
 
@@ -4651,6 +4986,7 @@ ${rentalText}`;
                   <span>员工</span>
                   <span>邮箱 / 手机号</span>
                   <span>角色</span>
+                  <span>接单权限</span>
                   <span>状态</span>
                   <span>当前任务</span>
                   <span>操作</span>
@@ -4671,15 +5007,16 @@ ${rentalText}`;
                           <em>{member.phone}</em>
                         </span>
                         <span>{ROLE_LABELS[member.role] || member.role}</span>
+                        <span>{STAFF_ORDER_PERMISSION_LABELS[member.orderPermission] || member.orderPermission || "-"}</span>
                         <span>
-                          <b className="admin-status-chip muted">{ACCOUNT_STATUS_LABELS[member.status] || member.status}</b>
+                          <b className={`admin-status-chip ${member.status === "active" ? "is-done" : member.status === "invited" ? "is-plan" : "muted"}`}>{ACCOUNT_STATUS_LABELS[member.status] || member.status}</b>
                         </span>
                         <span>{activeCount} / {assignedOrders.length} 笔</span>
                         <span>
                           <button className="ghost-button team-manage-button" onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
-                            setEditingStaffId(member.id);
+                            openManageStaff(member);
                           }}>管理</button>
                         </span>
                     </div>
@@ -4728,8 +5065,8 @@ ${rentalText}`;
 
               {filteredMerchantProducts.length === 0 ? (
                 <div className="empty-card">
-                  <p>暂无商品</p>
-                  <span>可以新增商品，员工端选品时会读取这里的数据。</span>
+                  <p>暂无商品，请先添加商品</p>
+                  <span>员工端选品时会读取这里的数据。</span>
                 </div>
               ) : (
                 <div className="admin-table product-admin-table">
@@ -4930,72 +5267,105 @@ ${rentalText}`;
             </div>
           )}
 
-          {editingStaffMember && (
-            <div className="sheet-mask merchant-staff-editor-mask" onClick={() => setEditingStaffId(null)}>
+{editingStaffMember && editingStaffForm && (
+            <div className="sheet-mask merchant-staff-editor-mask" onClick={closeManageStaff}>
               <section className="merchant-staff-editor merchant-staff-drawer" onClick={(event) => event.stopPropagation()}>
                 <header className="merchant-staff-drawer-head">
                   <div>
                     <p className="eyebrow">Team Member</p>
-                    <h2>{editingStaffMember.name}</h2>
-                    <span>{editingStaffMember.staffNo} · {ACCOUNT_STATUS_LABELS[editingStaffMember.status] || editingStaffMember.status}</span>
+                    <h2>{editingStaffForm.name || editingStaffMember.name}</h2>
+                    <span>{editingStaffForm.staffNo} · {ACCOUNT_STATUS_LABELS[editingStaffForm.status] || editingStaffForm.status}</span>
                   </div>
-                  <button className="close-button" onClick={() => setEditingStaffId(null)}>×</button>
+                  <button className="close-button" onClick={closeManageStaff} aria-label="关闭员工管理">×</button>
                 </header>
 
                 <div className="merchant-staff-drawer-body">
                   <section className="merchant-staff-section">
                     <h3>基础资料</h3>
-                    <div className="admin-setting-grid">
-                      <div><strong>姓名</strong><span>{editingStaffMember.name}</span></div>
-                      <div><strong>工号</strong><span>{editingStaffMember.staffNo}</span></div>
-                      <div><strong>邮箱</strong><span>{editingStaffMember.email}</span></div>
-                      <div><strong>手机号</strong><span>{editingStaffMember.phone}</span></div>
-                      <div><strong>负责区域</strong><span>{editingStaffMember.area}</span></div>
-                      <div><strong>当前任务数</strong><span>{orders.filter((order) => order.assignedStaffId === editingStaffMember.id && order.status !== "已完成").length} 笔</span></div>
+                    <div className="merchant-staff-profile-grid">
+                      <div className="merchant-staff-avatar-block">
+                        <ImageUploader
+                          value={editingStaffForm.avatar || (editingStaffMember.id === currentStaffId ? staffAvatar : "")}
+                          avatar
+                          label="更换头像"
+                          helper=""
+                          onChange={(avatar) => setEditingStaffForm((form) => ({ ...form, avatar }))}
+                        />
+                      </div>
+                      <div className="merchant-staff-edit-grid">
+                        <div className="sheet-block">
+                          <p className="sheet-label">姓名</p>
+                          <input className="area-input" value={editingStaffForm.name} onChange={(event) => setEditingStaffForm((form) => ({ ...form, name: event.target.value }))} />
+                        </div>
+                        <div className="sheet-block">
+                          <p className="sheet-label">邮箱</p>
+                          <input className="area-input" type="email" value={editingStaffForm.email} onChange={(event) => setEditingStaffForm((form) => ({ ...form, email: event.target.value }))} />
+                        </div>
+                        <div className="sheet-block">
+                          <p className="sheet-label">手机号</p>
+                          <input className="area-input" inputMode="tel" value={editingStaffForm.phone} onChange={(event) => setEditingStaffForm((form) => ({ ...form, phone: event.target.value }))} />
+                        </div>
+                        <div className="sheet-block">
+                          <p className="sheet-label">当前任务数</p>
+                          <strong className="staff-readonly-value">{orders.filter((order) => order.assignedStaffId === editingStaffMember.id && order.status !== "已完成").length} 笔</strong>
+                        </div>
+                      </div>
                     </div>
                   </section>
 
                   <section className="merchant-staff-section">
-                    <h3>权限角色</h3>
+                    <h3>组织权限</h3>
                     <div className="merchant-staff-edit-grid">
+                      <div className="sheet-block">
+                        <p className="sheet-label">工号</p>
+                        <input className="area-input" value={editingStaffForm.staffNo} onChange={(event) => setEditingStaffForm((form) => ({ ...form, staffNo: event.target.value }))} />
+                      </div>
                       <div className="sheet-block">
                         <p className="sheet-label">角色</p>
                         <select
                           className="area-input"
-                          value={editingStaffMember.role}
-                          onChange={(event) => {
-                            const nextRole = event.target.value;
-                            setStaffDirectory((members) => members.map((member) => member.id === editingStaffMember.id ? { ...member, role: nextRole } : member));
-                          }}
+                          value={editingStaffForm.role}
+                          onChange={(event) => setEditingStaffForm((form) => ({ ...form, role: event.target.value }))}
                         >
                           <option value="staff">普通员工</option>
-                          <option value="manager">主管 / 经理</option>
+                          <option value="manager">店长 / 经理</option>
                           <option value="admin">管理员</option>
+                        </select>
+                      </div>
+                      <div className="sheet-block">
+                        <p className="sheet-label">负责区域</p>
+                        <input className="area-input" list="staff-area-options" value={editingStaffForm.area} onChange={(event) => setEditingStaffForm((form) => ({ ...form, area: event.target.value }))} />
+                      </div>
+                      <div className="sheet-block">
+                        <p className="sheet-label">接单权限</p>
+                        <select className="area-input" value={editingStaffForm.orderPermission} onChange={(event) => setEditingStaffForm((form) => ({ ...form, orderPermission: event.target.value }))}>
+                          <option value="public">可接公共单</option>
+                          <option value="assigned">仅接指定派单</option>
+                          <option value="paused">暂停接单</option>
                         </select>
                       </div>
 
                       <div className="sheet-block">
-                        <p className="sheet-label">状态</p>
+                        <p className="sheet-label">账号状态</p>
                         <select
                           className="area-input"
-                          value={editingStaffMember.status}
-                          onChange={(event) => {
-                            const nextStatus = event.target.value;
-                            setStaffDirectory((members) => members.map((member) => member.id === editingStaffMember.id ? { ...member, status: nextStatus } : member));
-                          }}
+                          value={editingStaffForm.status}
+                          onChange={(event) => setEditingStaffForm((form) => ({ ...form, status: event.target.value }))}
                         >
+                          <option value="invited">待邀请</option>
                           <option value="active">启用账号</option>
                           <option value="paused">停用账号</option>
                         </select>
                       </div>
                     </div>
+                    {staffFormError && <p className="staff-form-error">{staffFormError}</p>}
                   </section>
 
                   <section className="merchant-staff-section">
                     <h3>已分配订单</h3>
                     <div className="staff-assigned-orders">
                       {orders.filter((order) => order.assignedStaffId === editingStaffMember.id).length === 0 ? (
-                        <p>暂无分配订单</p>
+                        <p>暂无订单</p>
                       ) : (
                         orders.filter((order) => order.assignedStaffId === editingStaffMember.id).map((order) => (
                           <button key={order.id} className="staff-assigned-order" onClick={() => openMerchantPlanWorkbench(order)}>
@@ -5009,12 +5379,64 @@ ${rentalText}`;
                 </div>
 
                 <footer className="merchant-staff-drawer-foot">
-                  <button className="ghost-button" onClick={() => setEditingStaffId(null)}>取消</button>
-                  <button className="primary-button" onClick={() => setEditingStaffId(null)}>保存修改</button>
+                  <button className="ghost-button" onClick={closeManageStaff}>取消</button>
+                  <button className="ghost-button danger" onClick={() => setEditingStaffForm((form) => ({ ...form, status: form.status === "active" ? "paused" : "active" }))}>
+                    {editingStaffForm.status === "active" ? "停用账号" : "启用账号"}
+                  </button>
+                  <button className="primary-button" onClick={saveEditingStaff}>保存修改</button>
                 </footer>
               </section>
             </div>
           )}
+
+          {showInviteStaffSheet && (
+            <div className="sheet-mask merchant-staff-editor-mask" onClick={() => setShowInviteStaffSheet(false)}>
+              <section className="merchant-staff-editor merchant-staff-drawer" onClick={(event) => event.stopPropagation()}>
+                <header className="merchant-staff-drawer-head">
+                  <div>
+                    <p className="eyebrow">Invite Member</p>
+                    <h2>邀请员工</h2>
+                    <span>{lastInviteCode || "发送后生成本地模拟邀请码"}</span>
+                  </div>
+                  <button className="close-button" onClick={() => setShowInviteStaffSheet(false)} aria-label="关闭邀请员工">×</button>
+                </header>
+
+                <div className="merchant-staff-drawer-body">
+                  <section className="merchant-staff-section">
+                    <h3>基础资料</h3>
+                    <div className="merchant-staff-edit-grid">
+                      <div className="sheet-block"><p className="sheet-label">员工姓名</p><input className="area-input" value={staffInviteForm.name} onChange={(event) => setStaffInviteForm((form) => ({ ...form, name: event.target.value }))} /></div>
+                      <div className="sheet-block"><p className="sheet-label">手机号</p><input className="area-input" inputMode="tel" value={staffInviteForm.phone} onChange={(event) => setStaffInviteForm((form) => ({ ...form, phone: event.target.value }))} /></div>
+                      <div className="sheet-block"><p className="sheet-label">邮箱</p><input className="area-input" type="email" value={staffInviteForm.email} onChange={(event) => setStaffInviteForm((form) => ({ ...form, email: event.target.value }))} /></div>
+                      <div className="sheet-block"><p className="sheet-label">头像</p><ImageUploader value={staffInviteForm.avatar} avatar label="上传头像" helper="" onChange={(avatar) => setStaffInviteForm((form) => ({ ...form, avatar }))} /></div>
+                    </div>
+                  </section>
+
+                  <section className="merchant-staff-section">
+                    <h3>组织权限</h3>
+                    <div className="merchant-staff-edit-grid">
+                      <div className="sheet-block"><p className="sheet-label">工号</p><input className="area-input" value={staffInviteForm.staffNo} onChange={(event) => setStaffInviteForm((form) => ({ ...form, staffNo: event.target.value }))} /></div>
+                      <div className="sheet-block"><p className="sheet-label">角色</p><select className="area-input" value={staffInviteForm.role} onChange={(event) => setStaffInviteForm((form) => ({ ...form, role: event.target.value }))}><option value="staff">普通员工</option><option value="manager">店长 / 经理</option><option value="admin">管理员</option></select></div>
+                      <div className="sheet-block"><p className="sheet-label">负责区域</p><input className="area-input" list="staff-area-options" value={staffInviteForm.area} onChange={(event) => setStaffInviteForm((form) => ({ ...form, area: event.target.value }))} /></div>
+                      <div className="sheet-block"><p className="sheet-label">接单权限</p><select className="area-input" value={staffInviteForm.orderPermission} onChange={(event) => setStaffInviteForm((form) => ({ ...form, orderPermission: event.target.value }))}><option value="public">可接公共单</option><option value="assigned">仅接指定派单</option><option value="paused">暂停接单</option></select></div>
+                      <div className="sheet-block"><p className="sheet-label">账号状态</p><select className="area-input" value={staffInviteForm.status} onChange={(event) => setStaffInviteForm((form) => ({ ...form, status: event.target.value }))}><option value="invited">待邀请</option><option value="active">已启用</option><option value="paused">已停用</option></select></div>
+                    </div>
+                    {staffFormError && <p className="staff-form-error">{staffFormError}</p>}
+                    {lastInviteCode && <div className="staff-invite-code"><span>模拟邀请链接 / 邀请码</span><strong>{lastInviteCode}</strong></div>}
+                  </section>
+                </div>
+
+                <footer className="merchant-staff-drawer-foot">
+                  <button className="ghost-button" onClick={() => setShowInviteStaffSheet(false)}>取消</button>
+                  <button className="primary-button" onClick={sendStaffInvite}>发送邀请</button>
+                </footer>
+              </section>
+            </div>
+          )}
+
+          <datalist id="staff-area-options">
+            {STAFF_AREA_OPTIONS.map((area) => <option key={area} value={area} />)}
+          </datalist>
 
           {showCreateOrderSheet && renderCreateOrderSheet()}
         </main>
@@ -5287,11 +5709,11 @@ ${rentalText}`;
                 </div>
                 <div className="sheet-block">
                   <p className="sheet-label">分配员工</p>
-                  {activeStaffMembers.length === 0 ? (
-                    <div className="empty-card"><p>暂无员工</p><span>请稍后配置员工后再分配。</span></div>
+                  {assignableTeamMembers.length === 0 ? (
+                    <div className="empty-card"><p>暂无员工，请先邀请员工</p><span>邀请员工后再分配订单。</span></div>
                   ) : (
                     <select className="area-input" value={newOrderForm.assignedStaffId} onChange={(e) => setNewOrderForm((form) => ({ ...form, assignedStaffId: e.target.value }))}>
-                      {activeStaffMembers.map((member) => (
+                      {assignableTeamMembers.map((member) => (
                         <option key={member.id} value={member.id}>
                           {member.name} · {member.staffNo} · {ROLE_LABELS[member.role] || member.role}
                         </option>
@@ -5525,7 +5947,7 @@ ${rentalText}`;
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">分配员工</p>
             {activeStaffMembers.length === 0 ? (
-              <div className="empty-card"><p>暂无员工</p><span>请稍后配置员工后再分配。</span></div>
+              <div className="empty-card"><p>暂无员工，请先邀请员工</p><span>邀请员工后再分配订单。</span></div>
             ) : (
               <select className={inputClass} value={newOrderForm.assignedStaffId} onChange={(e) => setNewOrderForm((form) => ({ ...form, assignedStaffId: e.target.value }))}>
                 {activeStaffMembers.map((member) => (
@@ -5659,6 +6081,39 @@ ${rentalText}`;
     );
   }
 
+  const returnToStaffHome = () => {
+    setActiveRole("staff");
+    setCurrentPage("orders");
+    setStaffAppTab("首页");
+    setSelectedOrder(null);
+    setSelectedOrderDetail(null);
+    setMerchantViewingOrder(null);
+    setCurrentOrderId(null);
+  };
+
+  const returnToMerchantHome = () => {
+    setActiveRole("merchant");
+    setCurrentPage("orders");
+    setMerchantTab("工作台");
+    setSelectedOrder(null);
+    setSelectedOrderDetail(null);
+    setMerchantViewingOrder(null);
+    setCurrentOrderId(null);
+  };
+
+  const renderSafely = (factory, mode, resetKey, onReset) => {
+    try {
+      return (
+        <AppErrorBoundary mode={mode} resetKey={resetKey} onReset={onReset}>
+          {factory()}
+        </AppErrorBoundary>
+      );
+    } catch (error) {
+      console.error("页面加载失败：", error);
+      return <ErrorFallback mode={mode} onReset={onReset} />;
+    }
+  };
+
   if (authLoading) {
     return (
       <main className="auth-page-shell">
@@ -5671,25 +6126,31 @@ ${rentalText}`;
 
   if (!session) return <AuthPage onSignedOut={handleSignOut} />;
 
-  if (customerPlanId) return renderCustomerPlanView();
-  if (["archiveDetail", "completeUpload", "plan"].includes(currentPage) && !currentOrder) {
-    return (
-      <div className="app">
-        <section className="empty-card">
-          <p>暂无内容</p>
-          <span>没有找到对应订单，请返回任务列表重新进入。</span>
-          <button onClick={() => setCurrentPage("orders")}>返回任务列表</button>
-        </section>
-      </div>
-    );
+  if (customerPlanId) {
+    return renderSafely(renderCustomerPlanView, "staff", `customer-${customerPlanId}`, returnToStaffHome);
   }
-  if (currentPage === "archiveDetail" && currentOrder) return renderArchiveDetailPage();
-  if (currentPage === "completeUpload" && currentOrder) return renderCompleteUploadPage();
-  if (currentPage === "plan" && currentOrder) return renderPlanPage();
-  if (activeRole === "merchant") return renderMerchantPage();
+  if (["archiveDetail", "completeUpload", "plan", "serviceRecord"].includes(currentPage) && !currentOrder) {
+    console.error("页面数据不完整，缺少当前订单：", currentPage, currentOrderId);
+    return <ErrorFallback mode="staff" onReset={returnToStaffHome} />;
+  }
+  if (currentPage === "archiveDetail" && currentOrder) {
+    return renderSafely(renderArchiveDetailPage, "staff", `${currentPage}-${currentOrderId}`, returnToStaffHome);
+  }
+  if (currentPage === "serviceRecord" && currentOrder) {
+    return renderSafely(renderServiceRecordPage, "staff", `${currentPage}-${currentOrderId}`, returnToStaffHome);
+  }
+  if (currentPage === "completeUpload" && currentOrder) {
+    return renderSafely(renderCompleteUploadPage, "staff", `${currentPage}-${currentOrderId}`, returnToStaffHome);
+  }
+  if (currentPage === "plan" && currentOrder) {
+    return renderSafely(renderPlanPage, "staff", `${currentPage}-${currentOrderId}`, returnToStaffHome);
+  }
+  if (activeRole === "merchant") {
+    return renderSafely(renderMerchantPage, "merchant", `${merchantTab}-${currentOrderId || ""}-${merchantViewingOrder?.id || ""}-${selectedOrderDetail?.id || ""}`, returnToMerchantHome);
+  }
 
  return (
-    <>
+    <AppErrorBoundary mode="staff" resetKey={`${staffAppTab}-${activeStaffTab}-${currentStaff?.id || ""}`} onReset={returnToStaffHome}>
       <StaffMobile
         staffAppTab={staffAppTab}
         setStaffAppTab={setStaffAppTab}
@@ -5724,6 +6185,7 @@ ${rentalText}`;
         authUserEmail={authUserEmail}
         canOpenMerchant={canUseMerchant}
         onSignOut={handleSignOut}
+        classifyOrderStatus={classifyOrderStatus}
       />
 
       {qrPreviewOrder && (
@@ -5743,7 +6205,7 @@ ${rentalText}`;
           </section>
         </div>
       )}
-    </>
+    </AppErrorBoundary>
   );
 }
 
