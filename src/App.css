@@ -10817,6 +10817,111 @@ select:focus {
   color: #20261f !important;
 }
 
+.staff-complete-page {
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.staff-complete-page .staff-complete-upload-card {
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  overflow: hidden !important;
+}
+
+.staff-complete-page .staff-complete-upload-card .image-uploader {
+  width: 100% !important;
+}
+
+.staff-complete-page .staff-complete-upload-card .image-uploader-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+.staff-complete-page .staff-complete-upload-card .image-uploader-slot {
+  min-width: 0 !important;
+}
+
+.staff-complete-page .staff-complete-upload-card .image-uploader-empty,
+.staff-complete-page .staff-complete-upload-card .image-uploader-preview {
+  width: 100% !important;
+  min-height: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  border: 1px dashed rgba(87, 108, 70, 0.24) !important;
+  border-radius: 16px !important;
+  background:
+    var(--estate-texture-limestone, none),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(239, 242, 232, 0.78)) !important;
+  background-size: 220px 220px, cover !important;
+  box-shadow: 0 8px 18px rgba(65, 55, 33, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.75) !important;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.staff-complete-page .staff-complete-upload-card .image-uploader-empty:active,
+.staff-complete-page .staff-complete-upload-card .image-uploader-preview:active {
+  transform: scale(0.985);
+  border-color: rgba(87, 108, 70, 0.38) !important;
+  box-shadow: 0 10px 20px rgba(65, 55, 33, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
+}
+
+.staff-complete-page .staff-complete-upload-card .image-uploader-empty:focus-visible,
+.staff-complete-page .staff-complete-upload-card .image-uploader-preview:focus-visible,
+.staff-complete-page .staff-complete-upload-card .image-uploader-actions label:focus-visible,
+.staff-complete-page .staff-complete-upload-card .image-uploader-actions button:focus-visible {
+  outline: 2px solid rgba(87, 108, 70, 0.48) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(87, 108, 70, 0.08) !important;
+}
+
+.staff-complete-page .staff-complete-upload-card .image-uploader-empty strong {
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+}
+
+.staff-complete-page .staff-complete-upload-card .image-uploader-empty span {
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+}
+
+.staff-complete-page .staff-complete-actions {
+  position: static !important;
+  left: auto !important;
+  bottom: auto !important;
+  z-index: auto !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  width: auto !important;
+  max-width: none !important;
+  margin: 12px 12px calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+  padding: 8px !important;
+  transform: none !important;
+  border: 1px solid rgba(102, 93, 70, 0.14) !important;
+  border-radius: 22px !important;
+  background: rgba(255, 252, 246, 0.86) !important;
+  box-shadow: 0 14px 32px rgba(65, 55, 33, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(14px) saturate(1.05) !important;
+}
+
+.staff-complete-page .staff-complete-actions button {
+  min-width: 0 !important;
+  min-height: 42px !important;
+  border-radius: 15px !important;
+  padding: 9px 6px !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 360px) {
+  .staff-complete-page .staff-complete-actions {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .staff-complete-page .staff-complete-actions .submit-plan-button {
+    grid-column: 1 / -1;
+  }
+}
+
 .staff-avatar-profile-card {
   grid-template-columns: 108px minmax(0, 1fr) !important;
   column-gap: 26px !important;
