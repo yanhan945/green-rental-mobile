@@ -380,6 +380,8 @@ function cloudHeaders(extra = {}) {
 
 function ensureOrderDefaults(order = {}) {
   const assignedStaff = getStaffMemberById(order.assignedStaffId) || getDefaultAssignedStaff();
+  const hasAssignedStaffId = Object.prototype.hasOwnProperty.call(order, "assignedStaffId");
+  const isPublicAssignedOrder = hasAssignedStaffId && !String(order.assignedStaffId || "").trim();
   return {
     ...order,
     id: order.id || Date.now(),
@@ -400,9 +402,9 @@ function ensureOrderDefaults(order = {}) {
     contactName: order.contactName || "待确认",
     phone: order.phone || "",
     source: order.source || "商户派单",
-    assignedStaffId: order.assignedStaffId || assignedStaff?.id || "",
-    assignedStaffName: order.assignedStaffName || assignedStaff?.name || "",
-    assignedStaffEmail: order.assignedStaffEmail || assignedStaff?.email || "",
+    assignedStaffId: hasAssignedStaffId ? order.assignedStaffId || "" : assignedStaff?.id || "",
+    assignedStaffName: order.assignedStaffName || (isPublicAssignedOrder ? "所有员工（公共任务）" : assignedStaff?.name || ""),
+    assignedStaffEmail: order.assignedStaffEmail || (isPublicAssignedOrder ? "" : assignedStaff?.email || ""),
     communicationQrUrl: order.communicationQrUrl || "",
     serviceType: order.serviceType || "租赁",
     planType: order.planType || order.plan?.planType || "租赁方案",
@@ -1150,7 +1152,11 @@ function App() {
   }, [activeStaffMembers]);
 
   const staffScopedOrders = useMemo(() => {
-    return safeOrders.filter((order) => order.assignedStaffId === currentStaff?.id);
+    return safeOrders.filter((order) => {
+      const assignedStaffId = String(order.assignedStaffId || "").trim();
+      const isPublicOrder = !assignedStaffId || ["public", "all"].includes(assignedStaffId);
+      return isPublicOrder || assignedStaffId === currentStaff?.id;
+    });
   }, [safeOrders, currentStaff?.id]);
 
   const filteredStaffOrders = useMemo(() => {
@@ -1426,6 +1432,24 @@ function App() {
   }
 
   function assignOrderToStaff(orderId, staffId) {
+    if (!staffId || staffId === "public" || staffId === "all") {
+      updateOrder(
+        orderId,
+        (order) =>
+          addTimeline(
+            {
+              ...order,
+              assignedStaffId: "",
+              assignedStaffName: "所有员工（公共任务）",
+              assignedStaffEmail: "",
+            },
+            "商户将订单设为公共任务"
+          ),
+        "订单派单员工已同步"
+      );
+      return;
+    }
+
     const staff = staffDirectory.find((member) => member.id === staffId) || getStaffMemberById(staffId) || getDefaultAssignedStaff();
     if (!staff) return;
     if (!canAssignStaff(staff)) {
@@ -1871,12 +1895,16 @@ function App() {
     updateOrder(
       selectedOrder.id,
       (order) => {
+        const shouldClaimPublicOrder = !order.assignedStaffId || ["public", "all"].includes(String(order.assignedStaffId));
         const next = {
           ...order,
           status: "配置中",
           planStatus: "配置中",
           merchantConfirmStatus: "未提交",
           executionStatus: "已联系",
+          assignedStaffId: shouldClaimPublicOrder ? currentStaff?.id || "" : order.assignedStaffId,
+          assignedStaffName: shouldClaimPublicOrder ? currentStaff?.name || order.assignedStaffName || "" : order.assignedStaffName,
+          assignedStaffEmail: shouldClaimPublicOrder ? currentStaff?.email || order.assignedStaffEmail || "" : order.assignedStaffEmail,
           acceptedAt: order.acceptedAt || nowText(),
           planType,
           serviceType: planType === "养护服务" ? "养护" : planType === "零售方案" ? "零售" : "租赁",
@@ -2380,13 +2408,13 @@ function App() {
     const orderId = Date.now();
     const serviceType = newOrderForm.serviceType || "租赁";
     const planType = serviceType === "养护" ? "养护服务" : serviceType === "零售" ? "零售方案" : "租赁方案";
-    const assignedStaff =
-      staffDirectory.find((member) => member.id === newOrderForm.assignedStaffId) ||
-      getStaffMemberById(newOrderForm.assignedStaffId) ||
-      assignableStaffMembers[0] ||
-      getDefaultAssignedStaff();
+    const isPublicAssignment = !newOrderForm.assignedStaffId || ["public", "all"].includes(String(newOrderForm.assignedStaffId));
+    const assignedStaff = isPublicAssignment
+      ? null
+      : staffDirectory.find((member) => member.id === newOrderForm.assignedStaffId) ||
+        getStaffMemberById(newOrderForm.assignedStaffId);
 
-    if (!assignedStaff || !canAssignStaff(assignedStaff)) {
+    if (!isPublicAssignment && (!assignedStaff || !canAssignStaff(assignedStaff))) {
       alert("请先选择已启用且未暂停接单的员工。");
       return;
     }
@@ -2444,9 +2472,9 @@ function App() {
       budget: newOrderForm.budget.trim(),
       merchantNote: newOrderForm.merchantNote.trim(),
       areaNote: newOrderForm.areaNote.trim(),
-      assignedStaffId: assignedStaff?.id || "",
-      assignedStaffName: assignedStaff?.name || "",
-      assignedStaffEmail: assignedStaff?.email || "",
+      assignedStaffId: isPublicAssignment ? "" : assignedStaff?.id || "",
+      assignedStaffName: isPublicAssignment ? "所有员工（公共任务）" : assignedStaff?.name || "",
+      assignedStaffEmail: isPublicAssignment ? "" : assignedStaff?.email || "",
       communicationQrUrl: newOrderForm.communicationQrUrl || "",
       fieldNote: "",
       internalNote: "",
@@ -3285,7 +3313,7 @@ ${rentalText}`;
   function renderPhotoUploadBlock(title, group, tip) {
     const values = Array.isArray(completeForm[group]) ? completeForm[group] : ["", "", ""];
     return (
-      <section className="plan-summary-card" style={{ padding: 18 }}>
+      <section className="plan-summary-card staff-complete-upload-card" style={{ padding: 18 }}>
         <div className="section-title-row">
           <div>
             <p className="eyebrow">UPLOAD</p>
@@ -3406,7 +3434,7 @@ ${rentalText}`;
           />
         </section>
 
-        <nav className="bottom-actions">
+        <nav className="bottom-actions staff-complete-actions">
           <button onClick={() => setCurrentPage(currentPlan ? "plan" : "orders")}>返回方案</button>
           <button onClick={() => copyCustomerPlanLink(currentOrder)}>客户链接</button>
           <button className="submit-plan-button" onClick={submitCompleteUpload}>提交完成</button>
@@ -5021,16 +5049,17 @@ ${rentalText}`;
                       <span>
                         <select
                           className="admin-inline-select"
-                          value={order.assignedStaffId || DEFAULT_STAFF_ID}
+                          value={order.assignedStaffId || ""}
                           onChange={(event) => assignOrderToStaff(order.id, event.target.value)}
                         >
+                          <option value="">所有员工（公共任务）</option>
                           {staffOptions.map((member) => (
                             <option key={member.id} value={member.id}>
                               {member.name} · {member.staffNo}
                             </option>
                           ))}
                         </select>
-                        <em>{order.assignedStaffEmail || "未绑定邮箱"}</em>
+                        <em>{order.assignedStaffEmail || (order.assignedStaffId ? "未绑定邮箱" : "公共任务")}</em>
                       </span>
                       <span className="admin-table-actions">
                         <button
@@ -5855,6 +5884,7 @@ ${rentalText}`;
                     <div className="empty-card"><p>暂无员工，请先邀请员工</p><span>邀请员工后再分配订单。</span></div>
                   ) : (
                     <select className="area-input" value={newOrderForm.assignedStaffId} onChange={(e) => setNewOrderForm((form) => ({ ...form, assignedStaffId: e.target.value }))}>
+                      <option value="">所有员工（公共任务）</option>
                       {createOrderAssignableStaff.map((member) => (
                         <option key={member.id} value={member.id}>
                           {member.name} · {member.staffNo} · {ROLE_LABELS[member.role] || member.role}
@@ -6083,6 +6113,7 @@ ${rentalText}`;
               <div className="empty-card"><p>暂无员工，请先邀请员工</p><span>邀请员工后再分配订单。</span></div>
             ) : (
               <select className={inputClass} value={newOrderForm.assignedStaffId} onChange={(e) => setNewOrderForm((form) => ({ ...form, assignedStaffId: e.target.value }))}>
+                <option value="">所有员工（公共任务）</option>
                 {createOrderAssignableStaff.map((member) => (
                   <option key={member.id} value={member.id}>
                     {member.name} · {member.staffNo}
