@@ -10729,6 +10729,51 @@ select:focus {
   box-shadow: none !important;
 }
 
+.staff-confirm-sheet-mask {
+  align-items: center !important;
+  padding: 16px 14px calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+  overflow: hidden !important;
+}
+
+.staff-confirm-sheet {
+  width: min(430px, 100%) !important;
+  max-height: min(78vh, calc(100dvh - 126px)) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border-radius: 28px !important;
+  padding: 8px 12px 0 !important;
+}
+
+.staff-confirm-sheet .sheet-header {
+  flex: 0 0 auto !important;
+}
+
+.staff-confirm-sheet-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 0 2px 18px !important;
+}
+
+.staff-confirm-sheet-footer {
+  flex: 0 0 auto !important;
+  margin: 0 -12px !important;
+  padding: 12px 12px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  background:
+    var(--estate-texture-limestone, none),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.9), rgba(255, 252, 246, 0.98)) !important;
+  background-size: 260px 260px, cover !important;
+  border-top: 1px solid rgba(102, 93, 70, 0.12) !important;
+  box-shadow: 0 -12px 24px rgba(65, 55, 33, 0.08) !important;
+}
+
+.staff-confirm-sheet-footer .submit-sheet-button {
+  width: 100% !important;
+}
+
 .staff-avatar-profile-card {
   grid-template-columns: 108px minmax(0, 1fr) !important;
   column-gap: 26px !important;
