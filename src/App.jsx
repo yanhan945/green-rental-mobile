@@ -25,6 +25,24 @@ const STAFF_APP_TABS = ["首页", "任务", "上报", "我的"];
 const MERCHANT_TABS = ["工作台", "订单管理", "团队成员", "执行监测", "商品库", "客户库", "设置"];
 const APP_PAGES = ["orders", "plan", "completeUpload", "archiveDetail", "serviceRecord"];
 
+function getAppShellMode() {
+  const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (pathname === "/admin") return "admin";
+  if (pathname === "/staff") return "staff";
+  return "legacy";
+}
+
+function getInitialRoleByPath() {
+  const mode = getAppShellMode();
+  if (mode === "admin") return "merchant";
+  if (mode === "staff") return "staff";
+  return "staff";
+}
+
+function isLocalDevHost() {
+  return ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
+}
+
 const ORDER_SOURCES = ["商户派单", "客户预约", "电话登记", "线下登记"];
 const DELIVERY_STATUS = ["未出发", "前往中", "已到达"];
 const EXECUTION_STATUS = ["待联系", "已联系", "已出发", "已到达", "已完成服务"];
@@ -112,6 +130,14 @@ const ROLE_LABELS = {
   admin: "管理员",
   manager: "店长 / 经理",
   staff: "普通员工",
+};
+
+// Phase-1 role shape only. Real permissions should later come from account/org config:
+// owner = all merchant permissions; manager = configurable finance/export scope; staff = own + public tasks.
+const ROLE_ACCESS_PRESET = {
+  owner: { workspace: "admin", canViewAllOrders: true, canManageAccounts: true, financeScope: "all" },
+  manager: { workspace: "admin", canViewAllOrders: true, canDispatch: true, canReviewPlans: true, financeScope: "configurable" },
+  staff: { workspace: "staff", canViewOwnAndPublicTasks: true, canConfigurePlan: true, canUploadCompletion: true },
 };
 
 const ACCOUNT_STATUS_LABELS = {
@@ -550,6 +576,8 @@ function persistStaffDirectoryToLocalStore(staff) {
 
 function loadStaffAvatarFromLocalStore() {
   try {
+    // Demo only: avatar is stored as a local data URL in this browser.
+    // Future production sync should upload to cloud storage and persist the URL on the staff profile.
     return localStorage.getItem(STAFF_AVATAR_STORAGE_KEY) || "";
   } catch (error) {
     console.error("读取员工头像失败：", error);
@@ -559,6 +587,7 @@ function loadStaffAvatarFromLocalStore() {
 
 function persistStaffAvatarToLocalStore(staffAvatar) {
   try {
+    // Keep localStorage compatibility for the demo; this is not shared across browsers/devices.
     localStorage.setItem(STAFF_AVATAR_STORAGE_KEY, staffAvatar || "");
   } catch (error) {
     console.error("保存员工头像失败：", error);
@@ -1003,15 +1032,18 @@ function getMerchantStatusClass(status) {
 }
 
 function App() {
+  const appShellMode = getAppShellMode();
+  const isPathRoleLocked = appShellMode === "admin" || appShellMode === "staff";
+  const showRoleSwitch = isLocalDevHost() && new URLSearchParams(window.location.search).get("debugRoleSwitch") === "1";
   const merchantListRef = useRef(null);
   const activeViewRef = useRef({
     currentPage: "orders",
-    activeRole: "staff",
+    activeRole: getInitialRoleByPath(),
     merchantViewingOrderId: null,
     selectedOrderDetailId: null,
   });
 
-  const [activeRole, setActiveRole] = useState("staff");
+  const [activeRole, setActiveRole] = useState(() => getInitialRoleByPath());
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authRole, setAuthRole] = useState("staff");
@@ -1240,6 +1272,22 @@ function App() {
   const customerViewOrder = safeOrders.find((order) => order.plan?.id === customerPlanId) || null;
 
   useEffect(() => {
+    if (window.location.pathname === "/" && !customerPlanId) {
+      window.history.replaceState(null, "", "/admin");
+      setActiveRole("merchant");
+    }
+  }, [customerPlanId]);
+
+  useEffect(() => {
+    if (appShellMode === "admin" && activeRole !== "merchant") {
+      setActiveRole("merchant");
+    }
+    if (appShellMode === "staff" && activeRole !== "staff") {
+      setActiveRole("staff");
+    }
+  }, [appShellMode, activeRole]);
+
+  useEffect(() => {
     persistOrdersToLocalStore(orders);
   }, [orders]);
 
@@ -1301,6 +1349,19 @@ function App() {
     const nextRole = account?.role || "staff";
     setAuthRole(nextRole);
 
+    if (appShellMode === "admin") {
+      setActiveRole("merchant");
+      return;
+    }
+
+    if (appShellMode === "staff") {
+      setActiveRole("staff");
+      if (account?.id && getStaffMemberById(account.id)) {
+        setCurrentStaffId(account.id);
+      }
+      return;
+    }
+
     if (account?.userType === "merchant" || ["owner", "admin", "manager"].includes(nextRole)) {
       setActiveRole("merchant");
       return;
@@ -1310,7 +1371,7 @@ function App() {
     if (account?.id && getStaffMemberById(account.id)) {
       setCurrentStaffId(account.id);
     }
-  }, [session]);
+  }, [session, appShellMode]);
 
   useEffect(() => {
     persistStaffAvatarToLocalStore(staffAvatar);
@@ -1777,6 +1838,7 @@ function App() {
   }
 
   function switchRole(role) {
+    if (isPathRoleLocked && !showRoleSwitch) return;
     // Demo mode allows switching between staff and merchant workspaces.
     setActiveRole(role);
     setCurrentPage("orders");
@@ -1787,7 +1849,7 @@ function App() {
   async function handleSignOut() {
     await supabase.auth.signOut();
     setSession(null);
-    setActiveRole("staff");
+    setActiveRole(getInitialRoleByPath());
     setCurrentPage("orders");
     setCurrentOrderId(null);
     resetSheets();
@@ -4638,12 +4700,14 @@ ${rentalText}`;
             );
           })}
 
+          {showRoleSwitch && (
           <div style={{ marginTop: "auto", borderTop: "1px solid #1e293b", paddingTop: 16 }}>
             <button className="admin-nav-btn" style={{ width: "100%", textAlign: "center", border: "1px solid #334155" }} onClick={() => switchRole("staff")}>
               <GardenIcons.StaffUser size={18} />
               <span>切换至员工视角</span>
             </button>
           </div>
+          )}
         </aside>
       );
     }
@@ -4894,12 +4958,14 @@ ${rentalText}`;
             );
           })}
 
+          {showRoleSwitch && (
           <div style={{ marginTop: "auto", borderTop: "1px solid #1e293b", paddingTop: 16 }}>
             <button className="admin-nav-btn" style={{ width: "100%", textAlign: "center", border: "1px solid #334155" }} onClick={() => switchRole("staff")}>
               <GardenIcons.StaffUser size={18} />
               <span>切换至员工视角</span>
             </button>
           </div>
+          )}
         </aside>
 
         {/* 宽阔的浅色主工作区 */}
@@ -6347,7 +6413,7 @@ ${rentalText}`;
         roleLabels={ROLE_LABELS}
         accountStatusLabels={ACCOUNT_STATUS_LABELS}
         authUserEmail={authUserEmail}
-        canOpenMerchant={canUseMerchant}
+        canOpenMerchant={showRoleSwitch}
         onSignOut={handleSignOut}
         classifyOrderStatus={classifyOrderStatus}
       />
