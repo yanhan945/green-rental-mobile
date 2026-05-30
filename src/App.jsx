@@ -3635,6 +3635,50 @@ ${rentalText}`;
       borderBottom: active ? `3px solid ${videoBlue}` : "3px solid transparent",
       fontSize: 15,
     });
+    const planStatusPillStyle = {
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 999,
+      padding: "4px 10px",
+      background: "rgba(250, 247, 238, 0.92)",
+      border: "1px solid rgba(87, 108, 70, 0.18)",
+      color: "#46583d",
+      fontSize: 12,
+      fontWeight: 900,
+      whiteSpace: "nowrap",
+    };
+    const planAmountCardStyle = {
+      background: "rgba(250, 247, 238, 0.94)",
+      border: "1px solid rgba(87, 108, 70, 0.16)",
+      borderRadius: 14,
+      padding: 12,
+      boxShadow: "0 10px 24px rgba(53, 61, 43, 0.06)",
+    };
+    const planAmountLabelStyle = {
+      color: "#7f755f",
+      fontSize: 12,
+      fontWeight: 800,
+    };
+    const planAmountValueStyle = {
+      display: "block",
+      marginTop: 4,
+      color: "#20261f",
+      fontSize: 18,
+      fontWeight: 900,
+    };
+    const finalQuoteFieldStyle = {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      width: "100%",
+      boxSizing: "border-box",
+      background: "rgba(250, 247, 238, 0.94)",
+      border: "1px solid rgba(87, 108, 70, 0.18)",
+      borderRadius: 16,
+      padding: "9px 16px",
+      boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.58)",
+    };
 
     return (
       <div className="staff-legacy-page staff-plan-page" style={pageStyle}>
@@ -3650,7 +3694,7 @@ ${rentalText}`;
               <span style={{ ...labelStyle, display: "block", marginBottom: 4 }}>当前任务</span>
               <strong style={{ fontSize: 18, color: "#182536" }}>{currentOrder.customerName}</strong>
             </div>
-            <span style={{ borderRadius: 6, background: "#eaf2fb", color: videoBlue, padding: "6px 10px", fontWeight: 900 }}>{currentOrder.status}</span>
+            <span style={planStatusPillStyle}>{currentOrder.status}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "78px 1fr", gap: "8px 10px", borderTop: "1px solid #edf1f5", paddingTop: 10 }}>
             <span style={labelStyle}>任务地址</span><strong style={{ ...strongStyle, textAlign: "right" }}>{currentOrder.address || "-"}</strong>
@@ -3822,13 +3866,13 @@ ${rentalText}`;
 
           {/* 1. 核心数据 */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
-            <div style={{ background: "#f6f8fb", borderRadius: 10, padding: 12 }}>
-              <span style={{ color: "#7b899a", fontSize: 12, fontWeight: 700 }}>{currentPlan?.planType === "零售方案" ? "商品金额" : "预估日租金"}</span>
-              <strong style={{ display: "block", marginTop: 4, fontSize: 18, color: "#182536" }}>¥{money(currentStats.dailyRent)}</strong>
+            <div style={planAmountCardStyle}>
+              <span style={planAmountLabelStyle}>{currentPlan?.planType === "零售方案" ? "商品金额" : "预估日租金"}</span>
+              <strong style={planAmountValueStyle}>¥{money(currentStats.dailyRent)}</strong>
             </div>
-            <div style={{ background: "#f6f8fb", borderRadius: 10, padding: 12 }}>
-              <span style={{ color: "#7b899a", fontSize: 12, fontWeight: 700 }}>系统建议总价</span>
-              <strong style={{ display: "block", marginTop: 4, fontSize: 18, color: "#20251d" }}>¥{money(currentStats.systemTotalRent)}</strong>
+            <div style={planAmountCardStyle}>
+              <span style={planAmountLabelStyle}>系统建议总价</span>
+              <strong style={planAmountValueStyle}>¥{money(currentStats.systemTotalRent)}</strong>
             </div>
           </div>
 
@@ -3949,15 +3993,16 @@ ${rentalText}`;
 
           {/* 5. 最终报价 */}
           <div>
-            <span style={{ display: "block", color: "#647286", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>实际销售报价 (元)</span>
-            <label style={{ display: "flex", alignItems: "center", border: "1px solid #d8e1ec", borderRadius: 10, padding: "4px 12px", background: "#fcfdfe" }}>
-              <span style={{ color: "#182536", fontSize: 16, fontWeight: 800, marginRight: 8 }}>¥</span>
+            <span style={{ display: "block", color: "#7f755f", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>实际销售报价 (元)</span>
+            <label className="staff-final-quote-field" style={finalQuoteFieldStyle}>
+              <span style={{ flex: "0 0 18px", color: "#46583d", fontSize: 17, fontWeight: 850, lineHeight: 1, textAlign: "center" }}>¥</span>
               <input
+                className="staff-final-quote-input"
                 type="number"
                 value={currentPlan.customFinalRent || ""}
                 onChange={(e) => updateCurrentPlanField("customFinalRent", e.target.value)}
                 placeholder={`默认按 ¥${money(currentStats.systemTotalRent)}`}
-                style={{ flex: 1, border: 0, background: "transparent", padding: "12px 0", fontSize: 15, fontWeight: 800, color: "#d64545", outline: "none" }}
+                style={{ flex: 1, minWidth: 0, width: "100%", border: 0, background: "transparent", padding: "5px 0 5px 6px", fontSize: 16, fontWeight: 800, lineHeight: 1.35, color: "#20261f", outline: "none" }}
               />
             </label>
           </div>
@@ -5659,11 +5704,34 @@ ${rentalText}`;
       const panelStyle = {
         width: "min(980px, calc(100vw - 48px))",
         maxHeight: "88vh",
-        overflowY: "auto",
+        overflow: "hidden",
         background: "rgba(255,255,255,0.98)",
         borderRadius: 28,
-        padding: 24,
         boxShadow: "0 28px 80px rgba(20, 54, 34, 0.22)",
+        display: "flex",
+        flexDirection: "column",
+      };
+      const panelHeaderStyle = {
+        flex: "0 0 auto",
+        padding: "24px 24px 14px",
+      };
+      const panelScrollStyle = {
+        flex: "1 1 auto",
+        minHeight: 0,
+        overflowY: "auto",
+        padding: "0 18px 18px 24px",
+        marginRight: 6,
+        scrollbarGutter: "stable",
+      };
+      const panelFooterStyle = {
+        flex: "0 0 auto",
+        display: "flex",
+        gap: 14,
+        justifyContent: "flex-end",
+        alignItems: "center",
+        padding: "16px 24px 20px",
+        background: "rgba(239, 247, 241, 0.92)",
+        borderTop: "1px solid rgba(34, 116, 67, 0.12)",
       };
 
       return (
@@ -5675,7 +5743,7 @@ ${rentalText}`;
           }}
         >
           <section className="merchant-create-order-dialog" style={panelStyle} onClick={(event) => event.stopPropagation()}>
-            <div className="section-title-row">
+            <div className="section-title-row" style={panelHeaderStyle}>
               <div><p className="eyebrow">New Order · v3.8</p><h2>创建新订单</h2></div>
               <button
                 className="close-button"
@@ -5686,6 +5754,7 @@ ${rentalText}`;
               >×</button>
             </div>
 
+            <div className="merchant-create-order-scroll" style={panelScrollStyle}>
             <div className="merchant-create-stage-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
               <section className="plan-summary-card merchant-create-stage" style={{ margin: 0 }}>
                 <div className="section-title-row"><div><p className="eyebrow">Step 01</p><h2>基础客户信息</h2></div></div>
@@ -5788,18 +5857,9 @@ ${rentalText}`;
               <p>创建后会直接进入待接单</p>
               <span>员工端刷新后即可接单，并继续完善区域、商品和报价。</span>
             </div>
+            </div>
 
-            <div style={{
-              display: "flex",
-              gap: 14,
-              justifyContent: "flex-end",
-              alignItems: "center",
-              marginTop: 18,
-              padding: 16,
-              borderRadius: 22,
-              background: "rgba(239, 247, 241, 0.92)",
-              border: "1px solid rgba(34, 116, 67, 0.12)"
-            }}>
+            <div style={panelFooterStyle}>
               <button
                 style={{
                   minWidth: 128,
