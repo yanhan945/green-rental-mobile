@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { GardenIcons } from "../../GardenIcons";
 import { ImageUploader } from "../common/ImageUploader";
 import { StaffHome } from "./StaffHome";
@@ -52,9 +53,11 @@ export function StaffMobile({
   onSignOut,
   classifyOrderStatus = (status) => status || "做方案",
 }) {
+  const mainRef = useRef(null);
   const safeStaffOrders = Array.isArray(staffOrders) ? staffOrders : [];
   const safeFilteredStaffOrders = Array.isArray(filteredStaffOrders) ? filteredStaffOrders : [];
   const executableOrders = safeStaffOrders.filter((order) => classifyOrderStatus(order.status) === "执行中");
+  const avatarNotice = staffAvatarError || staffAvatarStatus;
   const hasUsefulPrefillText = (value) => {
     const text = String(value || "").trim();
     return Boolean(text && !["暂无内容", "待确认"].includes(text));
@@ -67,6 +70,10 @@ export function StaffMobile({
     hasUsefulPrefillText(selectedOrder?.plannedPlantCount) ||
     hasUsefulPrefillText(selectedOrder?.areaSize)
   );
+
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  }, [staffAppTab]);
 
   return (
   <div className="staff-app-shell">
@@ -92,7 +99,7 @@ export function StaffMobile({
       )}
     </header>
 
-    <main className="staff-app-main">
+    <main ref={mainRef} className="staff-app-main">
 {staffAppTab === "首页" && (
           <StaffHome
             orders={staffOrders}
@@ -101,8 +108,6 @@ export function StaffMobile({
             money={money}
             setStaffAppTab={setStaffAppTab}
             setActiveStaffTab={setActiveStaffTab}
-            autoSyncState={autoSyncState}
-            syncMessage={syncMessage}
             classifyOrderStatus={classifyOrderStatus}
           />
         )}
@@ -207,14 +212,17 @@ export function StaffMobile({
         onChange={setStaffAvatar}
         onFileSelect={onStaffAvatarFile}
         loading={staffAvatarUploading}
-        statusText={staffAvatarStatus}
-        errorText={staffAvatarError}
       />
       <div className="staff-avatar-profile-copy">
         <p className="staff-kicker">头像资料</p>
         <h2>{currentStaff?.name || "园林服务人员"}</h2>
         <p>{authUserEmail || currentStaff?.email || "暂无邮箱"}</p>
         <b className="staff-login-pill">{accountStatusLabels[currentStaff?.status] || "账号正常"}</b>
+        {avatarNotice && (
+          <span className={`staff-avatar-inline-status ${staffAvatarError ? "error" : ""}`}>
+            {avatarNotice}
+          </span>
+        )}
         <span>用于首页头像和个人资料展示。</span>
       </div>
     </section>
