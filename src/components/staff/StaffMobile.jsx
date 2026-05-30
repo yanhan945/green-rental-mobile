@@ -302,8 +302,8 @@ export function StaffMobile({
 </nav>
 
       {selectedOrder && (
-        <div className="sheet-mask" onClick={() => setSelectedOrder(null)}>
-          <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
+        <div className="sheet-mask staff-confirm-sheet-mask" onClick={() => setSelectedOrder(null)}>
+          <section className="bottom-sheet staff-confirm-sheet" onClick={(event) => event.stopPropagation()}>
             <div className="sheet-handle" />
 
             <div className="sheet-header">
@@ -313,6 +313,7 @@ export function StaffMobile({
               </button>
             </div>
 
+            <div className="staff-confirm-sheet-body">
             <div className="sheet-block">
               <p className="sheet-label">选择方案类型</p>
               <div className="plan-type-grid">
@@ -341,10 +342,13 @@ export function StaffMobile({
               <div className="confirm-row address"><span>客户描述</span><strong>{selectedOrder.description || "-"}</strong></div>
               <div className="confirm-row address"><span>商户备注</span><strong>{selectedOrder.merchantNote || selectedOrder.plan?.merchantDraftNote || "-"}</strong></div>
             </div>
+            </div>
 
-            <button className="submit-sheet-button" onClick={acceptOrderAndCreatePlan}>
-              {selectedOrder.plan ? "确认接单并查看方案草稿" : `确认接单并创建${planType}`}
-            </button>
+            <div className="staff-confirm-sheet-footer">
+              <button className="submit-sheet-button" onClick={acceptOrderAndCreatePlan}>
+                {selectedOrder.plan ? "确认接单并查看方案草稿" : `确认接单并创建${planType}`}
+              </button>
+            </div>
           </section>
         </div>
       )}
