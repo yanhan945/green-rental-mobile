@@ -9584,8 +9584,29 @@ button:disabled,
     linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(241, 234, 220, 0.94)) !important;
   border: 1px solid rgba(102, 93, 70, 0.14) !important;
   max-height: calc(100dvh - 48px) !important;
-  overflow-y: auto !important;
+  overflow: hidden !important;
   overscroll-behavior: contain !important;
+}
+
+.merchant-create-order-scroll {
+  overscroll-behavior: contain !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(87, 108, 70, 0.28) transparent;
+}
+
+.merchant-create-order-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.merchant-create-order-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 10px 0;
+}
+
+.merchant-create-order-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(255, 252, 246, 0.86);
+  border-radius: 999px;
+  background: rgba(87, 108, 70, 0.26);
 }
 
 .merchant-create-stage-grid {
@@ -9604,11 +9625,10 @@ button:disabled,
 }
 
 .merchant-create-order-dialog > .section-title-row {
-  position: sticky !important;
-  top: -24px !important;
+  position: relative !important;
+  top: auto !important;
   z-index: 4 !important;
-  margin: -24px -24px 18px !important;
-  padding: 22px 24px 16px !important;
+  margin: 0 !important;
   background:
     var(--estate-texture-limestone, none),
     linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(246, 239, 226, 0.92)) !important;
@@ -9616,11 +9636,10 @@ button:disabled,
 }
 
 .merchant-create-order-dialog > div:last-child {
-  position: sticky !important;
-  bottom: -24px !important;
+  position: relative !important;
+  bottom: auto !important;
   z-index: 4 !important;
-  margin: 18px -24px -24px !important;
-  padding: 14px 24px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  margin: 0 !important;
   border-radius: 0 0 28px 28px !important;
   background:
     linear-gradient(180deg, rgba(255, 252, 246, 0.86), rgba(255, 252, 246, 0.98)) !important;
@@ -10621,5 +10640,120 @@ button:disabled,
 
   .merchant-review-actions {
     justify-content: flex-start;
+  }
+}
+/* =========================================================
+   Manual fix: remove old blue residues in plan / payment UI
+   只用于覆盖添加方案页里的旧蓝色状态、金额卡、输入框焦点
+   ========================================================= */
+
+/* 状态标签：配置中 / 执行中 / 待商户确认，不再使用浅蓝底 */
+[class*="status"],
+[class*="badge"],
+[class*="tag"],
+[class*="pill"] {
+  --old-blue-bg: rgba(239, 246, 255, 0);
+}
+
+/* 尽量覆盖旧的浅蓝状态胶囊 */
+[class*="status"]:not(.danger):not(.error),
+[class*="badge"]:not(.danger):not(.error),
+[class*="pill"]:not(.danger):not(.error) {
+  border-color: rgba(87, 108, 70, 0.18) !important;
+}
+
+/* 添加方案页、财务与租约里的金额卡，去掉浅蓝感 */
+[class*="price"],
+[class*="finance"],
+[class*="payment"],
+[class*="rent"],
+[class*="quote"],
+[class*="amount"],
+[class*="deposit"] {
+  color: #20261f;
+}
+
+/* 金额数字不要再是蓝色 */
+[class*="price"] *,
+[class*="finance"] *,
+[class*="payment"] *,
+[class*="rent"] *,
+[class*="quote"] *,
+[class*="amount"] *,
+[class*="deposit"] * {
+  border-color: rgba(87, 108, 70, 0.16);
+}
+
+/* 覆盖旧浅蓝卡片背景 */
+[class*="price-card"],
+[class*="finance-card"],
+[class*="payment-card"],
+[class*="amount-card"],
+[class*="quote-card"],
+[class*="deposit-card"] {
+  background: rgba(250, 247, 238, 0.88) !important;
+  border: 1px solid rgba(87, 108, 70, 0.14) !important;
+  color: #20261f !important;
+  box-shadow: 0 14px 34px rgba(53, 61, 43, 0.08) !important;
+}
+
+/* 输入框 focus 不再蓝色 */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: rgba(87, 108, 70, 0.45) !important;
+  box-shadow: 0 0 0 4px rgba(87, 108, 70, 0.08) !important;
+  outline: none !important;
+}
+
+/* 如果旧页面还有蓝色文字，压回橄榄绿/深色 */
+[style*="#2563eb"],
+[style*="#1d4ed8"],
+[style*="#3b82f6"] {
+  color: #36563a !important;
+}
+
+/* 旧浅蓝底强制压成奶油底 */
+[style*="#eff6ff"],
+[style*="#dbeafe"] {
+  background: rgba(250, 247, 238, 0.88) !important;
+  border-color: rgba(87, 108, 70, 0.16) !important;
+}
+
+.staff-plan-page .staff-final-quote-field:focus-within {
+  border-color: rgba(87, 108, 70, 0.45) !important;
+  box-shadow: 0 0 0 4px rgba(87, 108, 70, 0.08) !important;
+}
+
+.staff-plan-page .staff-final-quote-input:focus {
+  box-shadow: none !important;
+}
+
+.staff-avatar-profile-card {
+  grid-template-columns: 108px minmax(0, 1fr) !important;
+  column-gap: 26px !important;
+}
+
+.staff-avatar-profile-card .staff-avatar-profile-copy {
+  min-width: 0 !important;
+  padding-left: 4px !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.staff-avatar-profile-card .staff-avatar-profile-copy h2,
+.staff-avatar-profile-card .staff-avatar-profile-copy p,
+.staff-avatar-profile-card .staff-login-pill {
+  max-width: 100% !important;
+}
+
+@media (max-width: 420px) {
+  .staff-avatar-profile-card {
+    grid-template-columns: 92px minmax(0, 1fr) !important;
+    column-gap: 20px !important;
+  }
+
+  .staff-avatar-profile-card .staff-avatar-profile-copy {
+    padding-left: 2px !important;
   }
 }
