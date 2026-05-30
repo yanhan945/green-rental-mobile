@@ -859,21 +859,33 @@ function getPlanStats(plan) {
 
 function createEmptyPlan(order, planType = "租赁方案") {
   const maintenanceFields = getMaintenancePlanFields("标准养护");
+  const areaNote = String(order?.areaNote || "").trim();
+  const hasUsefulPrefillText = (value) => {
+    const text = String(value || "").trim();
+    return Boolean(text && !["暂无内容", "待确认"].includes(text));
+  };
 
   return {
     id: `plan-${order.id}-${Date.now()}`,
     planType,
-    leaseMonths: 12,
-    paymentMethod: "月付",
+    leaseMonths: Number(order?.leaseMonths || 12),
+    paymentMethod: order?.paymentMethod || "月付",
     needDeposit: true,
-    customFinalRent: "",
+    customFinalRent: order?.budget || "",
     includedMaintenance: "基础养护",
     retailNeedsMaintenance: false,
     retailMaintenanceNote: "",
     maintenanceFinalPrice: "",
     maintenanceInternalNote: "",
     ...maintenanceFields,
-    areas: [],
+    merchantDraft: Boolean(
+      areaNote ||
+      hasUsefulPrefillText(order?.budget) ||
+      hasUsefulPrefillText(order?.plannedPlantCount) ||
+      hasUsefulPrefillText(order?.areaSize)
+    ),
+    merchantDraftNote: order?.merchantNote || "",
+    areas: areaNote ? [{ id: `area-${order.id}`, name: areaNote, items: [] }] : [],
     createdAt: nowText(),
     updatedAt: nowText(),
     submittedAt: "",
@@ -945,6 +957,7 @@ function classifyOrderStatus(status) {
     normalized.includes("执行中") ||
     normalized.includes("施工中") ||
     normalized.includes("现场推进") ||
+    normalized.includes("方案已确认") ||
     normalized.includes("in_progress") ||
     normalized.includes("executing") ||
     normalized.includes("execut") ||
@@ -957,7 +970,6 @@ function classifyOrderStatus(status) {
     normalized.includes("配置") ||
     normalized.includes("做方案") ||
     normalized.includes("方案草稿") ||
-    normalized.includes("方案已确认") ||
     normalized.includes("待商户确认") ||
     normalized.includes("planning") ||
     normalized.includes("plan") ||
@@ -2198,25 +2210,26 @@ function App() {
       (order) => {
         const next = {
           ...order,
-          status: "方案已确认",
-          planStatus: "方案已确认",
+          status: "执行中",
+          planStatus: "执行中",
           merchantConfirmStatus: "已确认",
           merchantConfirmedAt: nowText(),
+          executionStatus: "待执行",
           plan: order.plan
             ? {
                 ...order.plan,
-                status: "方案已确认",
+                status: "执行中",
                 merchantConfirmedAt: nowText(),
               }
             : order.plan,
         };
 
-        return addTimeline(next, "商户确认方案");
+        return addTimeline(next, "商户确认方案，订单进入执行中");
       },
       "商户确认已同步"
     );
 
-    backToMerchantHome("方案已确认，已返回商户首页。员工端刷新后可以开始执行。");
+    backToMerchantHome("方案已确认，订单已进入执行中。员工端刷新后可直接处理执行任务。");
   }
 
   function merchantRequestRevision(orderId) {
@@ -2390,7 +2403,12 @@ function App() {
       maintenanceCycle: newOrderForm.maintenanceCycle || getMaintenancePackage(newOrderForm.maintenancePackage).cycle,
       maintenanceFrequency: newOrderForm.maintenanceFrequency || getMaintenancePackage(newOrderForm.maintenancePackage).frequency,
       maintenanceContent: newOrderForm.maintenanceContent || getMaintenancePackage(newOrderForm.maintenancePackage).content,
-      merchantDraft: true,
+      merchantDraft: Boolean(
+        newOrderForm.areaSize.trim() ||
+        newOrderForm.plannedPlantCount.trim() ||
+        newOrderForm.budget.trim() ||
+        newOrderForm.areaNote.trim()
+      ),
       merchantDraftNote: newOrderForm.merchantNote || "",
       areas: newOrderForm.areaNote.trim()
         ? [{ id: `area-${orderId}`, name: newOrderForm.areaNote.trim(), items: [] }]
@@ -2902,18 +2920,12 @@ ${rentalText}`;
             <button className="staff-ghost-action" onClick={() => openPlanForOrder(order)}>
               查看方案
             </button>
-            {order.status === "方案已确认" ? (
-              <button className="staff-primary-action" onClick={() => startExecution(order.id)}>
-                记录执行情况
-              </button>
-            ) : (
-              <button
-                className="staff-primary-action"
-                onClick={() => openCompleteUploadForOrder(order)}
-              >
-                上传现场照片
-              </button>
-            )}
+            <button
+              className="staff-primary-action"
+              onClick={() => openCompleteUploadForOrder(order)}
+            >
+              上传现场照片
+            </button>
           </>
         ) : (
           <>
@@ -3596,6 +3608,18 @@ ${rentalText}`;
     );
     const isRetailPlan = currentPlan?.planType === "零售方案";
     const isMaintenancePlan = currentPlan?.planType === "养护服务";
+    const hasUsefulPrefillText = (value) => {
+      const text = String(value || "").trim();
+      return Boolean(text && !["暂无内容", "待确认"].includes(text));
+    };
+    const hasMerchantPrefill = Boolean(
+      currentPlan?.merchantDraft ||
+      currentPlan?.merchantDraftNote ||
+      hasUsefulPrefillText(currentOrder?.budget) ||
+      hasUsefulPrefillText(currentOrder?.areaNote) ||
+      hasUsefulPrefillText(currentOrder?.plannedPlantCount) ||
+      hasUsefulPrefillText(currentOrder?.areaSize)
+    );
 
     const pageStyle = {
       minHeight: "100vh",
@@ -3705,6 +3729,10 @@ ${rentalText}`;
             <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "11px 8px" }} onClick={() => callPhone(currentOrder.phone)}>电话</button>
             <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "11px 8px" }} onClick={() => openRouteNavigation(currentOrder.address)}>导航</button>
             <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "11px 8px" }} onClick={() => copyText(currentOrder.address, "地址已复制")}>地址</button>
+          </div>
+          <div className="empty-card" style={{ marginTop: 12, textAlign: "left" }}>
+            <p>{hasMerchantPrefill ? "商户已预填方案信息" : "暂无预填方案"}</p>
+            <span>{hasMerchantPrefill ? "可根据现场情况微调区域、物料、数量和报价。" : "员工可根据现场情况创建方案。"}</span>
           </div>
         </section>
 
@@ -4119,21 +4147,60 @@ ${rentalText}`;
       overflow: "hidden",
       display: "flex",
       flexDirection: "column",
-      background: "#fff",
+      background: "linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(246, 239, 226, 0.94))",
       borderRadius: "18px 18px 0 0",
       paddingBottom: "env(safe-area-inset-bottom)",
     };
     const topStyle = {
       flexShrink: 0,
-      background: "#fff",
-      borderBottom: "1px solid #e7edf4",
-      padding: "10px 14px 8px",
+      background: "linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(250, 247, 238, 0.78))",
+      borderBottom: 0,
+      padding: "12px 14px 10px",
     };
     const searchWrapStyle = {
-      background: videoBlue,
-      borderRadius: 10,
-      padding: 8,
-      margin: "10px 0",
+      background: "rgba(250, 247, 238, 0.92)",
+      border: "1px solid rgba(87, 108, 70, 0.18)",
+      borderRadius: 16,
+      padding: "0 12px",
+      margin: "12px 0 10px",
+      boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.66)",
+    };
+    const selectorTitleStyle = {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: 12,
+      padding: "2px 2px 0",
+    };
+    const selectorCloseStyle = {
+      width: 36,
+      height: 36,
+      borderRadius: 999,
+      border: "1px solid rgba(87, 108, 70, 0.14)",
+      background: "rgba(255, 252, 246, 0.86)",
+      color: "#46583d",
+      fontSize: 21,
+      fontWeight: 800,
+      boxShadow: "0 8px 16px rgba(65, 55, 33, 0.08)",
+    };
+    const selectorSearchInputStyle = {
+      width: "100%",
+      height: 42,
+      border: 0,
+      borderRadius: 14,
+      background: "transparent",
+      padding: "0 2px",
+      color: "#20261f",
+      fontSize: 15,
+      outline: "none",
+    };
+    const selectorPrimaryTabsStyle = {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr",
+      gap: 6,
+      padding: 4,
+      borderRadius: 16,
+      background: "rgba(239, 242, 232, 0.66)",
     };
     const productMainStyle = {
       flex: 1,
@@ -4160,22 +4227,22 @@ ${rentalText}`;
         <section style={sheetStyle} onClick={(event) => event.stopPropagation()}>
           <div style={{ width: 48, height: 5, borderRadius: 99, background: "#d8e1ea", margin: "10px auto 2px", flexShrink: 0 }} />
           <div style={topStyle}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div style={selectorTitleStyle}>
               <div>
-                <p style={{ margin: 0, color: "#8a96a8", fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 900 }}>Item Selector</p>
-                <h2 style={{ margin: "4px 0 0", color: "#182536", fontSize: 22 }}>{currentArea?.name || "当前场景"}物料选择</h2>
+                <p style={{ margin: 0, color: "#9a907d", fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 900 }}>Item Selector</p>
+                <h2 style={{ margin: "4px 0 0", color: "#20261f", fontSize: 21, lineHeight: 1.18 }}>{currentArea?.name || "当前场景"}物料选择</h2>
               </div>
-              <button style={{ width: 38, height: 38, borderRadius: 10, border: 0, background: "#eef2f6", color: "#526274", fontSize: 24, fontWeight: 800 }} onClick={() => setShowProductSheet(false)}>×</button>
+              <button style={selectorCloseStyle} onClick={() => setShowProductSheet(false)}>×</button>
             </div>
             <div style={searchWrapStyle}>
-              <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="搜索物料名称 / 规格 / 场景" style={{ width: "100%", height: 42, border: 0, borderRadius: 8, background: "#fff", padding: "0 12px", fontSize: 15, outline: "none" }} />
+              <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="搜索物料名称 / 规格 / 场景" style={selectorSearchInputStyle} />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid #e7edf4" }}>
+            <div style={selectorPrimaryTabsStyle}>
               {['植物', '花盆', '资材'].map((name) => (
-                <button key={name} style={{ border: 0, background: "transparent", padding: "11px 0", color: name === '植物' ? videoBlue : "#526274", fontWeight: 900, borderBottom: name === '植物' ? `3px solid ${videoBlue}` : "3px solid transparent" }} onClick={() => name !== '植物' && alert(`当前版本暂不支持${name}库。`)}>{name}</button>
+                <button key={name} style={{ border: 0, borderRadius: 13, background: name === '植物' ? "rgba(255, 252, 246, 0.96)" : "transparent", padding: "10px 0", color: name === '植物' ? "#405a38" : "#6f7668", fontWeight: 900, boxShadow: name === '植物' ? "0 8px 16px rgba(65, 55, 33, 0.08)" : "none" }} onClick={() => name !== '植物' && alert(`当前版本暂不支持${name}库。`)}>{name}</button>
               ))}
             </div>
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 8 }}>
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 10 }}>
               {["全部商品", ...productCategories].map((category) => (
                 <button key={category} style={{ flex: "0 0 auto", border: 0, borderRadius: 8, padding: "8px 12px", background: activeCategory === category ? videoBlue : "#eef2f6", color: activeCategory === category ? "#fff" : "#526274", fontWeight: 900 }} onClick={() => { setActiveCategory(category); setActiveSubCategory(category === "全部商品" ? "全部规格" : "大型植物"); }}>{category}</button>
               ))}
