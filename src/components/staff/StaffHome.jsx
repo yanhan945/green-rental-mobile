@@ -7,16 +7,16 @@ export function StaffHome({
   setActiveStaffTab,
   autoSyncState,
   syncMessage,
+  classifyOrderStatus = (status) => status || "做方案",
 }) {
   const safeOrders = Array.isArray(orders) ? orders : [];
-  const currentTaskCount = safeOrders.filter((order) =>
-    ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "待商户归档"].includes(order.status)
-  ).length;
+  const countByGroup = (group) => safeOrders.filter((order) => classifyOrderStatus(order.status) === group).length;
+  const currentTaskCount = safeOrders.filter((order) => classifyOrderStatus(order.status) !== "已完成").length;
 
   const serviceFlowItems = [
     {
       label: "待接单",
-      value: safeOrders.filter((order) => order.status === "待接单").length,
+      value: countByGroup("待接单"),
       hint: "等待接收",
       Icon: GardenIcons.TodayTask,
       tone: "olive",
@@ -27,7 +27,7 @@ export function StaffHome({
     },
     {
       label: "做方案",
-      value: safeOrders.filter((order) => ["配置中", "待商户确认"].includes(order.status)).length,
+      value: countByGroup("做方案"),
       hint: "配置 / 确认",
       Icon: GardenIcons.ServiceRoute,
       tone: "sand",
@@ -38,7 +38,7 @@ export function StaffHome({
     },
     {
       label: "执行中",
-      value: safeOrders.filter((order) => ["方案已确认", "执行中"].includes(order.status)).length,
+      value: countByGroup("执行中"),
       hint: "现场推进",
       Icon: GardenIcons.Map,
       tone: "sage",
@@ -49,7 +49,7 @@ export function StaffHome({
     },
     {
       label: "归档 / 完成",
-      value: safeOrders.filter((order) => ["待商户归档", "已完成"].includes(order.status)).length,
+      value: countByGroup("已完成"),
       hint: "归档收尾",
       Icon: GardenIcons.Archive,
       tone: "clay",
