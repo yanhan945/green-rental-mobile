@@ -11023,3 +11023,24 @@ select:focus {
     left: 35px !important;
   }
 }
+
+/* Staff mobile scroll finish: keep only the main content tabbar clearance. */
+.staff-app-shell {
+  padding-bottom: 0 !important;
+}
+
+.staff-app-main {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.image-uploader-avatar-status {
+  margin: 8px 0 0 !important;
+  color: rgba(83, 95, 68, 0.78) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  line-height: 1.35 !important;
+}
+
+.image-uploader-avatar-status.error {
+  color: #9b4d42 !important;
+}
