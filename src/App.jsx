@@ -8,6 +8,7 @@ import "./App.css";
 
 const SUPABASE_URL = "https://kvdxgyymlfnnurdigtkj.supabase.co";
 const SUPABASE_KEY = "sb_publishable_FFoHUmn4RwaOkvx2XK7QHg__O7iWYdJ";
+const SUPABASE_ANON_KEY = SUPABASE_KEY;
 const ORDERS_API = `${SUPABASE_URL}/rest/v1/orders`;
 
 const STORAGE_KEY = "green-rental-mobile-v24";
@@ -886,10 +887,10 @@ async function createCompressedAvatarBlob(file) {
   }
 }
 
-async function uploadStaffAvatarToCloud(staffId, avatarBlob, accessToken = "") {
+async function uploadStaffAvatarToCloud(staffId, avatarBlob) {
   const path = createStaffAvatarStoragePath(staffId);
   const contentType = avatarBlob?.type || "image/jpeg";
-  const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${STAFF_AVATAR_BUCKET}/${encodeStoragePath(path)}`;
+  const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${STAFF_AVATAR_BUCKET}/${path}`;
 
   console.info("[staff-avatar] storage upload start", {
     bucket: STAFF_AVATAR_BUCKET,
@@ -901,24 +902,30 @@ async function uploadStaffAvatarToCloud(staffId, avatarBlob, accessToken = "") {
   const response = await fetch(uploadUrl, {
     method: "POST",
     headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${accessToken || SUPABASE_KEY}`,
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       "Content-Type": contentType,
-      "cache-control": "3600",
       "x-upsert": "true",
     },
     body: avatarBlob,
   });
 
   if (!response.ok) {
-    const error = await readCloudResponseError(response);
+    const errorText = await response.text().catch(() => "");
+    let errorDetail = errorText;
+    try {
+      errorDetail = errorText ? JSON.parse(errorText) : "";
+    } catch {
+      errorDetail = errorText;
+    }
+    console.error("[staff-avatar] storage upload failed detail", response.status, errorText);
     console.error("[staff-avatar] storage upload failed", {
       status: response.status,
       bucket: STAFF_AVATAR_BUCKET,
       path,
-      error,
+      error: errorDetail,
     });
-    throw createCloudError("头像上传失败", error);
+    throw createCloudError("头像上传失败", errorDetail || errorText || response.statusText);
   }
 
   const data = await response.json().catch(() => null);
@@ -2056,7 +2063,7 @@ function App() {
 
       let avatarUrl = "";
       try {
-        avatarUrl = await uploadStaffAvatarToCloud(staffId, avatarBlob, accessToken);
+        avatarUrl = await uploadStaffAvatarToCloud(staffId, avatarBlob);
       } catch (uploadError) {
         console.error("[staff-avatar] upload step failed", {
           error: uploadError,
