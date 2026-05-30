@@ -5,8 +5,6 @@ export function StaffHome({
   refreshOrdersFromCloud,
   setStaffAppTab,
   setActiveStaffTab,
-  autoSyncState,
-  syncMessage,
   classifyOrderStatus = (status) => status || "做方案",
 }) {
   const safeOrders = Array.isArray(orders) ? orders : [];
@@ -115,7 +113,7 @@ export function StaffHome({
             <p className="garden-kicker">交付节奏</p>
             <h2>交付节奏</h2>
           </div>
-          <span>{autoSyncState}</span>
+          <span>实时任务</span>
         </div>
 
         <div className="garden-live-progress-body">
@@ -132,7 +130,7 @@ export function StaffHome({
           </div>
         </div>
 
-        <p>{syncMessage}</p>
+        <p>按当前订单状态汇总，点击上方状态卡片进入对应任务列表。</p>
       </section>
     </>
   );
