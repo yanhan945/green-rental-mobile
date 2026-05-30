@@ -14,11 +14,15 @@ export function ImageUploader({
   value,
   values,
   onChange,
+  onFileSelect,
   max = 1,
   label = "上传图片",
   helper = "支持手机拍照或从相册选择。",
   avatar = false,
   avatarActionLabel = "更换头像",
+  loading = false,
+  statusText = "",
+  errorText = "",
 }) {
   const inputId = useId();
   const inputRef = useRef(null);
@@ -44,8 +48,14 @@ export function ImageUploader({
     event.target.value = "";
     if (!file) return;
 
+    if (typeof onFileSelect === "function") {
+      await onFileSelect(file, index);
+      return;
+    }
+
+    if (!file.type?.startsWith("image/")) return;
+
     const dataUrl = await readFileAsDataUrl(file);
-    // TODO: Replace local data URLs with cloud storage URLs when real account storage is connected.
     updateAt(index, dataUrl);
   };
 
@@ -63,6 +73,7 @@ export function ImageUploader({
                 className="image-uploader-input"
                 type="file"
                 accept="image/*"
+                disabled={loading}
                 onChange={(event) => handleFiles(event, index)}
               />
 
@@ -87,7 +98,7 @@ export function ImageUploader({
                     <div className="image-uploader-avatar-actions">
                       <label htmlFor={fieldId}>
                         <GardenIcons.Camera size={14} />
-                        <span>{avatarActionLabel}</span>
+                        <span>{loading ? "上传中…" : avatarActionLabel}</span>
                       </label>
                     </div>
                   )}
@@ -95,7 +106,7 @@ export function ImageUploader({
               ) : (
                 <label className="image-uploader-empty" htmlFor={fieldId}>
                   <GardenIcons.UploadPhoto size={avatar ? 24 : 22} />
-                  <strong>{avatar ? avatarActionLabel : label}</strong>
+                  <strong>{avatar && loading ? "上传中…" : avatar ? avatarActionLabel : label}</strong>
                   {!avatar && <span>{max > 1 ? `${index + 1} / ${max}` : helper}</span>}
                 </label>
               )}
@@ -104,6 +115,11 @@ export function ImageUploader({
         })}
       </div>
 
+      {avatar && (statusText || errorText) && (
+        <p className={`image-uploader-avatar-status ${errorText ? "error" : ""}`}>
+          {errorText || statusText}
+        </p>
+      )}
       {helper && !avatar && <p className="image-uploader-helper">{helper}</p>}
     </div>
   );
