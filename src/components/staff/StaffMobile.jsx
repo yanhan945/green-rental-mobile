@@ -79,10 +79,12 @@ export function StaffMobile({
         <span>FIELD CONSOLE</span>
       </div>
 
-      <button className="staff-mini-button merchant-switch" onClick={() => switchRole("merchant")}>
-        <GardenIcons.Dashboard size={16} />
-        <span>商户</span>
-      </button>
+      {canOpenMerchant && (
+        <button className="staff-mini-button merchant-switch" onClick={() => switchRole("merchant")}>
+          <GardenIcons.Dashboard size={16} />
+          <span>商户</span>
+        </button>
+      )}
     </header>
 
     <main className="staff-app-main">
