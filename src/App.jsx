@@ -848,7 +848,7 @@ async function loadStaffAvatarProfilesFromCloud() {
   }
 }
 
-async function saveStaffAvatarProfileToCloud(staff, avatarUrl, accessToken = "") {
+async function saveStaffAvatarProfileToCloud(staff, avatarUrl) {
   const payload = {
     staff_id: staff?.id || DEFAULT_STAFF_ID,
     name: staff?.name || "",
@@ -865,23 +865,29 @@ async function saveStaffAvatarProfileToCloud(staff, avatarUrl, accessToken = "")
   const response = await fetch(`${STAFF_PROFILE_API}?on_conflict=staff_id`, {
     method: "POST",
     headers: {
-      ...cloudHeaders({
-        Authorization: `Bearer ${accessToken || SUPABASE_KEY}`,
-        Prefer: "resolution=merge-duplicates,return=representation",
-      }),
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=representation",
     },
     body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
-    const error = await readCloudResponseError(response);
+    const errorText = await response.text().catch(() => "");
+    let errorDetail = errorText;
+    try {
+      errorDetail = errorText ? JSON.parse(errorText) : "";
+    } catch {
+      errorDetail = errorText;
+    }
+    console.error("[staff-avatar] staff_profiles upsert failed detail", response.status, errorText);
     console.error("[staff-avatar] staff_profiles upsert failed", {
       status: response.status,
-      error,
+      error: errorDetail,
       payload,
     });
-    throw createCloudError("staff_profiles 写入失败", error);
+    throw createCloudError("staff_profiles 写入失败", errorDetail || errorText || response.statusText);
   }
 
   const data = await response.json().catch(() => null);
