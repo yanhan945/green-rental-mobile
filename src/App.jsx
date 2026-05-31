@@ -505,18 +505,16 @@ function loadOrdersFromLocalStore() {
 }
 
 function persistOrdersToLocalStore(orders) {
-  try {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        source: "localStorage",
-        savedAt: nowText(),
-        orders,
-      })
-    );
-  } catch (error) {
-    console.error("保存本地订单失败：", error);
-  }
+  const lightweightOrders = Array.isArray(orders) ? orders.map(createLightweightOrderCache) : [];
+  safeSetLocalStorage(
+    STORAGE_KEY,
+    JSON.stringify({
+      source: "localStorage",
+      savedAt: nowText(),
+      orders: lightweightOrders,
+    }),
+    "订单"
+  );
 }
 
 function normalizeProducts(data) {
@@ -570,6 +568,54 @@ function isImageUrl(value) {
   return /^(https?:\/\/|data:image\/|blob:)/i.test(String(value || "").trim());
 }
 
+function isLocalOnlyImageData(value) {
+  return /^(data:image\/|blob:)/i.test(String(value || "").trim());
+}
+
+function isStorageQuotaError(error) {
+  return (
+    error?.name === "QuotaExceededError" ||
+    error?.code === 22 ||
+    String(error?.message || "").toLowerCase().includes("quota")
+  );
+}
+
+function safeSetLocalStorage(key, value, label) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    const message = `${label || key} 写入本地缓存失败，已跳过本地缓存，不影响云端同步。`;
+    if (isStorageQuotaError(error)) {
+      console.warn(message, error);
+      return false;
+    }
+    console.warn(message, error);
+    return false;
+  }
+}
+
+function stripLocalOnlyImage(value) {
+  return isLocalOnlyImageData(value) ? "" : value || "";
+}
+
+function createLightweightOrderCache(order) {
+  const completePhotos = order?.completePhotos || {};
+  return {
+    ...order,
+    photos: Array.isArray(order?.photos) ? order.photos.map(stripLocalOnlyImage) : [],
+    completePhotos: {
+      ...completePhotos,
+      scenePhotos: Array.isArray(completePhotos.scenePhotos)
+        ? completePhotos.scenePhotos.map(stripLocalOnlyImage)
+        : [],
+      plantPhotos: Array.isArray(completePhotos.plantPhotos)
+        ? completePhotos.plantPhotos.map(stripLocalOnlyImage)
+        : [],
+    },
+  };
+}
+
 function loadStaffDirectoryFromLocalStore() {
   try {
     const raw = localStorage.getItem(STAFF_DIRECTORY_STORAGE_KEY);
@@ -584,18 +630,22 @@ function loadStaffDirectoryFromLocalStore() {
 }
 
 function persistStaffDirectoryToLocalStore(staff) {
-  try {
-    localStorage.setItem(
-      STAFF_DIRECTORY_STORAGE_KEY,
-      JSON.stringify({
-        source: "localStorage",
-        savedAt: nowText(),
-        staff,
-      })
-    );
-  } catch (error) {
-    console.error("保存本地员工目录失败：", error);
-  }
+  const lightweightStaff = Array.isArray(staff)
+    ? staff.map((member) => ({
+        ...member,
+        avatar: stripLocalOnlyImage(member.avatar),
+        avatarUrl: stripLocalOnlyImage(member.avatarUrl),
+      }))
+    : [];
+  safeSetLocalStorage(
+    STAFF_DIRECTORY_STORAGE_KEY,
+    JSON.stringify({
+      source: "localStorage",
+      savedAt: nowText(),
+      staff: lightweightStaff,
+    }),
+    "员工目录"
+  );
 }
 
 function loadStaffAvatarCacheFromLocalStore() {
@@ -621,8 +671,10 @@ function loadStaffAvatarFromLocalStore(staffId = "") {
 
 function persistStaffAvatarToLocalStore(staffId, staffAvatar) {
   try {
+    if (isLocalOnlyImageData(staffAvatar)) return;
+
     if (!staffId) {
-      localStorage.setItem(STAFF_AVATAR_STORAGE_KEY, staffAvatar || "");
+      safeSetLocalStorage(STAFF_AVATAR_STORAGE_KEY, staffAvatar || "", "员工头像");
       return;
     }
 
@@ -632,10 +684,10 @@ function persistStaffAvatarToLocalStore(staffId, staffAvatar) {
     } else {
       delete cache[staffId];
     }
-    localStorage.setItem(STAFF_AVATAR_CACHE_STORAGE_KEY, JSON.stringify(cache));
-    localStorage.setItem(STAFF_AVATAR_STORAGE_KEY, staffAvatar || "");
+    safeSetLocalStorage(STAFF_AVATAR_CACHE_STORAGE_KEY, JSON.stringify(cache), "员工头像缓存");
+    safeSetLocalStorage(STAFF_AVATAR_STORAGE_KEY, staffAvatar || "", "员工头像");
   } catch (error) {
-    console.error("保存员工头像失败：", error);
+    console.warn("保存员工头像失败，已跳过本地缓存，不影响云端同步：", error);
   }
 }
 
@@ -1786,14 +1838,6 @@ function App() {
         return;
       }
 
-      const deterministicCloudUrl = getStaffAvatarPublicUrl(currentStaffId, Date.now());
-      if (await publicImageExists(deterministicCloudUrl)) {
-        if (cancelled) return;
-        setStaffAvatarError("");
-        setStaffAvatar(deterministicCloudUrl);
-        return;
-      }
-
       if (localProfileAvatar && !cancelled) {
         setStaffAvatar(localProfileAvatar);
       }
@@ -2075,15 +2119,6 @@ function App() {
       }
 
       const previewUrl = withAvatarCacheBust(avatarUrl);
-      setStaffAvatar(previewUrl);
-      setStaffDirectory((members) =>
-        members.map((member) =>
-          member.id === staffId
-            ? normalizeStaffMember({ ...member, avatar: avatarUrl, avatarUrl, updatedAt: nowText() })
-            : member
-        )
-      );
-
       try {
         await saveStaffAvatarProfileToCloud(
           {
@@ -2095,12 +2130,28 @@ function App() {
           avatarUrl,
           accessToken
         );
+        setStaffAvatar(previewUrl);
+        setStaffDirectory((members) =>
+          members.map((member) =>
+            member.id === staffId
+              ? normalizeStaffMember({ ...member, avatar: avatarUrl, avatarUrl, updatedAt: nowText() })
+              : member
+          )
+        );
         setStaffAvatarStatus("头像已同步到云端");
       } catch (profileError) {
         console.error("[staff-avatar] profile save step failed", {
           error: profileError,
           details: profileError?.details,
         });
+        setStaffAvatar(previewUrl);
+        setStaffDirectory((members) =>
+          members.map((member) =>
+            member.id === staffId
+              ? normalizeStaffMember({ ...member, avatar: avatarUrl, avatarUrl, updatedAt: nowText() })
+              : member
+          )
+        );
         setStaffAvatarError(`头像文件已上传，但员工资料未同步：${getCloudErrorText(profileError?.details || profileError, "staff_profiles 写入失败")}`);
         setStaffAvatarStatus("头像文件已上传，员工资料未同步");
       }
