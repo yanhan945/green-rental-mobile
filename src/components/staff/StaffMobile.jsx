@@ -12,6 +12,8 @@ const STAFF_BOTTOM_TABS = [
   { key: "我的", Icon: GardenIcons.StaffMine, label: "我的" },
 ];
 
+const STAFF_PLAN_TYPES = ["租赁方案", "养护服务", "售卖订单", "临时摆场"];
+
 export function StaffMobile({
   staffAppTab,
   setStaffAppTab,
@@ -355,14 +357,15 @@ export function StaffMobile({
             <div className="sheet-block">
               <p className="sheet-label">选择方案类型</p>
               <div className="plan-type-grid">
-                <button className={planType === "租赁方案" ? "selected" : ""} onClick={() => setPlanType("租赁方案")}>租赁方案</button>
-                <button className={planType === "零售方案" ? "selected" : ""} onClick={() => setPlanType("零售方案")}>零售方案</button>
-                <button className={planType === "养护服务" ? "selected" : ""} onClick={() => setPlanType("养护服务")}>养护服务</button>
+                {STAFF_PLAN_TYPES.map((type) => (
+                  <button key={type} className={planType === type ? "selected" : ""} onClick={() => setPlanType(type)}>{type}</button>
+                ))}
               </div>
               <div className="plan-type-note">
-                {planType === "租赁方案" && "适用于长期绿植租摆，默认包含基础养护。"}
-                {planType === "零售方案" && "适用于一次性售卖植物 / 花盆 / 资材，可记录售后养护意向。"}
-                {planType === "养护服务" && "适用于客户已有植物或追加上门维护，只选择套餐与最终报价。"}
+                {planType === "租赁方案" && "适用于长期绿植租摆，默认包含标准养护。"}
+                {planType === "养护服务" && "适用于客户已有植物或追加上门维护，按养护套餐执行。"}
+                {planType === "售卖订单" && "适用于一次性售卖植物 / 花盆 / 资材，按商品清单交付。"}
+                {planType === "临时摆场" && "适用于活动、展会、临时形象区等短期现场交付。"}
               </div>
             </div>
 
