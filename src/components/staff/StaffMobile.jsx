@@ -47,16 +47,19 @@ export function StaffMobile({
   currentStaff,
   currentOrganization,
   roleLabels = {},
+  staffEmployeeTypeLabels = {},
   accountStatusLabels = {},
   authUserEmail = "",
   canOpenMerchant = false,
   onSignOut,
   classifyOrderStatus = (status) => status || "做方案",
+  getOrderExecutionStage = () => "现场执行中",
+  canViewCustomerPhone = true,
 }) {
   const mainRef = useRef(null);
   const safeStaffOrders = Array.isArray(staffOrders) ? staffOrders : [];
   const safeFilteredStaffOrders = Array.isArray(filteredStaffOrders) ? filteredStaffOrders : [];
-  const executableOrders = safeStaffOrders.filter((order) => classifyOrderStatus(order.status) === "执行中");
+  const executableOrders = safeStaffOrders.filter((order) => classifyOrderStatus(order.status) === "执行中" && getOrderExecutionStage(order) === "现场执行中");
   const avatarNotice = staffAvatarError || staffAvatarStatus;
   const hasUsefulPrefillText = (value) => {
     const text = String(value || "").trim();
@@ -249,7 +252,7 @@ export function StaffMobile({
       <div>
         <span>角色</span>
         <strong>{roleLabels[currentStaff?.role] || currentStaff?.role || "-"}</strong>
-        <em>状态：{accountStatusLabels[currentStaff?.status] || currentStaff?.status || "-"}</em>
+        <em>{staffEmployeeTypeLabels[currentStaff?.employeeType || "internal"] || "公司员工"}｜状态：{accountStatusLabels[currentStaff?.status] || currentStaff?.status || "-"}</em>
       </div>
 
       <div>
@@ -369,7 +372,7 @@ export function StaffMobile({
               <div className="confirm-row"><span>方案类型</span><strong>{selectedOrder.plan?.planType || selectedOrder.planType || planType}</strong></div>
               <div className="confirm-row"><span>需求标签</span><strong>{Array.isArray(selectedOrder.tags) ? selectedOrder.tags.join(" / ") : "-"}</strong></div>
               <div className="confirm-row"><span>联系人</span><strong>{selectedOrder.contactName || "-"}</strong></div>
-              <div className="confirm-row"><span>电话</span><strong>{selectedOrder.phone || "-"}</strong></div>
+              <div className="confirm-row"><span>电话</span><strong>{canViewCustomerPhone ? (selectedOrder.phone || "-") : "由平台统一联系"}</strong></div>
               <div className="confirm-row"><span>项目面积</span><strong>{selectedOrder.areaSize}</strong></div>
               <div className="confirm-row"><span>植物数量</span><strong>{selectedOrder.plannedPlantCount || "待现场校正"}</strong></div>
               <div className="confirm-row"><span>进场时间</span><strong>{selectedOrder.expectedDate}</strong></div>
