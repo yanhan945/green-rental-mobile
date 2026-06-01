@@ -13,6 +13,7 @@ const ORDERS_API = `${SUPABASE_URL}/rest/v1/orders`;
 
 const STORAGE_KEY = "green-rental-mobile-v24";
 const PRODUCT_STORAGE_KEY = "green-rental-products-v29";
+const SERVICE_CONFIG_STORAGE_KEY = "green-rental-service-config-v1";
 const CUSTOMER_STORAGE_KEY = "green-rental-customers-v31";
 const STAFF_DIRECTORY_STORAGE_KEY = "green-rental-staff-directory-v1";
 const STAFF_AVATAR_STORAGE_KEY = "green-rental-staff-avatar-v1";
@@ -26,7 +27,7 @@ const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "待执行", 
 const MERCHANT_STATUS_TABS = ["全部", ...ORDER_STATUS];
 const STAFF_TABS = ["待接单", "做方案", "执行中", "已完成"];
 const STAFF_APP_TABS = ["首页", "任务", "上报", "我的"];
-const MERCHANT_TABS = ["工作台", "订单管理", "团队成员", "执行监测", "商品库", "客户库", "设置"];
+const MERCHANT_TABS = ["工作台", "订单管理", "团队成员", "执行监测", "商品与服务", "客户库", "设置"];
 const APP_PAGES = ["orders", "plan", "completeUpload", "archiveDetail", "serviceRecord"];
 
 function getAppShellMode() {
@@ -645,12 +646,55 @@ function normalizeProducts(data) {
   return list.map((product) => {
     const rawStatus = product?.status || "已上架";
     const status = rawStatus === "停用" || rawStatus === "未上架" ? "未上架" : "已上架";
+    const productType = ["rental", "sale"].includes(product?.productType)
+      ? product.productType
+      : product?.salePrice || product?.price ? "sale" : "rental";
+    const pricePerDay = Number(product?.pricePerDay || 0);
+    const monthlyRent = product?.monthlyRent || (pricePerDay ? String(Math.round(pricePerDay * 30)) : "");
+    const salePrice = product?.salePrice || product?.price || "";
     return {
       stock: "充足",
       imageUrl: "",
       note: "",
+      productType,
+      serviceType: productType === "sale" ? "售卖" : "租赁",
+      displayName: product?.displayName || product?.name || "",
+      displayDescription: product?.displayDescription || product?.description || "",
+      visibleInMiniProgram: Boolean(product?.visibleInMiniProgram),
+      sortOrder: Number(product?.sortOrder || 0),
+      monthlyRent,
+      deposit: product?.deposit || "",
+      salePrice,
+      price: productType === "sale" ? salePrice : monthlyRent,
+      priceUnit: productType === "sale" ? "元 / 件" : "元 / 月",
+      applicableScenes: product?.applicableScenes || product?.scene || "",
+      supportDeliveryInstall: Boolean(product?.supportDeliveryInstall),
       ...product,
+      productType,
       status,
+    };
+  });
+}
+
+function normalizeMaintenancePackages(data) {
+  const source = Array.isArray(data) && data.length ? data : MAINTENANCE_PACKAGES;
+  return MAINTENANCE_PACKAGES.map((defaults, index) => {
+    const saved = source.find((item) => item?.name === defaults.name) || {};
+    const priceText = saved.priceText || defaults.priceText || "";
+    return {
+      ...defaults,
+      ...saved,
+      name: defaults.name,
+      serviceType: "养护",
+      productType: "maintenance",
+      displayName: saved.displayName || defaults.name,
+      displayDescription: saved.displayDescription || saved.scene || defaults.scene,
+      price: saved.price || priceText,
+      priceUnit: saved.priceUnit || (defaults.name === "专项处理" ? "按项目报价" : "/盆/次"),
+      areaPriceText: saved.areaPriceText || defaults.areaPriceText || "",
+      visibleInMiniProgram: saved.visibleInMiniProgram ?? true,
+      sortOrder: Number(saved.sortOrder ?? index + 1),
+      recommended: Boolean(saved.recommended ?? defaults.recommended),
     };
   });
 }
@@ -681,6 +725,30 @@ function persistProductsToLocalStore(products) {
   } catch (error) {
     console.error("保存本地商品库失败：", error);
   }
+}
+
+function loadMaintenancePackagesFromLocalStore() {
+  try {
+    const raw = localStorage.getItem(SERVICE_CONFIG_STORAGE_KEY);
+    if (!raw) return normalizeMaintenancePackages(MAINTENANCE_PACKAGES);
+    const parsed = JSON.parse(raw);
+    return normalizeMaintenancePackages(parsed?.maintenancePackages);
+  } catch (error) {
+    console.error("读取服务配置失败：", error);
+    return normalizeMaintenancePackages(MAINTENANCE_PACKAGES);
+  }
+}
+
+function persistMaintenancePackagesToLocalStore(maintenancePackages) {
+  safeSetLocalStorage(
+    SERVICE_CONFIG_STORAGE_KEY,
+    JSON.stringify({
+      source: "localStorage",
+      savedAt: nowText(),
+      maintenancePackages: normalizeMaintenancePackages(maintenancePackages),
+    }),
+    "服务配置"
+  );
 }
 
 function getProductImage(product) {
@@ -1235,13 +1303,38 @@ async function fetchProductsFromCloud() {
   return Array.isArray(cloudProducts) ? normalizeProducts(cloudProducts) : [];
 }
 
-async function upsertProductsToCloud(products) {
+async function fetchProductLibraryFromCloud() {
+  const response = await fetch(`${ORDERS_API}?id=eq.${PRODUCT_CLOUD_ID}&select=id,data,updated_at`, {
+    method: "GET",
+    headers: cloudHeaders(),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`读取商品与服务配置失败：${response.status} ${text}`);
+  }
+
+  const rows = await response.json();
+  const data = rows?.[0]?.data || {};
+  return {
+    products: normalizeProducts(data.products),
+    maintenancePackages: normalizeMaintenancePackages(data.maintenancePackages),
+  };
+}
+
+async function upsertProductsToCloud(products, maintenancePackages = []) {
   const response = await fetch(`${ORDERS_API}?on_conflict=id`, {
     method: "POST",
     headers: cloudHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
     body: JSON.stringify({
       id: PRODUCT_CLOUD_ID,
-      data: { type: "product_library", products, updatedAt: nowText() },
+      data: {
+        type: "product_library",
+        products: normalizeProducts(products),
+        maintenancePackages: normalizeMaintenancePackages(maintenancePackages),
+        miniProgramSyncNote: "养护套餐适合小程序自助下单；租赁植物和售卖植物更适合提交意向、工作人员确认、商户端代下单后再进入客户小程序待付款。",
+        updatedAt: nowText(),
+      },
       updated_at: new Date().toISOString(),
     }),
   });
@@ -1597,12 +1690,14 @@ function App() {
   const [merchantTab, setMerchantTab] = useState("工作台");
   const [merchantStatusFilter, setMerchantStatusFilter] = useState("全部");
   const [merchantSearchText, setMerchantSearchText] = useState("");
+  const [serviceConfigTab, setServiceConfigTab] = useState("租赁植物");
   const [syncMessage, setSyncMessage] = useState("当前数据通道已连接。点击刷新即可读取最新订单。");
   const [syncState, setSyncState] = useState("待刷新");
   const [autoSyncState, setAutoSyncState] = useState("自动同步准备中");
 
   const [orders, setOrders] = useState(() => loadOrdersFromLocalStore());
   const [merchantProducts, setMerchantProducts] = useState(() => loadProductsFromLocalStore());
+  const [merchantMaintenancePackages, setMerchantMaintenancePackages] = useState(() => loadMaintenancePackagesFromLocalStore());
   const [merchantCustomers, setMerchantCustomers] = useState(() => loadCustomersFromLocalStore());
   const [staffDirectory, setStaffDirectory] = useState(() => loadStaffDirectoryFromLocalStore());
 
@@ -1697,16 +1792,27 @@ function App() {
     subCategory: "大型植物",
     description: "",
     pricePerDay: "",
+    monthlyRent: "",
+    deposit: "",
+    salePrice: "",
     imageUrl: "",
     image: "🪴",
     stock: "充足",
+    supportDeliveryInstall: true,
+    visibleInMiniProgram: false,
+    sortOrder: "",
+    applicableScenes: "",
     note: "",
     status: "已上架",
+    productType: "rental",
+    displayName: "",
+    displayDescription: "",
   });
 
   const safeOrders = Array.isArray(orders) ? orders : [];
   const safeStaffDirectory = Array.isArray(staffDirectory) ? staffDirectory : [];
   const safeMerchantProducts = Array.isArray(merchantProducts) ? merchantProducts : [];
+  const safeMerchantMaintenancePackages = normalizeMaintenancePackages(merchantMaintenancePackages);
   const safeMerchantCustomers = Array.isArray(merchantCustomers) ? merchantCustomers : [];
   const currentOrder = safeOrders.find((order) => String(order.id) === String(currentOrderId)) || null;
   const currentPlan =
@@ -1793,12 +1899,15 @@ function App() {
 
   const filteredProducts = safeMerchantProducts.filter((product) => {
     const keyword = searchText.trim();
+    const planProductType = normalizePlanType(currentPlan?.planType) === "售卖订单" ? "sale" : "rental";
     const visible = product.status !== "停用" && product.status !== "未上架";
+    const matchProductType = product.productType === planProductType || (!product.productType && planProductType === "rental");
     const matchCategory = activeCategory === "全部商品" || product.category === activeCategory;
     const matchSubCategory = activeSubCategory === "全部规格" || product.subCategory === activeSubCategory;
     const text = [product.name, product.category, product.subCategory, product.description, product.note].filter(Boolean).join(" ");
 
     if (!visible) return false;
+    if (!matchProductType) return false;
     if (keyword) return text.includes(keyword);
     return matchCategory && matchSubCategory;
   });
@@ -1842,6 +1951,10 @@ function App() {
   useEffect(() => {
     persistProductsToLocalStore(merchantProducts);
   }, [merchantProducts]);
+
+  useEffect(() => {
+    persistMaintenancePackagesToLocalStore(merchantMaintenancePackages);
+  }, [merchantMaintenancePackages]);
 
   useEffect(() => {
     persistCustomersToLocalStore(merchantCustomers);
@@ -2062,9 +2175,10 @@ function App() {
       });
   }
 
-  function syncProductsLibrary(nextProducts, message = "商品库已同步") {
+  function syncProductsLibrary(nextProducts, message = "商品与服务已同步", nextMaintenancePackages = merchantMaintenancePackages) {
     persistProductsToLocalStore(nextProducts);
-    upsertProductsToCloud(nextProducts)
+    persistMaintenancePackagesToLocalStore(nextMaintenancePackages);
+    upsertProductsToCloud(nextProducts, nextMaintenancePackages)
       .then(() => {
         setSyncState("已同步");
         setSyncMessage(`${message}：${nowText()}`);
@@ -2080,6 +2194,12 @@ function App() {
     const normalized = normalizeProducts(nextProducts);
     setMerchantProducts(normalized);
     window.setTimeout(() => syncProductsLibrary(normalized, message), 0);
+  }
+
+  function updateMaintenancePackages(nextPackages, message = "养护套餐已同步") {
+    const normalized = normalizeMaintenancePackages(nextPackages);
+    setMerchantMaintenancePackages(normalized);
+    window.setTimeout(() => syncProductsLibrary(merchantProducts, message, normalized), 0);
   }
 
   function updateOrder(orderId, updater, cloudMessage = "订单已同步") {
@@ -2371,13 +2491,16 @@ function App() {
     setSyncMessage("正在读取最新订单...");
 
     try {
-      const [cloudOrders, cloudProducts] = await Promise.all([
+      const [cloudOrders, cloudLibrary] = await Promise.all([
         fetchOrdersFromCloud(),
-        fetchProductsFromCloud().catch(() => []),
+        fetchProductLibraryFromCloud().catch(() => ({ products: [], maintenancePackages: [] })),
       ]);
 
-      if (cloudProducts.length > 0) {
-        setMerchantProducts(cloudProducts);
+      if (cloudLibrary.products.length > 0) {
+        setMerchantProducts(cloudLibrary.products);
+      }
+      if (cloudLibrary.maintenancePackages.length > 0) {
+        setMerchantMaintenancePackages(cloudLibrary.maintenancePackages);
       }
 
       if (cloudOrders.length === 0) {
@@ -2389,7 +2512,7 @@ function App() {
       replaceAllOrders(cloudOrders);
       setMerchantCustomers((prev) => mergeCustomers(prev, cloudOrders));
       setSyncState("已同步");
-      setSyncMessage(`已从云端刷新订单和商品库：${nowText()}`);
+      setSyncMessage(`已从云端刷新订单和商品与服务配置：${nowText()}`);
     } catch (error) {
       console.error(error);
       setSyncState("同步失败");
@@ -2399,9 +2522,9 @@ function App() {
 
   async function silentRefreshFromCloud(reason = "自动同步") {
     try {
-      const [cloudOrders, cloudProducts] = await Promise.all([
+      const [cloudOrders, cloudLibrary] = await Promise.all([
         fetchOrdersFromCloud().catch(() => []),
-        fetchProductsFromCloud().catch(() => []),
+        fetchProductLibraryFromCloud().catch(() => ({ products: [], maintenancePackages: [] })),
       ]);
 
       const viewState = activeViewRef.current;
@@ -2421,8 +2544,8 @@ function App() {
         }
       }
 
-      if (cloudProducts.length > 0) {
-        const normalizedProducts = normalizeProducts(cloudProducts);
+      if (cloudLibrary.products.length > 0) {
+        const normalizedProducts = normalizeProducts(cloudLibrary.products);
         if (!isReadingDetail) {
           setMerchantProducts((prevProducts) => {
             const prevText = JSON.stringify(prevProducts);
@@ -2430,6 +2553,15 @@ function App() {
             return prevText === nextText ? prevProducts : normalizedProducts;
           });
         }
+      }
+
+      if (cloudLibrary.maintenancePackages.length > 0 && !isReadingDetail) {
+        const normalizedPackages = normalizeMaintenancePackages(cloudLibrary.maintenancePackages);
+        setMerchantMaintenancePackages((prevPackages) => {
+          const prevText = JSON.stringify(prevPackages);
+          const nextText = JSON.stringify(normalizedPackages);
+          return prevText === nextText ? prevPackages : normalizedPackages;
+        });
       }
 
       setAutoSyncState(`${reason}${isReadingDetail ? "（详情浏览中未打断）" : ""}：${nowText().slice(11)}`);
@@ -3275,6 +3407,9 @@ function App() {
       alert("请先选择已启用且未暂停接单的员工。");
       return;
     }
+    const selectedMaintenancePackage =
+      safeMerchantMaintenancePackages.find((item) => item.name === (newOrderForm.maintenancePackage || "标准养护")) ||
+      getMaintenancePackage(newOrderForm.maintenancePackage || "标准养护");
     const planDraft = {
       ...createEmptyPlan({ id: orderId }, planType),
       leaseMonths: Number(newOrderForm.leaseMonths || 12),
@@ -3284,10 +3419,10 @@ function App() {
       retailNeedsMaintenance: Boolean(newOrderForm.retailNeedsMaintenance),
       maintenanceInternalNote: newOrderForm.maintenanceInternalNote || "",
       maintenanceFinalPrice: newOrderForm.maintenanceFinalPrice || "",
-      ...getMaintenancePlanFields(newOrderForm.maintenancePackage || "标准养护"),
-      maintenanceCycle: newOrderForm.maintenanceCycle || getMaintenancePackage(newOrderForm.maintenancePackage).cycle,
-      maintenanceFrequency: newOrderForm.maintenanceFrequency || getMaintenancePackage(newOrderForm.maintenancePackage).frequency,
-      maintenanceContent: newOrderForm.maintenanceContent || getMaintenancePackage(newOrderForm.maintenancePackage).content,
+      maintenancePackage: selectedMaintenancePackage.name,
+      maintenanceCycle: newOrderForm.maintenanceCycle || selectedMaintenancePackage.cycle,
+      maintenanceFrequency: newOrderForm.maintenanceFrequency || selectedMaintenancePackage.frequency,
+      maintenanceContent: newOrderForm.maintenanceContent || selectedMaintenancePackage.content,
       merchantDraft: Boolean(
         newOrderForm.areaSize.trim() ||
         newOrderForm.plannedPlantCount.trim() ||
@@ -3403,11 +3538,21 @@ function App() {
       subCategory: "大型植物",
       description: "",
       pricePerDay: "",
+      monthlyRent: "",
+      deposit: "",
+      salePrice: "",
       imageUrl: "",
       image: "🪴",
       stock: "充足",
+      supportDeliveryInstall: true,
+      visibleInMiniProgram: false,
+      sortOrder: "",
+      applicableScenes: "",
       note: "",
       status: "已上架",
+      productType: serviceConfigTab === "售卖植物" ? "sale" : "rental",
+      displayName: "",
+      displayDescription: "",
     });
   }
 
@@ -3418,23 +3563,40 @@ function App() {
       return;
     }
 
-    const price = Number(newProductForm.pricePerDay || 0);
+    const productType = serviceConfigTab === "售卖植物" ? "sale" : "rental";
+    const price = Number(productType === "sale" ? newProductForm.salePrice || 0 : newProductForm.monthlyRent || newProductForm.pricePerDay || 0);
     if (!price || Number.isNaN(price)) {
-      alert("请填写日租金");
+      alert(productType === "sale" ? "请填写售卖价" : "请填写月租价");
       return;
     }
+    const pricePerDay = productType === "rental"
+      ? Number(newProductForm.pricePerDay || Math.max(1, Math.round(price / 30)))
+      : Number(newProductForm.pricePerDay || price);
 
     const productPayload = {
       id: editingProductId || Date.now(),
       name,
       category: newProductForm.category || "室内绿植",
       subCategory: newProductForm.subCategory || "大型植物",
-      description: newProductForm.description.trim() || "暂无描述，可在商品库补充。",
-      pricePerDay: price,
+      description: newProductForm.description.trim() || "暂无描述，可在商品与服务中补充。",
+      displayName: newProductForm.displayName || name,
+      displayDescription: newProductForm.displayDescription || newProductForm.description.trim(),
+      productType,
+      serviceType: productType === "sale" ? "售卖" : "租赁",
+      pricePerDay,
+      monthlyRent: productType === "rental" ? String(price) : "",
+      deposit: productType === "rental" ? newProductForm.deposit || "" : "",
+      salePrice: productType === "sale" ? String(price) : "",
+      price: String(price),
+      priceUnit: productType === "sale" ? "元 / 件" : "元 / 月",
       // Image upload integration can replace preview data with a remote URL.
       imageUrl: newProductForm.imageUrl.trim(),
       image: newProductForm.image || "🪴",
       stock: newProductForm.stock || "充足",
+      supportDeliveryInstall: productType === "sale" ? Boolean(newProductForm.supportDeliveryInstall) : false,
+      visibleInMiniProgram: Boolean(newProductForm.visibleInMiniProgram),
+      sortOrder: Number(newProductForm.sortOrder || 0),
+      applicableScenes: newProductForm.applicableScenes || "",
       note: newProductForm.note.trim(),
       status: newProductForm.status || "已上架",
       createdAt: newProductForm.createdAt || nowText(),
@@ -3448,22 +3610,33 @@ function App() {
     updateProducts(nextProducts, editingProductId ? "商品修改已同步" : "新商品已同步");
     resetNewProductForm();
     setShowCreateProductSheet(false);
-    setMerchantTab("商品库");
+    setMerchantTab("商品与服务");
   }
 
   function openEditProduct(product) {
     setEditingProductId(product.id);
+    setServiceConfigTab(product.productType === "sale" ? "售卖植物" : "租赁植物");
     setNewProductForm({
       name: product.name || "",
       category: product.category || "室内绿植",
       subCategory: product.subCategory || "大型植物",
       description: product.description || "",
       pricePerDay: String(product.pricePerDay || ""),
+      monthlyRent: String(product.monthlyRent || ""),
+      deposit: String(product.deposit || ""),
+      salePrice: String(product.salePrice || product.price || ""),
       imageUrl: product.imageUrl || "",
       image: product.image || "🪴",
       stock: product.stock || "充足",
+      supportDeliveryInstall: Boolean(product.supportDeliveryInstall),
+      visibleInMiniProgram: Boolean(product.visibleInMiniProgram),
+      sortOrder: String(product.sortOrder || ""),
+      applicableScenes: product.applicableScenes || "",
       note: product.note || "",
       status: product.status || "已上架",
+      productType: product.productType || "rental",
+      displayName: product.displayName || product.name || "",
+      displayDescription: product.displayDescription || product.description || "",
       createdAt: product.createdAt || nowText(),
     });
     setShowCreateProductSheet(true);
@@ -4863,7 +5036,7 @@ ${rentalText}`;
             </div>
 
             <div className="maintenance-package-grid">
-              {MAINTENANCE_PACKAGES.map((pack) => {
+              {safeMerchantMaintenancePackages.map((pack) => {
                 const selected = currentPlan.maintenancePackage === pack.name;
                 return (
                   <button
@@ -4872,7 +5045,13 @@ ${rentalText}`;
                     onClick={() =>
                       updateOrderPlan(
                         currentOrder.id,
-                        (plan) => ({ ...plan, ...getMaintenancePlanFields(pack.name) }),
+                        (plan) => ({
+                          ...plan,
+                          maintenancePackage: pack.name,
+                          maintenanceCycle: pack.cycle,
+                          maintenanceFrequency: pack.frequency,
+                          maintenanceContent: pack.content,
+                        }),
                         "养护套餐已同步"
                       )
                     }
@@ -5633,7 +5812,7 @@ ${rentalText}`;
       { key: "订单管理", Icon: GardenIcons.Orders },
       { key: "团队成员", Icon: GardenIcons.Team },
       { key: "执行监测", Icon: GardenIcons.Monitor },
-      { key: "商品库", Icon: GardenIcons.Products },
+      { key: "商品与服务", Icon: GardenIcons.Products },
       { key: "客户库", Icon: GardenIcons.Customers },
       { key: "设置", Icon: GardenIcons.Settings },
     ];
@@ -5642,13 +5821,25 @@ ${rentalText}`;
     const activeStaffMembers = (Array.isArray(staffDirectory) ? staffDirectory : []).filter((member) => member.organizationId === currentMerchantUser?.organizationId);
     const assignableTeamMembers = activeStaffMembers.filter(canAssignStaff);
     const editingStaffMember = activeStaffMembers.find((member) => member.id === editingStaffId) || null;
+    const serviceProductType = serviceConfigTab === "售卖植物" ? "sale" : "rental";
+    const serviceConfigTabs = ["租赁植物", "售卖植物", "养护套餐"];
     
     const filteredMerchantProducts = (Array.isArray(merchantProducts) ? merchantProducts : []).filter((product) => {
       const keyword = productSearchText.trim();
+      const matchType = product.productType === serviceProductType || (!product.productType && serviceProductType === "rental");
       const matchCategory = productCategoryFilter === "全部" || product.category === productCategoryFilter;
-      const text = [product.name, product.category, product.subCategory, product.description, product.note, product.status].join(" ");
-      return matchCategory && (!keyword || text.includes(keyword));
+      const text = [product.name, product.category, product.subCategory, product.description, product.note, product.status, product.applicableScenes].join(" ");
+      return matchType && matchCategory && (!keyword || text.includes(keyword));
     });
+
+    const updateMaintenancePackageField = (packageName, field, value) => {
+      updateMaintenancePackages(
+        safeMerchantMaintenancePackages.map((item) =>
+          item.name === packageName ? { ...item, [field]: value, updatedAt: nowText() } : item
+        ),
+        "养护套餐已同步"
+      );
+    };
     
     const activeReviewOrder = merchantViewingOrder || selectedOrderDetail;
 
@@ -6241,95 +6432,224 @@ ${rentalText}`;
             </div>
           )}
 
-          {merchantTab === "商品库" && (
+          {merchantTab === "商品与服务" && (
             <div className="admin-card admin-data-panel">
               <div className="admin-section-head">
                 <div>
-                  <h2>商品库</h2>
-                  <p>维护绿植商品、价格、分类、图片和上下架状态。</p>
+                  <h2>商品与服务</h2>
+                  <p>分开维护租赁植物、售卖植物和标准养护套餐，为后续客户小程序同步准备数据。</p>
                 </div>
-                <button
-                  className="primary-button"
-                  onClick={() => {
-                    resetNewProductForm();
-                    setShowCreateProductSheet(true);
-                  }}
-                >
-                  + 新增商品
-                </button>
+                {serviceConfigTab !== "养护套餐" && (
+                  <button
+                    className="primary-button"
+                    onClick={() => {
+                      resetNewProductForm();
+                      setShowCreateProductSheet(true);
+                    }}
+                  >
+                    + 新增{serviceConfigTab === "售卖植物" ? "售卖植物" : "租赁植物"}
+                  </button>
+                )}
               </div>
 
-              <div className="admin-filter-row">
-                <input
-                  value={productSearchText}
-                  onChange={(e) => setProductSearchText(e.target.value)}
-                  placeholder="搜索商品名称、分类、描述、备注"
-                />
-                <select
-                  value={productCategoryFilter}
-                  onChange={(e) => setProductCategoryFilter(e.target.value)}
-                >
-                  <option value="全部">全部分类</option>
-                  {productCategories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
+              <div className="plan-type-grid" style={{ marginBottom: 16 }}>
+                {serviceConfigTabs.map((tab) => (
+                  <button
+                    key={tab}
+                    className={serviceConfigTab === tab ? "selected" : ""}
+                    onClick={() => setServiceConfigTab(tab)}
+                  >
+                    {tab}
+                  </button>
+                ))}
               </div>
 
-              {filteredMerchantProducts.length === 0 ? (
-                <div className="empty-card">
-                  <p>暂无商品，请先添加商品</p>
-                  <span>员工端选品时会读取这里的数据。</span>
-                </div>
-              ) : (
-                <div className="admin-table product-admin-table">
-                  <div className="admin-table-row admin-table-head">
-                    <span>商品</span>
-                    <span>分类</span>
-                    <span>日租金</span>
-                    <span>库存</span>
-                    <span>状态</span>
-                    <span>操作</span>
+              {serviceConfigTab !== "养护套餐" && (
+                <>
+                  <div className="admin-filter-row">
+                    <input
+                      value={productSearchText}
+                      onChange={(e) => setProductSearchText(e.target.value)}
+                      placeholder={`搜索${serviceConfigTab}名称、分类、描述、备注`}
+                    />
+                    <select
+                      value={productCategoryFilter}
+                      onChange={(e) => setProductCategoryFilter(e.target.value)}
+                    >
+                      <option value="全部">全部分类</option>
+                      {productCategories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
-                  {filteredMerchantProducts.map((product) => (
-                    <div className="admin-table-row" key={product.id}>
-                      <span className="admin-product-cell">
-                        <i>
-                          {isImageUrl(getProductImage(product)) ? (
-                            <img src={getProductImage(product)} alt={product.name} />
-                          ) : (
-                            getProductImage(product)
-                          )}
-                        </i>
-                        <span>
-                          <strong>{product.name}</strong>
-                          <em>{product.description || "暂无描述"}</em>
-                        </span>
-                      </span>
-                      <span>
-                        <strong>{product.category || "-"}</strong>
-                        <em>{product.subCategory || "-"}</em>
-                      </span>
-                      <span>¥{money(product.pricePerDay)} / 天</span>
-                      <span>{product.stock || "充足"}</span>
-                      <span>
-                        <b className={product.status === "已上架" ? "admin-status-chip" : "admin-status-chip muted"}>
-                          {product.status || "已上架"}
-                        </b>
-                      </span>
-                      <span className="admin-table-actions">
-                        <button className="ghost-button" onClick={() => openEditProduct(product)}>
-                          编辑
-                        </button>
-                        <button className="ghost-button" onClick={() => toggleProductStatus(product.id)}>
-                          {product.status === "已上架" ? "下架" : "上架"}
-                        </button>
-                      </span>
+                  <div className="empty-card" style={{ marginBottom: 14 }}>
+                    <p>{serviceConfigTab === "售卖植物" ? "售卖植物用于购买意向和商户端代下单" : "租赁植物用于租赁方案选品"}</p>
+                    <span>字段已预留小程序展示、排序、展示名称和展示说明；后续可同步到客户小程序。</span>
+                  </div>
+
+                  {filteredMerchantProducts.length === 0 ? (
+                    <div className="empty-card">
+                      <p>暂无{serviceConfigTab}，请先添加</p>
+                      <span>{serviceConfigTab === "售卖植物" ? "售卖订单会从售卖植物库选择商品。" : "租赁方案会从租赁植物库选择商品。"}</span>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="admin-table product-admin-table">
+                      <div className="admin-table-row admin-table-head">
+                        <span>植物</span>
+                        <span>分类 / 场景</span>
+                        <span>{serviceConfigTab === "售卖植物" ? "售卖价" : "月租价"}</span>
+                        <span>{serviceConfigTab === "售卖植物" ? "现货 / 配送" : "押金"}</span>
+                        <span>小程序展示</span>
+                        <span>操作</span>
+                      </div>
+
+                      {filteredMerchantProducts.map((product) => (
+                        <div className="admin-table-row" key={product.id}>
+                          <span className="admin-product-cell">
+                            <i>
+                              {isImageUrl(getProductImage(product)) ? (
+                                <img src={getProductImage(product)} alt={product.name} />
+                              ) : (
+                                getProductImage(product)
+                              )}
+                            </i>
+                            <span>
+                              <strong>{product.displayName || product.name}</strong>
+                              <em>{product.displayDescription || product.description || "暂无描述"}</em>
+                            </span>
+                          </span>
+                          <span>
+                            <strong>{product.category || "-"}</strong>
+                            <em>{product.applicableScenes || product.subCategory || "-"}</em>
+                          </span>
+                          <span>
+                            {serviceConfigTab === "售卖植物"
+                              ? `¥${money(product.salePrice || product.price || 0)}`
+                              : `¥${money(product.monthlyRent || product.price || product.pricePerDay || 0)} / 月`}
+                          </span>
+                          <span>
+                            {serviceConfigTab === "售卖植物" ? (
+                              <>
+                                <strong>{product.stock || "充足"}</strong>
+                                <em>{product.supportDeliveryInstall ? "支持配送 / 安装" : "仅到店或人工确认"}</em>
+                              </>
+                            ) : (
+                              <>
+                                <strong>{product.deposit ? `¥${product.deposit}` : "免押或面议"}</strong>
+                                <em>{product.status || "已上架"}</em>
+                              </>
+                            )}
+                          </span>
+                          <span>
+                            <b className={product.visibleInMiniProgram ? "admin-status-chip" : "admin-status-chip muted"}>
+                              {product.visibleInMiniProgram ? "展示" : "不展示"}
+                            </b>
+                          </span>
+                          <span className="admin-table-actions">
+                            <button className="ghost-button" onClick={() => openEditProduct(product)}>
+                              编辑
+                            </button>
+                            <button className="ghost-button" onClick={() => toggleProductStatus(product.id)}>
+                              {product.status === "已上架" ? "下架" : "上架"}
+                            </button>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {serviceConfigTab === "养护套餐" && (
+                <div>
+                  <div className="empty-card" style={{ marginBottom: 14 }}>
+                    <p>养护套餐适合后续客户小程序自助下单</p>
+                    <span>租赁植物和售卖植物更适合提交意向、工作人员确认、商户端代下单后进入客户小程序待付款。</span>
+                  </div>
+
+                  <div className="admin-table product-admin-table">
+                    <div className="admin-table-row admin-table-head">
+                      <span>套餐</span>
+                      <span>价格</span>
+                      <span>计价单位</span>
+                      <span>推荐</span>
+                      <span>小程序展示</span>
+                      <span>更多设置</span>
+                    </div>
+
+                    {safeMerchantMaintenancePackages.map((item) => (
+                      <div className="admin-table-row" key={item.name}>
+                        <span>
+                          <strong>{item.displayName || item.name}</strong>
+                          <em>{item.shortDescription || item.scene || item.displayDescription}</em>
+                        </span>
+                        <span>
+                          <input
+                            className="area-input"
+                            value={item.price || item.priceText || ""}
+                            onChange={(e) => updateMaintenancePackageField(item.name, "price", e.target.value)}
+                            placeholder={item.name === "专项处理" ? "按项目报价" : "例如：¥6-10"}
+                          />
+                        </span>
+                        <span>
+                          <input
+                            className="area-input"
+                            value={item.priceUnit || (item.name === "专项处理" ? "按项目报价" : "/ 盆 / 次")}
+                            onChange={(e) => updateMaintenancePackageField(item.name, "priceUnit", e.target.value)}
+                          />
+                        </span>
+                        <span>
+                          <label className="staff-toggle-row" style={{ justifyContent: "flex-start" }}>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(item.recommended)}
+                              onChange={(e) => updateMaintenancePackageField(item.name, "recommended", e.target.checked)}
+                            />
+                            <span>{item.name === "标准养护" ? "推荐 / 租赁默认包含" : "推荐"}</span>
+                          </label>
+                        </span>
+                        <span>
+                          <label className="staff-toggle-row" style={{ justifyContent: "flex-start" }}>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(item.visibleInMiniProgram)}
+                              onChange={(e) => updateMaintenancePackageField(item.name, "visibleInMiniProgram", e.target.checked)}
+                            />
+                            <span>{item.visibleInMiniProgram ? "展示" : "不展示"}</span>
+                          </label>
+                        </span>
+                        <span>
+                          <details>
+                            <summary className="ghost-button" style={{ display: "inline-flex", cursor: "pointer" }}>更多设置</summary>
+                            <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                              <input
+                                className="area-input"
+                                value={item.displayDescription || item.shortDescription || ""}
+                                onChange={(e) => updateMaintenancePackageField(item.name, "displayDescription", e.target.value)}
+                                placeholder="小程序展示说明"
+                              />
+                              <input
+                                className="area-input"
+                                value={item.areaPriceText || ""}
+                                onChange={(e) => updateMaintenancePackageField(item.name, "areaPriceText", e.target.value)}
+                                placeholder="面积参考价，例如：¥9-12 / ㎡ / 年"
+                              />
+                              <input
+                                className="area-input"
+                                value={item.sortOrder || ""}
+                                onChange={(e) => updateMaintenancePackageField(item.name, "sortOrder", Number(e.target.value || 0))}
+                                placeholder="展示排序"
+                                type="number"
+                              />
+                            </div>
+                          </details>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -6758,19 +7078,25 @@ ${rentalText}`;
     };
 
     const preview = getProductImage(newProductForm);
+    const editingProductType = serviceConfigTab === "售卖植物" ? "sale" : "rental";
+    const isSaleProduct = editingProductType === "sale";
+    const productTitle = isSaleProduct ? "售卖植物" : "租赁植物";
+    const previewPrice = isSaleProduct
+      ? (newProductForm.salePrice ? `¥${money(newProductForm.salePrice)}` : "-")
+      : (newProductForm.monthlyRent ? `¥${money(newProductForm.monthlyRent)} / 月` : "-");
 
     return (
       <div style={overlayStyle} onClick={() => setShowCreateProductSheet(false)}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
           <div className="section-title-row">
-            <div><p className="eyebrow">Product Editor · v3.8</p><h2>{editingProductId ? "编辑商品" : "新增商品"}</h2></div>
+            <div><p className="eyebrow">Product & Service</p><h2>{editingProductId ? `编辑${productTitle}` : `新增${productTitle}`}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}>×</button>
           </div>
 
           <div style={gridStyle}>
             <section className="plan-summary-card" style={{ margin: 0 }}>
               <div className="sheet-block">
-                <p className="sheet-label">商品名称</p>
+                <p className="sheet-label">{productTitle}名称</p>
                 <input className="area-input" value={newProductForm.name} onChange={(e) => setNewProductForm((form) => ({ ...form, name: e.target.value }))} placeholder="例如：天堂鸟 / 发财树 / 前台组合" />
               </div>
 
@@ -6781,17 +7107,41 @@ ${rentalText}`;
                 </select>
               </div>
 
-              <div className="sheet-block">
-                <p className="sheet-label">子分类</p>
-                <select className="area-input" value={newProductForm.subCategory} onChange={(e) => setNewProductForm((form) => ({ ...form, subCategory: e.target.value }))}>
-                  {subCategories.map((subCategory) => <option key={subCategory} value={subCategory}>{subCategory}</option>)}
-                </select>
-              </div>
+              {isSaleProduct ? (
+                <>
+                  <div className="sheet-block">
+                    <p className="sheet-label">售卖价</p>
+                    <input className="area-input" type="number" value={newProductForm.salePrice} onChange={(e) => setNewProductForm((form) => ({ ...form, salePrice: e.target.value }))} placeholder="例如：188" />
+                  </div>
 
-              <div className="sheet-block">
-                <p className="sheet-label">日租金</p>
-                <input className="area-input" type="number" value={newProductForm.pricePerDay} onChange={(e) => setNewProductForm((form) => ({ ...form, pricePerDay: e.target.value }))} placeholder="例如：3.2" />
-              </div>
+                  <div className="sheet-block">
+                    <p className="sheet-label">库存 / 现货状态</p>
+                    <input className="area-input" value={newProductForm.stock} onChange={(e) => setNewProductForm((form) => ({ ...form, stock: e.target.value }))} placeholder="例如：现货充足 / 需预订" />
+                  </div>
+
+                  <label className="staff-toggle-row">
+                    <input type="checkbox" checked={Boolean(newProductForm.supportDeliveryInstall)} onChange={(e) => setNewProductForm((form) => ({ ...form, supportDeliveryInstall: e.target.checked }))} />
+                    <span>支持配送 / 安装</span>
+                  </label>
+                </>
+              ) : (
+                <>
+                  <div className="sheet-block">
+                    <p className="sheet-label">月租价</p>
+                    <input className="area-input" type="number" value={newProductForm.monthlyRent} onChange={(e) => setNewProductForm((form) => ({ ...form, monthlyRent: e.target.value }))} placeholder="例如：36" />
+                  </div>
+
+                  <div className="sheet-block">
+                    <p className="sheet-label">押金</p>
+                    <input className="area-input" type="number" value={newProductForm.deposit} onChange={(e) => setNewProductForm((form) => ({ ...form, deposit: e.target.value }))} placeholder="例如：100" />
+                  </div>
+
+                  <div className="sheet-block">
+                    <p className="sheet-label">适用场景</p>
+                    <input className="area-input" value={newProductForm.applicableScenes} onChange={(e) => setNewProductForm((form) => ({ ...form, applicableScenes: e.target.value }))} placeholder="例如：办公室、前台、会议室" />
+                  </div>
+                </>
+              )}
             </section>
 
             <section className="plan-summary-card" style={{ margin: 0 }}>
@@ -6811,16 +7161,33 @@ ${rentalText}`;
               </div>
 
               <div className="sheet-block">
-                <p className="sheet-label">描述</p>
-                <input className="area-input" value={newProductForm.description} onChange={(e) => setNewProductForm((form) => ({ ...form, description: e.target.value }))} placeholder="适合什么场景、寓意、养护难度" />
+                <p className="sheet-label">展示名称</p>
+                <input className="area-input" value={newProductForm.displayName || ""} onChange={(e) => setNewProductForm((form) => ({ ...form, displayName: e.target.value }))} placeholder="小程序或客户侧展示名称，可留空" />
               </div>
 
-              <div className="empty-card">
-                <p>照片上传已启用本地预览</p>
-                <span>图片会在保存前显示预览，便于确认商品展示效果。</span>
+              <div className="sheet-block">
+                <p className="sheet-label">展示说明</p>
+                <input className="area-input" value={newProductForm.displayDescription || newProductForm.description} onChange={(e) => setNewProductForm((form) => ({ ...form, displayDescription: e.target.value, description: e.target.value }))} placeholder="适合什么场景、寓意、养护难度" />
               </div>
+
+              <div className="sheet-block">
+                <p className="sheet-label">排序</p>
+                <input className="area-input" type="number" value={newProductForm.sortOrder} onChange={(e) => setNewProductForm((form) => ({ ...form, sortOrder: e.target.value }))} placeholder="例如：10" />
+              </div>
+
+              <label className="staff-toggle-row">
+                <input type="checkbox" checked={Boolean(newProductForm.visibleInMiniProgram)} onChange={(e) => setNewProductForm((form) => ({ ...form, visibleInMiniProgram: e.target.checked }))} />
+                <span>上架到客户小程序展示</span>
+              </label>
             </section>
           </div>
+
+          <section className="plan-summary-card" style={{ marginTop: 16 }}>
+            <div className="sheet-block">
+              <p className="sheet-label">备注</p>
+              <input className="area-input" value={newProductForm.note} onChange={(e) => setNewProductForm((form) => ({ ...form, note: e.target.value }))} placeholder="内部备注，不直接展示给客户" />
+            </div>
+          </section>
 
           <section className="plan-summary-card" style={{ marginTop: 16 }}>
             <div className="section-title-row">
@@ -6831,10 +7198,10 @@ ${rentalText}`;
                 {isImageUrl(preview) ? <img src={preview} alt={newProductForm.name || "商品预览"} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 16 }} /> : preview}
               </div>
               <div className="product-info">
-                <h3>{newProductForm.name || "新商品名称"}</h3>
-                <p>{newProductForm.category}｜{newProductForm.subCategory}</p>
-                <p>{newProductForm.description || "商品描述会显示在这里"}</p>
-                <strong>{newProductForm.pricePerDay ? `¥${money(newProductForm.pricePerDay)}/天` : "-"}</strong>
+                <h3>{newProductForm.displayName || newProductForm.name || `新${productTitle}名称`}</h3>
+                <p>{newProductForm.category}｜{isSaleProduct ? (newProductForm.stock || "库存状态") : (newProductForm.applicableScenes || "适用场景")}</p>
+                <p>{newProductForm.displayDescription || newProductForm.description || "展示说明会显示在这里"}</p>
+                <strong>{previewPrice}</strong>
               </div>
             </article>
           </section>
@@ -6857,7 +7224,7 @@ ${rentalText}`;
             <button
               style={{ minWidth: 180, border: 0, borderRadius: 18, padding: "14px 24px", background: "#405a38", color: "#fff", fontWeight: 900, cursor: "pointer", boxShadow: "0 14px 28px rgba(33, 118, 66, 0.22)" }}
               onClick={createMerchantProduct}
-            >{editingProductId ? "保存修改" : "保存商品"}</button>
+            >{editingProductId ? "保存修改" : `保存${productTitle}`}</button>
           </div>
         </section>
       </div>
@@ -6868,8 +7235,11 @@ ${rentalText}`;
     const createOrderTagsText = String(newOrderForm?.tagsText || "");
     const createOrderSelectedTags = createOrderTagsText.split(",").map((item) => item.trim()).filter(Boolean);
     const createOrderSourceOptions = Array.isArray(ORDER_SOURCES) ? ORDER_SOURCES : [];
-    const createOrderMaintenancePackages = Array.isArray(MAINTENANCE_PACKAGES) ? MAINTENANCE_PACKAGES : [];
+    const createOrderMaintenancePackages = safeMerchantMaintenancePackages;
     const createOrderAssignableStaff = Array.isArray(assignableStaffMembers) ? assignableStaffMembers : [];
+    const resolveCreateOrderMaintenancePackage = (name) =>
+      createOrderMaintenancePackages.find((item) => item.name === name) ||
+      getMaintenancePackage(name || "标准养护");
 
     if (activeRole === "merchant") {
       const overlayStyle = {
@@ -7022,7 +7392,7 @@ ${rentalText}`;
               )}
               {newOrderForm.serviceType === "养护" && (
                 <div className="merchant-plan-draft-grid">
-                  <div className="sheet-block"><p className="sheet-label">套餐</p><select className="area-input" value={newOrderForm.maintenancePackage} onChange={(e) => { const pack = getMaintenancePackage(e.target.value); setNewOrderForm((form) => ({ ...form, maintenancePackage: pack.name, maintenanceCycle: pack.cycle, maintenanceFrequency: pack.frequency, maintenanceContent: pack.content })); }}>{createOrderMaintenancePackages.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select></div>
+                  <div className="sheet-block"><p className="sheet-label">套餐</p><select className="area-input" value={newOrderForm.maintenancePackage} onChange={(e) => { const pack = resolveCreateOrderMaintenancePackage(e.target.value); setNewOrderForm((form) => ({ ...form, maintenancePackage: pack.name, maintenanceCycle: pack.cycle, maintenanceFrequency: pack.frequency, maintenanceContent: pack.content })); }}>{createOrderMaintenancePackages.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select></div>
                   <div className="sheet-block"><p className="sheet-label">周期</p><input className="area-input" value={newOrderForm.maintenanceCycle} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceCycle: e.target.value }))} /></div>
                   <div className="sheet-block"><p className="sheet-label">频次</p><input className="area-input" value={newOrderForm.maintenanceFrequency} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceFrequency: e.target.value }))} /></div>
                   <div className="sheet-block"><p className="sheet-label">最终报价</p><input className="area-input" type="number" value={newOrderForm.maintenanceFinalPrice} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceFinalPrice: e.target.value }))} /></div>
@@ -7284,7 +7654,7 @@ ${rentalText}`;
           {newOrderForm.serviceType === "养护" && (
             <div className="sheet-block" style={compactBlockStyle}>
               <p className="sheet-label">养护套餐</p>
-              <select className={inputClass} value={newOrderForm.maintenancePackage} onChange={(e) => { const pack = getMaintenancePackage(e.target.value); setNewOrderForm((form) => ({ ...form, maintenancePackage: pack.name, maintenanceCycle: pack.cycle, maintenanceFrequency: pack.frequency, maintenanceContent: pack.content })); }}>
+              <select className={inputClass} value={newOrderForm.maintenancePackage} onChange={(e) => { const pack = resolveCreateOrderMaintenancePackage(e.target.value); setNewOrderForm((form) => ({ ...form, maintenancePackage: pack.name, maintenanceCycle: pack.cycle, maintenanceFrequency: pack.frequency, maintenanceContent: pack.content })); }}>
                 {createOrderMaintenancePackages.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
               </select>
               <input className={inputClass} inputMode="numeric" {...inputFocusProps} value={newOrderForm.maintenanceFinalPrice} onChange={(e) => setNewOrderForm((form) => ({ ...form, maintenanceFinalPrice: e.target.value }))} placeholder="最终报价" />
