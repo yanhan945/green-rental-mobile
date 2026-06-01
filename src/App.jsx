@@ -22,7 +22,7 @@ const STAFF_AVATAR_BUCKET = "staff-avatars";
 const STAFF_PROFILE_API = `${SUPABASE_URL}/rest/v1/staff_profiles`;
 const PRODUCT_CLOUD_ID = 999999001;
 
-const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "方案已确认", "执行中", "待商户归档", "已完成"];
+const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "待执行", "执行中", "待商户归档", "已完成"];
 const MERCHANT_STATUS_TABS = ["全部", ...ORDER_STATUS];
 const STAFF_TABS = ["待接单", "做方案", "执行中", "已完成"];
 const STAFF_APP_TABS = ["首页", "任务", "上报", "我的"];
@@ -48,10 +48,14 @@ function isLocalDevHost() {
 }
 
 const ORDER_SOURCES = ["商户派单", "客户预约", "电话登记", "线下登记"];
-const DELIVERY_STATUS = ["未出发", "前往中", "已到达"];
-const EXECUTION_STATUS = ["待联系", "已联系", "已出发", "已到达", "已完成服务"];
+const DELIVERY_STATUS = ["待执行", "前往中", "已到达", "已完成"];
+const EXECUTION_STATUS = ["待执行", "前往中", "已到达", "现场执行中", "已完成"];
 const CUSTOMER_CONFIRM_STATUS = ["待确认", "已确认", "有异议"];
 const PLAN_LINK_STATUS = ["未生成", "已复制", "已发送"];
+const STAFF_EMPLOYEE_TYPE_LABELS = {
+  internal: "公司员工",
+  partner: "外部执行方",
+};
 
 const organizations = [
   {
@@ -183,8 +187,8 @@ const initialOrders = [
     contactName: "王经理",
     phone: "13800001111",
     status: "待接单",
-    deliveryStatus: "未出发",
-    executionStatus: "待联系",
+    deliveryStatus: "待执行",
+    executionStatus: "待执行",
     customerConfirmStatus: "待确认",
     merchantConfirmStatus: "未提交",
     planLinkStatus: "未生成",
@@ -213,8 +217,8 @@ const initialOrders = [
     contactName: "李总",
     phone: "13900002222",
     status: "待接单",
-    deliveryStatus: "未出发",
-    executionStatus: "待联系",
+    deliveryStatus: "待执行",
+    executionStatus: "待执行",
     customerConfirmStatus: "待确认",
     merchantConfirmStatus: "未提交",
     planLinkStatus: "未生成",
@@ -304,6 +308,7 @@ class AppErrorBoundary extends React.Component {
 
 function normalizeStaffMember(member = {}) {
   const avatarUrl = member.avatarUrl || member.avatar_url || member.avatar || "";
+  const employeeType = ["internal", "partner"].includes(member.employeeType) ? member.employeeType : "internal";
   return {
     id: member.id || `staff-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     staffNo: String(member.staffNo || "").trim() || "YG001",
@@ -311,6 +316,7 @@ function normalizeStaffMember(member = {}) {
     email: member.email || "",
     phone: member.phone || "",
     role: ["staff", "manager", "admin"].includes(member.role) ? member.role : "staff",
+    employeeType,
     status: ["invited", "active", "paused", "disabled"].includes(member.status) ? member.status : "active",
     orderPermission: ["public", "assigned", "paused"].includes(member.orderPermission) ? member.orderPermission : "public",
     organizationId: member.organizationId || organizations[0]?.id || "org-001",
@@ -322,6 +328,23 @@ function normalizeStaffMember(member = {}) {
     updatedAt: member.updatedAt || "",
     lastLoginAt: member.lastLoginAt || "",
   };
+}
+
+function getStaffEmployeeType(member = {}) {
+  return ["internal", "partner"].includes(member?.employeeType) ? member.employeeType : "internal";
+}
+
+function canStaffViewCustomerPhone(member = {}) {
+  const role = member?.role || "staff";
+  if (["manager", "admin", "owner"].includes(role)) return true;
+  return getStaffEmployeeType(member) === "internal";
+}
+
+function shouldHideCustomerPhoneForStaff(member = {}, order = {}) {
+  const role = member?.role || "staff";
+  if (["manager", "admin", "owner"].includes(role)) return false;
+  if (!canStaffViewCustomerPhone(member)) return true;
+  return Boolean(order?.assignedStaffType && order.assignedStaffType !== "internal");
 }
 
 function getStaffAvatar(member = {}) {
@@ -372,6 +395,7 @@ function createStaffForm(defaultStaffNo = "YG001") {
     email: "",
     staffNo: defaultStaffNo,
     role: "staff",
+    employeeType: "internal",
     area: "杭州 / 滨江",
     orderPermission: "public",
     status: "invited",
@@ -428,10 +452,57 @@ function cloudHeaders(extra = {}) {
   };
 }
 
+function normalizeDeliveryStatus(order = {}) {
+  const raw = order.deliveryStatus || "";
+  if (["待执行", "前往中", "已到达", "已完成"].includes(raw)) return raw;
+  if (raw === "未出发") return "待执行";
+  if (raw === "已出发") return "前往中";
+  if (raw === "已完成服务") return "已完成";
+  if (["待商户归档", "已完成"].includes(order.status)) return "已完成";
+  if (order.status === "待执行" || order.status === "方案已确认") return "待执行";
+  return raw || "待执行";
+}
+
+function normalizeExecutionStatus(order = {}) {
+  const raw = order.executionStatus || "";
+  if (["待执行", "前往中", "已到达", "现场执行中", "已完成"].includes(raw)) return raw;
+  if (raw === "已出发") return "前往中";
+  if (raw === "已到达") return "已到达";
+  if (raw === "已完成服务") return "已完成";
+  if (["待商户归档", "已完成"].includes(order.status)) return "已完成";
+  if (order.status === "执行中") return "现场执行中";
+  if (order.status === "待执行" || order.status === "方案已确认") return "待执行";
+  return raw || "待执行";
+}
+
+function getOrderExecutionStage(order = {}) {
+  return normalizeExecutionStatus(order);
+}
+
+function getExecutionDisplayText(order = {}) {
+  const stage = getOrderExecutionStage(order);
+  if (stage === "待执行") return "待执行 / 待出发";
+  if (stage === "前往中") return "前往中 / 员工已出发";
+  if (stage === "已到达") return "已到达 / 员工已到达现场";
+  if (stage === "现场执行中") return "现场执行中";
+  if (stage === "已完成") return "已完成";
+  return stage || "待执行";
+}
+
+function getMerchantExecutionProgressText(order = {}) {
+  const stage = getOrderExecutionStage(order);
+  if (stage === "前往中") return "员工已出发";
+  if (stage === "已到达" || stage === "现场执行中") return "员工已到达现场";
+  if (stage === "已完成") return "服务已完成";
+  return "待执行";
+}
+
 function ensureOrderDefaults(order = {}) {
   const assignedStaff = getStaffMemberById(order.assignedStaffId) || getDefaultAssignedStaff();
   const hasAssignedStaffId = Object.prototype.hasOwnProperty.call(order, "assignedStaffId");
   const isPublicAssignedOrder = hasAssignedStaffId && !String(order.assignedStaffId || "").trim();
+  const deliveryStatus = normalizeDeliveryStatus(order);
+  const executionStatus = normalizeExecutionStatus(order);
   return {
     ...order,
     id: order.id || Date.now(),
@@ -441,20 +512,21 @@ function ensureOrderDefaults(order = {}) {
     address: order.address || "",
     description: order.description || "",
     status: order.status || "待接单",
-    deliveryStatus: "未出发",
-    executionStatus: "待联系",
-    customerConfirmStatus: "待确认",
-    merchantConfirmStatus: "未提交",
-    planLinkStatus: "未生成",
-    staffLocation: null,
-    distanceText: "待定位",
-    etaText: "待定位",
+    deliveryStatus,
+    executionStatus,
+    customerConfirmStatus: order.customerConfirmStatus || "待确认",
+    merchantConfirmStatus: order.merchantConfirmStatus || "未提交",
+    planLinkStatus: order.planLinkStatus || "未生成",
+    staffLocation: order.staffLocation || null,
+    distanceText: order.distanceText || "待定位",
+    etaText: order.etaText || "待定位",
     contactName: order.contactName || "待确认",
     phone: order.phone || "",
     source: order.source || "商户派单",
     assignedStaffId: hasAssignedStaffId ? order.assignedStaffId || "" : assignedStaff?.id || "",
     assignedStaffName: order.assignedStaffName || (isPublicAssignedOrder ? "所有员工（公共任务）" : assignedStaff?.name || ""),
     assignedStaffEmail: order.assignedStaffEmail || (isPublicAssignedOrder ? "" : assignedStaff?.email || ""),
+    assignedStaffType: order.assignedStaffType || (isPublicAssignedOrder ? "" : getStaffEmployeeType(assignedStaff)),
     communicationQrUrl: order.communicationQrUrl || "",
     serviceType: order.serviceType || "租赁",
     planType: order.planType || order.plan?.planType || "租赁方案",
@@ -475,6 +547,10 @@ function ensureOrderDefaults(order = {}) {
     photos: Array.isArray(order.photos) ? order.photos : [],
     timeline: Array.isArray(order.timeline) ? order.timeline : [],
     serviceRecords: Array.isArray(order.serviceRecords) ? order.serviceRecords : [],
+    startedAt: order.startedAt || "",
+    departedAt: order.departedAt || "",
+    arrivedAt: order.arrivedAt || "",
+    completedAt: order.completedAt || "",
     completePhotos: order.completePhotos && typeof order.completePhotos === "object"
       ? {
           scenePhotos: Array.isArray(order.completePhotos.scenePhotos) ? order.completePhotos.scenePhotos : [],
@@ -1390,6 +1466,7 @@ function classifyOrderStatus(status) {
 
   if (
     normalized.includes("执行中") ||
+    normalized.includes("待执行") ||
     normalized.includes("施工中") ||
     normalized.includes("现场推进") ||
     normalized.includes("方案已确认") ||
@@ -1640,13 +1717,13 @@ function App() {
 
   const submittedOrders = useMemo(() => {
     return safeOrders.filter((order) =>
-      ["待商户确认", "方案已确认", "执行中", "待商户归档", "已完成"].includes(order.status)
+      ["待商户确认", "方案已确认", "待执行", "执行中", "待商户归档", "已完成"].includes(order.status)
     );
   }, [safeOrders]);
 
   const monitoredOrders = useMemo(() => {
     return safeOrders.filter((order) =>
-      ["方案已确认", "执行中", "待商户归档"].includes(order.status)
+      ["方案已确认", "待执行", "执行中", "待商户归档"].includes(order.status)
     );
   }, [safeOrders]);
 
@@ -1977,6 +2054,7 @@ function App() {
               assignedStaffId: "",
               assignedStaffName: "所有员工（公共任务）",
               assignedStaffEmail: "",
+              assignedStaffType: "",
             },
             "商户将订单设为公共任务"
           ),
@@ -2001,6 +2079,7 @@ function App() {
             assignedStaffId: staff.id,
             assignedStaffName: staff.name,
             assignedStaffEmail: staff.email,
+            assignedStaffType: getStaffEmployeeType(staff),
           },
           `商户将订单分配给 ${staff.name}`
         ),
@@ -2063,6 +2142,7 @@ function App() {
               name: editingStaffForm.name.trim() || member.name,
               phone: editingStaffForm.phone.trim(),
               email: editingStaffForm.email.trim(),
+              employeeType: getStaffEmployeeType(editingStaffForm),
               area: editingStaffForm.area.trim() || "杭州 / 滨江",
               updatedAt: nowText(),
             })
@@ -2200,6 +2280,7 @@ function App() {
       name,
       phone: staffInviteForm.phone.trim(),
       email: staffInviteForm.email.trim(),
+      employeeType: getStaffEmployeeType(staffInviteForm),
       area: staffInviteForm.area.trim() || "杭州 / 滨江",
       status: "invited",
       organizationId: currentMerchantUser?.organizationId || organizations[0]?.id || "org-001",
@@ -2466,7 +2547,37 @@ function App() {
     }
 
     const encodedAddress = encodeURIComponent(address);
-    window.open(`https://uri.amap.com/search?keyword=${encodedAddress}&callnative=1`, "_blank");
+    const source = encodeURIComponent("GardenOS");
+    const userAgent = navigator.userAgent || "";
+    const isAndroid = /Android/i.test(userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+    const amapScheme = isIOS
+      ? `iosamap://path?sourceApplication=${source}&dname=${encodedAddress}&dev=0&t=0`
+      : `androidamap://route/plan/?sourceApplication=${source}&dname=${encodedAddress}&dev=0&t=0`;
+    const webFallback = `https://uri.amap.com/search?keyword=${encodedAddress}&callnative=1`;
+
+    if (!isAndroid && !isIOS) {
+      window.open(webFallback, "_blank");
+      return;
+    }
+
+    let fallbackTimer = window.setTimeout(() => {
+      if (document.visibilityState === "visible") {
+        window.location.href = webFallback;
+      }
+    }, 1200);
+
+    const clearFallback = () => {
+      window.clearTimeout(fallbackTimer);
+      document.removeEventListener("visibilitychange", clearFallback);
+      window.removeEventListener("pagehide", clearFallback);
+    };
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") clearFallback();
+    }, { once: true });
+    window.addEventListener("pagehide", clearFallback, { once: true });
+    window.location.href = amapScheme;
   }
 
   function callPhone(phone) {
@@ -2493,9 +2604,9 @@ function App() {
           (order) => {
             const next = {
               ...order,
-              deliveryStatus: order.deliveryStatus === "未出发" ? "前往中" : order.deliveryStatus,
+              deliveryStatus: ["待执行", "未出发"].includes(order.deliveryStatus) ? "前往中" : order.deliveryStatus,
               executionStatus:
-                order.executionStatus === "待联系" ? "已出发" : order.executionStatus,
+                ["待执行", "待联系", "已联系"].includes(order.executionStatus) ? "前往中" : order.executionStatus,
               staffLocation: {
                 latitude,
                 longitude,
@@ -2541,6 +2652,7 @@ function App() {
           assignedStaffId: shouldClaimPublicOrder ? currentStaff?.id || "" : order.assignedStaffId,
           assignedStaffName: shouldClaimPublicOrder ? currentStaff?.name || order.assignedStaffName || "" : order.assignedStaffName,
           assignedStaffEmail: shouldClaimPublicOrder ? currentStaff?.email || order.assignedStaffEmail || "" : order.assignedStaffEmail,
+          assignedStaffType: shouldClaimPublicOrder ? getStaffEmployeeType(currentStaff) : order.assignedStaffType,
           acceptedAt: order.acceptedAt || nowText(),
           planType,
           serviceType: planType === "养护服务" ? "养护" : planType === "零售方案" ? "零售" : "租赁",
@@ -2579,6 +2691,10 @@ function App() {
     if (!order?.id) return;
 
     const safeOrder = ensureOrderDefaults(order);
+    if (safeOrder.status !== "执行中" || getOrderExecutionStage(safeOrder) !== "现场执行中") {
+      alert("员工到达现场后，才能上传现场照片并完成任务。");
+      return;
+    }
     const completePhotos = safeOrder.completePhotos || {};
     const padPhotos = (values) => [...safePhotos(values), "", "", ""].slice(0, 3);
 
@@ -2869,31 +2985,33 @@ function App() {
       return;
     }
 
+    const confirmedTime = nowText();
     updateOrder(
       orderId,
       (order) => {
         const next = {
           ...order,
-          status: "执行中",
-          planStatus: "执行中",
+          status: "待执行",
+          planStatus: "待执行",
           merchantConfirmStatus: "已确认",
-          merchantConfirmedAt: nowText(),
+          merchantConfirmedAt: confirmedTime,
           executionStatus: "待执行",
+          deliveryStatus: "待执行",
           plan: order.plan
             ? {
                 ...order.plan,
-                status: "执行中",
-                merchantConfirmedAt: nowText(),
+                status: "待执行",
+                merchantConfirmedAt: confirmedTime,
               }
             : order.plan,
         };
 
-        return addTimeline(next, "商户确认方案，订单进入执行中");
+        return addTimeline(next, "商户确认方案，订单进入待执行");
       },
       "商户确认已同步"
     );
 
-    backToMerchantHome("方案已确认，订单已进入执行中。员工端刷新后可直接处理执行任务。");
+    backToMerchantHome("方案已确认，订单已进入待执行。员工端刷新后可点击开始执行。");
   }
 
   function merchantRequestRevision(orderId) {
@@ -2938,6 +3056,7 @@ function App() {
   }
 
   function startExecution(orderId) {
+    const startedTime = nowText();
     updateOrder(
       orderId,
       (order) => {
@@ -2945,13 +3064,51 @@ function App() {
           ...order,
           status: "执行中",
           planStatus: "执行中",
-          executionStatus: "已出发",
+          executionStatus: "前往中",
           deliveryStatus: "前往中",
+          startedAt: order.startedAt || startedTime,
+          departedAt: startedTime,
+          plan: order.plan
+            ? {
+                ...order.plan,
+                status: "执行中",
+                startedAt: order.plan.startedAt || startedTime,
+              }
+            : order.plan,
         };
 
-        return addTimeline(next, "员工开始执行服务");
+        return addTimeline(next, "员工开始执行服务，已出发前往现场");
       },
       "执行状态已同步"
+    );
+
+    setActiveStaffTab("执行中");
+  }
+
+  function markArrivedOnSite(orderId) {
+    const arrivedTime = nowText();
+    updateOrder(
+      orderId,
+      (order) => {
+        const next = {
+          ...order,
+          status: "执行中",
+          planStatus: "执行中",
+          executionStatus: "现场执行中",
+          deliveryStatus: "已到达",
+          arrivedAt: arrivedTime,
+          plan: order.plan
+            ? {
+                ...order.plan,
+                status: "执行中",
+                arrivedAt: arrivedTime,
+              }
+            : order.plan,
+        };
+
+        return addTimeline(next, "员工已到达现场，进入现场执行中");
+      },
+      "到达状态已同步"
     );
 
     setActiveStaffTab("执行中");
@@ -2961,8 +3118,8 @@ function App() {
     const target = orders.find((order) => order.id === orderId);
     if (!target) return;
 
-    if (!["方案已确认", "执行中"].includes(target.status)) {
-      alert("需要商户确认方案后，员工才能完成订单。");
+    if (target.status !== "执行中" || getOrderExecutionStage(target) !== "现场执行中") {
+      alert("员工到达现场后，才能完成任务。");
       return;
     }
 
@@ -2976,8 +3133,8 @@ function App() {
           status: "待商户归档",
           planStatus: "待商户归档",
           merchantArchiveStatus: "待归档",
-          deliveryStatus: "已到达",
-          executionStatus: "已完成服务",
+          deliveryStatus: "已完成",
+          executionStatus: "已完成",
           completedAt: nowText(),
           plan: order.plan
             ? {
@@ -3085,8 +3242,8 @@ function App() {
       contactName: newOrderForm.contactName.trim() || "待确认",
       phone: newOrderForm.phone.trim(),
       status: "待接单",
-      deliveryStatus: "未出发",
-      executionStatus: "待联系",
+      deliveryStatus: "待执行",
+      executionStatus: "待执行",
       customerConfirmStatus: "待确认",
       merchantConfirmStatus: "未提交",
       planLinkStatus: "未生成",
@@ -3111,6 +3268,7 @@ function App() {
       assignedStaffId: isPublicAssignment ? "" : assignedStaff?.id || "",
       assignedStaffName: isPublicAssignment ? "所有员工（公共任务）" : assignedStaff?.name || "",
       assignedStaffEmail: isPublicAssignment ? "" : assignedStaff?.email || "",
+      assignedStaffType: isPublicAssignment ? "" : getStaffEmployeeType(assignedStaff),
       communicationQrUrl: newOrderForm.communicationQrUrl || "",
       fieldNote: "",
       internalNote: "",
@@ -3364,7 +3522,11 @@ function App() {
 
   function getOrderHint(order) {
     if (order.status === "待商户确认") return "员工已提交方案，等待商户确认。";
-    if (order.status === "方案已确认") return "商户已确认方案，可以开始执行。";
+    const executionStage = getOrderExecutionStage(order);
+    const isExecutionOrder = ["方案已确认", "待执行", "执行中"].includes(order.status);
+    if (isExecutionOrder && executionStage === "待执行") return "商户已确认方案，等待员工开始执行。";
+    if (isExecutionOrder && executionStage === "前往中") return "员工已出发，正在前往客户现场。";
+    if (isExecutionOrder && executionStage === "现场执行中") return "员工已到达现场，正在执行服务。";
     if (order.status === "待商户归档") return "员工已完成订单，等待商户查看并确认归档。";
     if (order.status === "已完成") return "商户已确认归档，订单正式完成。";
     if (order.status === "配置中" && order.merchantConfirmStatus === "要求修改") {
@@ -3373,7 +3535,7 @@ function App() {
     return "";
   }
 
-  function buildPlanText(order) {
+  function buildPlanText(order, { includeCustomerPhone = true } = {}) {
     const plan = order?.plan;
     const stats = getPlanStats(plan);
     const isRetailPlan = plan?.planType === "零售方案";
@@ -3411,7 +3573,7 @@ function App() {
     return `${plan?.planType || "绿植租赁方案"}
 项目 / 客户：${order?.customerName || "-"}
 联系人：${order?.contactName || "-"}
-电话：${order?.phone || "-"}
+电话：${includeCustomerPhone ? (order?.phone || "-") : "联系方式已隐藏，请通过公司协调"}
 项目面积：${order?.areaSize || "-"}
 进场时间：${order?.expectedDate || "-"}
 客户地址：${order?.address || "-"}
@@ -3481,6 +3643,11 @@ ${rentalText}`;
   const canExecute = statusGroup === "执行中";
   const isServiceRecord = statusGroup === "已完成";
   const orderSignals = getOrderSignalTags(order);
+  const executionStage = getOrderExecutionStage(order);
+  const hideCustomerPhone = shouldHideCustomerPhoneForStaff(currentStaff, order);
+  const contactText = hideCustomerPhone
+    ? `${order.contactName || "-"}｜联系方式已隐藏，请通过公司协调`
+    : `${order.contactName || "-"} ${order.phone ? `｜${order.phone}` : ""}`;
 
   const statusClass = isPending
     ? "pending"
@@ -3496,7 +3663,7 @@ ${rentalText}`;
     <article className="staff-task-card">
       <div className="staff-task-top">
         <span className="staff-order-id">#{String(order.id).slice(-8)}</span>
-        <span className={`staff-status-chip ${statusClass}`}>{order.status}</span>
+        <span className={`staff-status-chip ${statusClass}`}>{canExecute ? getExecutionDisplayText(order) : order.status}</span>
       </div>
 
       <div className="staff-task-title-row">
@@ -3530,9 +3697,7 @@ ${rentalText}`;
         <strong>{order.address || "暂无地址"}</strong>
 
         <span>联系人</span>
-        <strong>
-          {order.contactName || "-"} {order.phone ? `｜${order.phone}` : ""}
-        </strong>
+        <strong>{contactText}</strong>
 
         <span>预约时间</span>
         <strong>{order.expectedDate || "待确认"}</strong>
@@ -3542,6 +3707,18 @@ ${rentalText}`;
 
         <span>商户备注</span>
         <strong>{order.merchantNote || order.plan?.merchantDraftNote || "暂无备注"}</strong>
+
+        {canExecute && (
+          <>
+            <span>执行进度</span>
+            <strong>{getExecutionDisplayText(order)}</strong>
+            <span>关键时间</span>
+            <strong>
+              {order.startedAt ? `开始：${order.startedAt}` : "尚未开始"}
+              {order.arrivedAt ? `｜到达：${order.arrivedAt}` : ""}
+            </strong>
+          </>
+        )}
       </div>
 
       {hint && <div className="staff-task-hint">{hint}</div>}
@@ -3578,18 +3755,37 @@ ${rentalText}`;
           </>
         ) : canExecute ? (
           <>
-            <button className="staff-ghost-action" onClick={() => openRouteNavigation(order.address)}>
-              导航
-            </button>
-            <button className="staff-ghost-action" onClick={() => openPlanForOrder(order)}>
-              查看方案
-            </button>
-            <button
-              className="staff-primary-action"
-              onClick={() => openCompleteUploadForOrder(order)}
-            >
-              上传现场照片
-            </button>
+            {executionStage === "待执行" ? (
+              <>
+                <button className="staff-ghost-action" onClick={() => openPlanForOrder(order)}>
+                  查看方案
+                </button>
+                <button className="staff-primary-action" onClick={() => startExecution(order.id)}>
+                  开始执行
+                </button>
+              </>
+            ) : executionStage === "前往中" ? (
+              <>
+                <button className="staff-ghost-action" onClick={() => openRouteNavigation(order.address)}>
+                  一键导航
+                </button>
+                <button className="staff-primary-action" onClick={() => markArrivedOnSite(order.id)}>
+                  已到达现场
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="staff-ghost-action" onClick={() => openRouteNavigation(order.address)}>
+                  一键导航
+                </button>
+                <button className="staff-ghost-action" onClick={() => openCompleteUploadForOrder(order)}>
+                  上传照片
+                </button>
+                <button className="staff-primary-action" onClick={() => openCompleteUploadForOrder(order)}>
+                  完成任务
+                </button>
+              </>
+            )}
           </>
         ) : (
           <>
@@ -3667,7 +3863,7 @@ ${rentalText}`;
             <button
               className="primary-button"
               onClick={() => {
-                if (order.plan && ["待商户确认", "待商户归档", "方案已确认", "执行中", "已完成"].includes(order.status)) {
+                if (order.plan && ["待商户确认", "待商户归档", "方案已确认", "待执行", "执行中", "已完成"].includes(order.status)) {
                   openMerchantPlanWorkbench(order);
                   return;
                 }
@@ -3708,11 +3904,22 @@ ${rentalText}`;
         <div className="plan-summary-top">
           <div>
             <p>执行状态</p>
-            <strong>{order.executionStatus || "待联系"}</strong>
+            <strong>{getExecutionDisplayText(order)}</strong>
           </div>
           <div>
             <p>配送状态</p>
-            <strong>{order.deliveryStatus || "未出发"}</strong>
+            <strong>{order.deliveryStatus || "待执行"}</strong>
+          </div>
+        </div>
+
+        <div className="plan-summary-top">
+          <div>
+            <p>开始执行</p>
+            <strong>{order.startedAt || "尚未开始"}</strong>
+          </div>
+          <div>
+            <p>到达现场</p>
+            <strong>{order.arrivedAt || "尚未到达"}</strong>
           </div>
         </div>
 
@@ -3773,7 +3980,7 @@ ${rentalText}`;
               <StatusControlGroup
                 title="执行状态"
                 options={EXECUTION_STATUS}
-                value={order.executionStatus || "待联系"}
+                value={getOrderExecutionStage(order)}
                 onChange={(value) =>
                   updateOrder(
                     order.id,
@@ -3787,7 +3994,7 @@ ${rentalText}`;
               <StatusControlGroup
                 title="配送状态"
                 options={DELIVERY_STATUS}
-                value={order.deliveryStatus || "未出发"}
+                value={order.deliveryStatus || "待执行"}
                 onChange={(value) =>
                   updateOrder(
                     order.id,
@@ -3975,8 +4182,8 @@ ${rentalText}`;
  function submitCompleteUpload() {
   if (!currentOrder) return;
 
-  if (!["方案已确认", "执行中"].includes(currentOrder.status)) {
-    alert("需要商户确认方案后，员工才能完成订单。");
+  if (!["执行中"].includes(currentOrder.status) || getOrderExecutionStage(currentOrder) !== "现场执行中") {
+    alert("员工到达现场后，才能上传现场照片并完成任务。");
     return;
   }
 
@@ -3994,8 +4201,8 @@ ${rentalText}`;
         status: "待商户归档",
         planStatus: "待商户归档",
         merchantArchiveStatus: "待归档",
-        deliveryStatus: "已到达",
-        executionStatus: "已完成服务",
+        deliveryStatus: "已完成",
+        executionStatus: "已完成",
         completedAt: completedTime,
         completePhotos: {
           scenePhotos: Array.isArray(completeForm.scenePhotos) ? completeForm.scenePhotos : ["", "", ""],
@@ -4116,7 +4323,7 @@ ${rentalText}`;
           </div>
           <div className="plan-info-line"><span>方案类型</span><strong>{orderPlan?.planType || currentOrder.planType || "暂无内容"}</strong></div>
           <div className="plan-info-line"><span>商品数量</span><strong>{productCount ? `${productCount} 件` : "暂无服务记录"}</strong></div>
-          <div className="plan-info-line"><span>联系人</span><strong>{currentOrder.contactName || "暂无内容"} {currentOrder.phone ? `｜${currentOrder.phone}` : ""}</strong></div>
+          <div className="plan-info-line"><span>联系人</span><strong>{!shouldHideCustomerPhoneForStaff(currentStaff, currentOrder) ? `${currentOrder.contactName || "暂无内容"} ${currentOrder.phone ? `｜${currentOrder.phone}` : ""}` : `${currentOrder.contactName || "暂无内容"}｜联系方式已隐藏，请通过公司协调`}</strong></div>
           <div className="plan-info-line"><span>地址</span><strong>{currentOrder.address || "暂无内容"}</strong></div>
           <div className="plan-info-line"><span>最终报价</span><strong>¥{money(stats.finalRent)}</strong></div>
           <div className="plan-info-line"><span>完成时间</span><strong>{completedAt}</strong></div>
@@ -4272,6 +4479,8 @@ ${rentalText}`;
     );
     const isRetailPlan = currentPlan?.planType === "零售方案";
     const isMaintenancePlan = currentPlan?.planType === "养护服务";
+    const currentExecutionStage = getOrderExecutionStage(currentOrder);
+    const currentContactText = `${currentOrder.contactName || "-"}${currentOrder.phone ? `｜${currentOrder.phone}` : ""}`;
     const hasUsefulPrefillText = (value) => {
       const text = String(value || "").trim();
       return Boolean(text && !["暂无内容", "待确认"].includes(text));
@@ -4386,12 +4595,12 @@ ${rentalText}`;
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "78px 1fr", gap: "8px 10px", borderTop: "1px solid #edf1f5", paddingTop: 10 }}>
             <span style={labelStyle}>任务地址</span><strong style={{ ...strongStyle, textAlign: "right" }}>{currentOrder.address || "-"}</strong>
-            <span style={labelStyle}>联系人</span><strong style={{ ...strongStyle, textAlign: "right" }}>{currentOrder.contactName || "-"}{currentOrder.phone ? `｜${currentOrder.phone}` : ""}</strong>
+            <span style={labelStyle}>联系人</span><strong style={{ ...strongStyle, textAlign: "right" }}>{currentContactText}</strong>
             <span style={labelStyle}>预约时间</span><strong style={{ ...strongStyle, textAlign: "right" }}>{currentOrder.expectedDate || "待确认"}</strong>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 12 }}>
             <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "11px 8px" }} onClick={() => callPhone(currentOrder.phone)}>电话</button>
-            <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "11px 8px" }} onClick={() => openRouteNavigation(currentOrder.address)}>导航</button>
+            <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "11px 8px" }} onClick={() => openRouteNavigation(currentOrder.address)}>一键导航</button>
             <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "11px 8px" }} onClick={() => copyText(currentOrder.address, "地址已复制")}>地址</button>
           </div>
           <div className="empty-card" style={{ marginTop: 12, textAlign: "left" }}>
@@ -4400,15 +4609,26 @@ ${rentalText}`;
           </div>
         </section>
 
-        {currentOrder.status === "方案已确认" && (
+        {currentExecutionStage === "待执行" && (
           <section style={cardStyle}>
             <strong style={{ color: "#182536" }}>商户已确认方案</strong>
-            <p style={{ margin: "8px 0 12px", color: "#6b7788" }}>现在可以开始执行服务。</p>
-            <button style={{ width: "100%", border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 14px" }} onClick={() => startExecution(currentOrder.id)}>开始执行服务</button>
+            <p style={{ margin: "8px 0 12px", color: "#6b7788" }}>当前为待执行 / 待出发，请先开始执行。</p>
+            <button style={{ width: "100%", border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 14px" }} onClick={() => startExecution(currentOrder.id)}>开始执行</button>
           </section>
         )}
 
-        {currentOrder.status === "执行中" && (
+        {currentExecutionStage === "前往中" && (
+          <section style={cardStyle}>
+            <strong style={{ color: "#182536" }}>员工已出发</strong>
+            <p style={{ margin: "8px 0 12px", color: "#6b7788" }}>请使用地图 App 导航，到达后点击已到达现场。</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <button style={{ border: `1px solid ${videoBlue}`, borderRadius: 10, background: "#fff", color: videoBlue, fontWeight: 900, padding: "13px 10px" }} onClick={() => openRouteNavigation(currentOrder.address)}>一键导航</button>
+              <button style={{ border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 10px" }} onClick={() => markArrivedOnSite(currentOrder.id)}>已到达现场</button>
+            </div>
+          </section>
+        )}
+
+        {currentExecutionStage === "现场执行中" && (
           <section style={cardStyle}>
             <strong style={{ color: "#182536" }}>任务执行中</strong>
             <p style={{ margin: "8px 0 12px", color: "#6b7788" }}>完成摆放后上传现场照片并提交。</p>
@@ -5144,6 +5364,7 @@ ${rentalText}`;
   }
 
   function renderMoreSheet() {
+    const canCopyCustomerPhone = !shouldHideCustomerPhoneForStaff(currentStaff, currentOrder);
     return (
       <div className="sheet-mask" onClick={() => setShowMoreSheet(false)}>
         <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
@@ -5153,12 +5374,16 @@ ${rentalText}`;
             <button className="close-button" onClick={() => setShowMoreSheet(false)}>×</button>
           </div>
 
-          <button className="submit-sheet-button" onClick={() => copyText(buildPlanText(currentOrder), "方案摘要已复制")}>复制方案摘要</button>
+          <button className="submit-sheet-button" onClick={() => copyText(buildPlanText(currentOrder, { includeCustomerPhone: canCopyCustomerPhone }), "方案摘要已复制")}>复制方案摘要</button>
           <button className="submit-sheet-button" onClick={() => copyCustomerPlanLink(currentOrder)}>复制客户方案链接</button>
           <button className="submit-sheet-button" onClick={() => markPlanSentToCustomer(currentOrder.id)}>标记已转发客户</button>
           <button className="submit-sheet-button" onClick={() => openRouteNavigation(currentOrder.address)}>打开导航</button>
           <button className="submit-sheet-button" onClick={() => locateStaff(currentOrder.id)}>定位当前位置</button>
-          <button className="submit-sheet-button" onClick={() => exportOrderData(currentOrder)}>导出当前订单数据</button>
+          {canCopyCustomerPhone ? (
+            <button className="submit-sheet-button" onClick={() => exportOrderData(currentOrder)}>导出当前订单数据</button>
+          ) : (
+            <button className="submit-sheet-button" onClick={() => alert("外部执行方不可导出客户联系方式，请通过公司协调。")}>联系方式已隐藏</button>
+          )}
 
           <button className="ghost-button danger" onClick={() => {
             updateOrderPlan(currentOrder.id, (plan) => ({ ...plan, areas: [] }), "全部区域已清空");
@@ -5322,6 +5547,8 @@ ${rentalText}`;
                 <h2>项目档案</h2>
                 <div className="plan-info-line"><span>客户名</span><strong>{order.customerName || "暂无内容"}</strong></div>
                 <div className="plan-info-line"><span>状态</span><strong>{order.status}</strong></div>
+                <div className="plan-info-line"><span>执行进度</span><strong>{getExecutionDisplayText(order)} · {getMerchantExecutionProgressText(order)}</strong></div>
+                <div className="plan-info-line"><span>关键时间</span><strong>{order.startedAt ? `开始：${order.startedAt}` : "尚未开始"}{order.arrivedAt ? `｜到达：${order.arrivedAt}` : ""}</strong></div>
                 <div className="plan-info-line"><span>方案类型</span><strong>{orderPlan?.planType || order.planType || "-"}</strong></div>
                 <div className="plan-info-line"><span>员工</span><strong>{order.assignedStaffName || "-"} {order.assignedStaffEmail ? `｜${order.assignedStaffEmail}` : ""}</strong></div>
                 <div className="plan-info-line"><span>联系人</span><strong>{order.contactName || "-"} {order.phone ? `｜${order.phone}` : ""}</strong></div>
@@ -5704,7 +5931,7 @@ ${rentalText}`;
                           <option value="">所有员工（公共任务）</option>
                           {staffOptions.map((member) => (
                             <option key={member.id} value={member.id}>
-                              {member.name} · {member.staffNo}
+                              {member.name} · {member.staffNo} · {STAFF_EMPLOYEE_TYPE_LABELS[getStaffEmployeeType(member)]}
                             </option>
                           ))}
                         </select>
@@ -5801,7 +6028,10 @@ ${rentalText}`;
                           <strong>{member.email}</strong>
                           <em>{member.phone}</em>
                         </span>
-                        <span>{ROLE_LABELS[member.role] || member.role}</span>
+                        <span>
+                          <strong>{ROLE_LABELS[member.role] || member.role}</strong>
+                          <em>{STAFF_EMPLOYEE_TYPE_LABELS[getStaffEmployeeType(member)]}</em>
+                        </span>
                         <span>{STAFF_ORDER_PERMISSION_LABELS[member.orderPermission] || member.orderPermission || "-"}</span>
                         <span>
                           <b className={`admin-status-chip ${member.status === "active" ? "is-done" : member.status === "invited" ? "is-plan" : "muted"}`}>{ACCOUNT_STATUS_LABELS[member.status] || member.status}</b>
@@ -6017,8 +6247,8 @@ ${rentalText}`;
                         <em>{order.contactName || "-"}</em>
                       </span>
                       <span><b className={`admin-status-chip ${getMerchantStatusClass(order.status)}`}>{order.status}</b></span>
-                      <span>{order.executionStatus || "-"}</span>
-                      <span>{order.deliveryStatus || "-"}</span>
+                      <span>{getExecutionDisplayText(order)} · {getMerchantExecutionProgressText(order)}</span>
+                      <span>{order.deliveryStatus || "-"}{order.startedAt ? `｜${order.startedAt}` : ""}{order.arrivedAt ? `｜到达 ${order.arrivedAt}` : ""}</span>
                       <span>{order.address || "-"}</span>
                       <span className="admin-table-actions">
                         <button className="ghost-button" onClick={() => openMerchantPlanWorkbench(order)}>
@@ -6128,6 +6358,17 @@ ${rentalText}`;
                         </select>
                       </div>
                       <div className="sheet-block">
+                        <p className="sheet-label">员工类型</p>
+                        <select
+                          className="area-input"
+                          value={getStaffEmployeeType(editingStaffForm)}
+                          onChange={(event) => setEditingStaffForm((form) => ({ ...form, employeeType: event.target.value }))}
+                        >
+                          <option value="internal">公司员工</option>
+                          <option value="partner">外部执行方</option>
+                        </select>
+                      </div>
+                      <div className="sheet-block">
                         <p className="sheet-label">负责区域</p>
                         <input className="area-input" list="staff-area-options" value={editingStaffForm.area} onChange={(event) => setEditingStaffForm((form) => ({ ...form, area: event.target.value }))} />
                       </div>
@@ -6212,6 +6453,7 @@ ${rentalText}`;
                     <div className="merchant-staff-edit-grid">
                       <div className="sheet-block"><p className="sheet-label">工号</p><input className="area-input" value={staffInviteForm.staffNo} onChange={(event) => setStaffInviteForm((form) => ({ ...form, staffNo: event.target.value }))} /></div>
                       <div className="sheet-block"><p className="sheet-label">角色</p><select className="area-input" value={staffInviteForm.role} onChange={(event) => setStaffInviteForm((form) => ({ ...form, role: event.target.value }))}><option value="staff">普通员工</option><option value="manager">店长 / 经理</option><option value="admin">管理员</option></select></div>
+                      <div className="sheet-block"><p className="sheet-label">员工类型</p><select className="area-input" value={getStaffEmployeeType(staffInviteForm)} onChange={(event) => setStaffInviteForm((form) => ({ ...form, employeeType: event.target.value }))}><option value="internal">公司员工</option><option value="partner">外部执行方</option></select></div>
                       <div className="sheet-block"><p className="sheet-label">负责区域</p><input className="area-input" list="staff-area-options" value={staffInviteForm.area} onChange={(event) => setStaffInviteForm((form) => ({ ...form, area: event.target.value }))} /></div>
                       <div className="sheet-block"><p className="sheet-label">接单权限</p><select className="area-input" value={staffInviteForm.orderPermission} onChange={(event) => setStaffInviteForm((form) => ({ ...form, orderPermission: event.target.value }))}><option value="public">可接公共单</option><option value="assigned">仅接指定派单</option><option value="paused">暂停接单</option></select></div>
                       <div className="sheet-block"><p className="sheet-label">账号状态</p><select className="area-input" value={staffInviteForm.status} onChange={(event) => setStaffInviteForm((form) => ({ ...form, status: event.target.value }))}><option value="invited">待邀请</option><option value="active">已启用</option><option value="paused">已停用</option></select></div>
@@ -6541,7 +6783,7 @@ ${rentalText}`;
                       <option value="">所有员工（公共任务）</option>
                       {createOrderAssignableStaff.map((member) => (
                         <option key={member.id} value={member.id}>
-                          {member.name} · {member.staffNo} · {ROLE_LABELS[member.role] || member.role}
+                          {member.name} · {member.staffNo} · {ROLE_LABELS[member.role] || member.role} · {STAFF_EMPLOYEE_TYPE_LABELS[getStaffEmployeeType(member)]}
                         </option>
                       ))}
                     </select>
@@ -6770,7 +7012,7 @@ ${rentalText}`;
                 <option value="">所有员工（公共任务）</option>
                 {createOrderAssignableStaff.map((member) => (
                   <option key={member.id} value={member.id}>
-                    {member.name} · {member.staffNo}
+                    {member.name} · {member.staffNo} · {STAFF_EMPLOYEE_TYPE_LABELS[getStaffEmployeeType(member)]}
                   </option>
                 ))}
               </select>
@@ -7004,11 +7246,14 @@ ${rentalText}`;
         currentStaff={currentStaff}
         currentOrganization={currentOrganization}
         roleLabels={ROLE_LABELS}
+        staffEmployeeTypeLabels={STAFF_EMPLOYEE_TYPE_LABELS}
         accountStatusLabels={ACCOUNT_STATUS_LABELS}
         authUserEmail={authUserEmail}
         canOpenMerchant={showRoleSwitch}
         onSignOut={handleSignOut}
         classifyOrderStatus={classifyOrderStatus}
+        getOrderExecutionStage={getOrderExecutionStage}
+        canViewCustomerPhone={!shouldHideCustomerPhoneForStaff(currentStaff, selectedOrder)}
       />
 
       {qrPreviewOrder && (
