@@ -52,6 +52,13 @@ const DELIVERY_STATUS = ["待执行", "前往中", "已到达", "已完成"];
 const EXECUTION_STATUS = ["待执行", "前往中", "已到达", "现场执行中", "已完成"];
 const CUSTOMER_CONFIRM_STATUS = ["待确认", "已确认", "有异议"];
 const PLAN_LINK_STATUS = ["未生成", "已复制", "已发送"];
+const BUSINESS_PLAN_TYPES = ["租赁方案", "养护服务", "售卖订单", "临时摆场"];
+const SERVICE_TYPE_OPTIONS = [
+  ["租赁", "租赁方案"],
+  ["养护", "养护服务"],
+  ["售卖", "售卖订单"],
+  ["摆场", "临时摆场"],
+];
 const STAFF_EMPLOYEE_TYPE_LABELS = {
   internal: "公司员工",
   partner: "外部执行方",
@@ -452,6 +459,43 @@ function cloudHeaders(extra = {}) {
   };
 }
 
+function normalizePlanType(value = "") {
+  const text = String(value || "").trim();
+  if (BUSINESS_PLAN_TYPES.includes(text)) return text;
+  if (/售卖|零售|销售|买断|购买/.test(text)) return "售卖订单";
+  if (/养护|维护/.test(text)) return "养护服务";
+  if (/临时|摆场|活动|展会/.test(text)) return "临时摆场";
+  return "租赁方案";
+}
+
+function getPlanTypeForService(serviceType = "") {
+  const text = String(serviceType || "").trim();
+  if (text === "养护") return "养护服务";
+  if (text === "售卖" || text === "零售") return "售卖订单";
+  if (text === "摆场" || text === "临时摆场") return "临时摆场";
+  return "租赁方案";
+}
+
+function normalizeServiceType(serviceType = "", planType = "") {
+  const text = String(serviceType || "").trim();
+  if (["租赁", "养护", "售卖", "摆场"].includes(text)) return text;
+  if (text === "零售") return "售卖";
+
+  const safePlanType = normalizePlanType(planType);
+  if (safePlanType === "养护服务") return "养护";
+  if (safePlanType === "售卖订单") return "售卖";
+  if (safePlanType === "临时摆场") return "摆场";
+  return "租赁";
+}
+
+function normalizePlanRecord(plan, fallbackPlanType = "租赁方案") {
+  if (!plan || typeof plan !== "object") return null;
+  return {
+    ...plan,
+    planType: normalizePlanType(plan.planType || fallbackPlanType),
+  };
+}
+
 function normalizeDeliveryStatus(order = {}) {
   const raw = order.deliveryStatus || "";
   if (["待执行", "前往中", "已到达", "已完成"].includes(raw)) return raw;
@@ -503,6 +547,9 @@ function ensureOrderDefaults(order = {}) {
   const isPublicAssignedOrder = hasAssignedStaffId && !String(order.assignedStaffId || "").trim();
   const deliveryStatus = normalizeDeliveryStatus(order);
   const executionStatus = normalizeExecutionStatus(order);
+  const planType = normalizePlanType(order.planType || order.plan?.planType || getPlanTypeForService(order.serviceType));
+  const serviceType = normalizeServiceType(order.serviceType, planType);
+  const plan = normalizePlanRecord(order.plan, planType);
   return {
     ...order,
     id: order.id || Date.now(),
@@ -528,8 +575,8 @@ function ensureOrderDefaults(order = {}) {
     assignedStaffEmail: order.assignedStaffEmail || (isPublicAssignedOrder ? "" : assignedStaff?.email || ""),
     assignedStaffType: order.assignedStaffType || (isPublicAssignedOrder ? "" : getStaffEmployeeType(assignedStaff)),
     communicationQrUrl: order.communicationQrUrl || "",
-    serviceType: order.serviceType || "租赁",
-    planType: order.planType || order.plan?.planType || "租赁方案",
+    serviceType,
+    planType,
     areaType: order.areaType || "",
     hasRentedBefore: Boolean(order.hasRentedBefore),
     needComparePrice: Boolean(order.needComparePrice),
@@ -558,7 +605,7 @@ function ensureOrderDefaults(order = {}) {
           remark: order.completePhotos.remark || "",
         }
       : { scenePhotos: [], plantPhotos: [], remark: "" },
-    plan: order.plan || null,
+    plan,
   };
 }
 
@@ -1294,34 +1341,47 @@ function getAreaDailyRent(area) {
 const MAINTENANCE_PACKAGES = [
   {
     name: "基础养护",
-    scene: "适合少量办公室绿植 / 家庭绿植",
-    frequency: "每月 1 次",
-    content: "浇水、修剪、清洁、基础状态检查",
-    cycle: "3 个月",
+    scene: "适合临时补充服务或低频维护，不作为租赁客户主推套餐",
+    frequency: "按次或低频维护",
+    content: "基础浇水、简单清洁、植物状态查看",
+    cycle: "按次 / 短期",
+    priceText: "¥3-5 / 盆 / 次",
+    areaPriceText: "¥6-8 / ㎡ / 年",
   },
   {
     name: "标准养护",
-    scene: "适合办公室 / 店铺 / 小型空间",
+    scene: "租赁方案默认建议包含，用于保障植物状态与客户现场效果",
     frequency: "每月 2 次",
-    content: "浇水、修剪、清洁、病虫检查、简单更换建议",
+    content: "浇水、擦叶、黄叶修剪、盆面清理、摆放调整、植物状态记录",
     cycle: "6 个月",
+    priceText: "¥6-10 / 盆 / 次",
+    areaPriceText: "¥9-12 / ㎡ / 年",
+    recommended: true,
   },
   {
-    name: "深度养护",
-    scene: "适合绿植较多、展示要求高、客户重视形象的空间",
+    name: "精细养护",
+    scene: "适合重点客户、前台、展厅、酒店、商业空间等高要求场景",
     frequency: "每周 1 次或按约定",
-    content: "精细修剪、叶面清洁、病虫处理、状态记录、替换建议",
+    content: "标准养护 + 植物健康巡检 + 重点客户复查 + 更详细照片记录",
     cycle: "按项目约定",
+    priceText: "¥12-20 / 盆 / 次",
+    areaPriceText: "¥15-20 / ㎡ / 年",
+  },
+  {
+    name: "专项处理",
+    scene: "适合单独收费或临时加急处理",
+    frequency: "按次 / 按项目",
+    content: "虫害处理、换盆、补土、施肥、植物替换、枯萎补救、加急上门",
+    cycle: "按项目报价",
+    priceText: "按次 / 按项目报价",
+    areaPriceText: "按次 / 按项目",
   },
 ];
 
-const STAFF_PLAN_TYPES = ["租赁方案", "零售方案", "养护服务"];
+const STAFF_PLAN_TYPES = BUSINESS_PLAN_TYPES;
 
 function getInitialPlanTypeForOrder(order) {
-  if (STAFF_PLAN_TYPES.includes(order?.planType)) return order.planType;
-  if (order?.serviceType === "养护") return "养护服务";
-  if (order?.serviceType === "零售") return "零售方案";
-  return "租赁方案";
+  return normalizePlanType(order?.planType || order?.plan?.planType || getPlanTypeForService(order?.serviceType));
 }
 
 function getMaintenancePackage(name = "标准养护") {
@@ -1345,8 +1405,8 @@ function getPlanStats(plan) {
   const productCount = areas.reduce((sum, area) => sum + getAreaProductCount(area), 0);
   const dailyRent = areas.reduce((sum, area) => sum + getAreaDailyRent(area), 0);
   const leaseMonths = Number(plan?.leaseMonths || 12);
-  const isRetailPlan = plan?.planType === "零售方案";
-  const isMaintenancePlan = plan?.planType === "养护服务";
+  const isRetailPlan = normalizePlanType(plan?.planType) === "售卖订单";
+  const isMaintenancePlan = normalizePlanType(plan?.planType) === "养护服务";
   const systemTotalRent = isMaintenancePlan ? 0 : isRetailPlan ? dailyRent : dailyRent * leaseMonths * 30;
 
   const customFinalRent = isMaintenancePlan ? plan?.maintenanceFinalPrice : plan?.customFinalRent;
@@ -1383,11 +1443,15 @@ function createEmptyPlan(order, planType = "租赁方案") {
     paymentMethod: order?.paymentMethod || "月付",
     needDeposit: true,
     customFinalRent: order?.budget || "",
-    includedMaintenance: "基础养护",
+    includedMaintenance: "标准养护",
     retailNeedsMaintenance: false,
     retailMaintenanceNote: "",
+    saleDeliveryNote: "",
+    saleAftercareNote: "",
     maintenanceFinalPrice: "",
     maintenanceInternalNote: "",
+    maintenanceChecklist: [],
+    maintenanceExceptionNote: "",
     ...maintenanceFields,
     merchantDraft: Boolean(
       areaNote ||
@@ -1425,7 +1489,7 @@ function getOrderSignalTags(order) {
   if (order?.hasRentedBefore || /租过|复租|老客户|续租/.test(sourceText)) addSignal("租过绿植");
   if (/室外|户外|门口|露台|庭院/.test(sourceText)) addSignal("室外");
   else if (/室内|办公室|前台|会议室/.test(sourceText)) addSignal("室内");
-  if (/零售|买断|购买|售卖/.test(sourceText)) addSignal("零售");
+  if (/零售|买断|购买|售卖|销售/.test(sourceText)) addSignal("售卖");
   else if (/租赁|长租|短租|月租/.test(sourceText)) addSignal("租赁");
   if (/养护|维护|修剪|病虫|清洁/.test(sourceText)) addSignal("养护");
   if (order?.urgent || /急|紧急|加急|今天|明天/.test(sourceText)) addSignal("急单");
@@ -1610,7 +1674,7 @@ function App() {
     maintenancePackage: "标准养护",
     maintenanceCycle: "6 个月",
     maintenanceFrequency: "每月 2 次",
-    maintenanceContent: "浇水、修剪、清洁、病虫检查、简单更换建议",
+    maintenanceContent: "浇水、擦叶、黄叶修剪、盆面清理、摆放调整、植物状态记录",
     maintenanceFinalPrice: "",
     maintenanceInternalNote: "",
     assignedStaffId: DEFAULT_STAFF_ID,
@@ -2655,7 +2719,7 @@ function App() {
           assignedStaffType: shouldClaimPublicOrder ? getStaffEmployeeType(currentStaff) : order.assignedStaffType,
           acceptedAt: order.acceptedAt || nowText(),
           planType,
-          serviceType: planType === "养护服务" ? "养护" : planType === "零售方案" ? "零售" : "租赁",
+          serviceType: normalizeServiceType("", planType),
           plan: order.plan || createEmptyPlan(order, planType),
         };
 
@@ -2980,7 +3044,7 @@ function App() {
 
   function merchantConfirmPlan(orderId) {
     const targetOrder = orders.find((order) => order.id === orderId);
-    if (targetOrder?.plan?.planType === "养护服务" && !Number(targetOrder.plan.maintenanceFinalPrice || 0)) {
+    if (normalizePlanType(targetOrder?.plan?.planType) === "养护服务" && !Number(targetOrder.plan.maintenanceFinalPrice || 0)) {
       alert("请先填写养护服务最终报价");
       return;
     }
@@ -3200,7 +3264,7 @@ function App() {
     const time = nowText();
     const orderId = Date.now();
     const serviceType = newOrderForm.serviceType || "租赁";
-    const planType = serviceType === "养护" ? "养护服务" : serviceType === "零售" ? "零售方案" : "租赁方案";
+    const planType = getPlanTypeForService(serviceType);
     const isPublicAssignment = !newOrderForm.assignedStaffId || ["public", "all"].includes(String(newOrderForm.assignedStaffId));
     const assignedStaff = isPublicAssignment
       ? null
@@ -3303,7 +3367,7 @@ function App() {
       maintenancePackage: "标准养护",
       maintenanceCycle: "6 个月",
       maintenanceFrequency: "每月 2 次",
-      maintenanceContent: "浇水、修剪、清洁、病虫检查、简单更换建议",
+      maintenanceContent: "浇水、擦叶、黄叶修剪、盆面清理、摆放调整、植物状态记录",
       maintenanceFinalPrice: "",
       maintenanceInternalNote: "",
       assignedStaffId: assignableStaffMembers[0]?.id || DEFAULT_STAFF_ID,
@@ -3538,7 +3602,7 @@ function App() {
   function buildPlanText(order, { includeCustomerPhone = true } = {}) {
     const plan = order?.plan;
     const stats = getPlanStats(plan);
-    const isRetailPlan = plan?.planType === "零售方案";
+    const isRetailPlan = normalizePlanType(plan?.planType) === "售卖订单";
     const isMaintenancePlan = plan?.planType === "养护服务";
 
     const areaText = safeAreas(plan)
@@ -3568,7 +3632,8 @@ function App() {
 最终报价：¥${money(stats.finalRent)}
 支付方式：${plan?.paymentMethod || "月付"}
 押金：${plan?.needDeposit ? "需要" : "不需要"}
-基础养护：已包含`;
+默认养护：标准养护
+说明：租赁方案默认包含标准养护，用于保障植物状态与客户现场效果，可对外展示为赠送标准养护服务。`;
 
     return `${plan?.planType || "绿植租赁方案"}
 项目 / 客户：${order?.customerName || "-"}
@@ -3582,7 +3647,7 @@ function App() {
 客户确认：${order?.customerConfirmStatus || "-"}
 
 方案明细：
-${isMaintenancePlan ? "养护服务不展示商品明细" : areaText || "暂无区域"}
+${isMaintenancePlan ? "养护服务不展示租赁配花明细" : areaText || "暂无区域"}
 
 ${rentalText}`;
   }
@@ -4370,8 +4435,8 @@ ${rentalText}`;
     }
 
     const stats = getPlanStats(customerViewOrder.plan);
-    const isRetailPlan = customerViewOrder.plan?.planType === "零售方案";
-    const isMaintenancePlan = customerViewOrder.plan?.planType === "养护服务";
+    const isRetailPlan = normalizePlanType(customerViewOrder.plan?.planType) === "售卖订单";
+    const isMaintenancePlan = normalizePlanType(customerViewOrder.plan?.planType) === "养护服务";
 
     return (
       <div className="app">
@@ -4477,8 +4542,10 @@ ${rentalText}`;
     const selectedRows = planAreas.flatMap((area) =>
       safeItems(area).map((item) => ({ ...item, areaId: area.id, areaName: area.name }))
     );
-    const isRetailPlan = currentPlan?.planType === "零售方案";
-    const isMaintenancePlan = currentPlan?.planType === "养护服务";
+    const safeCurrentPlanType = normalizePlanType(currentPlan?.planType);
+    const isRetailPlan = safeCurrentPlanType === "售卖订单";
+    const isMaintenancePlan = safeCurrentPlanType === "养护服务";
+    const isRentalMaterialPlan = ["租赁方案", "临时摆场"].includes(safeCurrentPlanType);
     const currentExecutionStage = getOrderExecutionStage(currentOrder);
     const currentContactText = `${currentOrder.contactName || "-"}${currentOrder.phone ? `｜${currentOrder.phone}` : ""}`;
     const hasUsefulPrefillText = (value) => {
@@ -4493,6 +4560,13 @@ ${rentalText}`;
       hasUsefulPrefillText(currentOrder?.plannedPlantCount) ||
       hasUsefulPrefillText(currentOrder?.areaSize)
     );
+    const maintenanceChecklistOptions = [
+      "服务区域已确认",
+      "套餐内容已核对",
+      "养护前照片已准备",
+      "养护后照片已准备",
+      "异常情况已记录",
+    ];
 
     const pageStyle = {
       minHeight: "100vh",
@@ -4636,7 +4710,7 @@ ${rentalText}`;
           </section>
         )}
 
-        {!isMaintenancePlan && (
+        {isRentalMaterialPlan && (
         <section style={cardStyle}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid #e7edf4", marginBottom: 12 }}>
             <button style={tabStyle(true)}>植物</button>
@@ -4647,7 +4721,7 @@ ${rentalText}`;
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
             <div>
               <strong style={{ color: "#182536", fontSize: 16 }}>场景物料表</strong>
-              <p style={{ margin: "4px 0 0", color: "#7b899a", fontSize: 13 }}>按区域选择植物，数量可直接修改。</p>
+              <p style={{ margin: "4px 0 0", color: "#7b899a", fontSize: 13 }}>{safeCurrentPlanType === "临时摆场" ? "按摆场区域选择植物和资材，数量可直接修改。" : "按租赁区域选择植物，数量可直接修改。"}</p>
             </div>
             <button style={{ border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "10px 13px" }} onClick={() => setShowAreaSheet(true)}>+ 场景</button>
           </div>
@@ -4677,7 +4751,7 @@ ${rentalText}`;
                   <div className="staff-material-info">
                     <strong>{item.name}</strong>
                     <em>{item.areaName}</em>
-                    <small>¥{money(item.pricePerDay)}{currentPlan?.planType === "零售方案" ? "/件" : "/天"}</small>
+                    <small>¥{money(item.pricePerDay)}/天</small>
                   </div>
                   <div className="staff-material-controls">
                     <span className="staff-material-stock">有货</span>
@@ -4698,6 +4772,85 @@ ${rentalText}`;
             })}
           </div>
         </section>
+        )}
+
+        {isRetailPlan && (
+          <section style={cardStyle}>
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Sale Order</p>
+                <h2>售卖订单</h2>
+              </div>
+              <button
+                className="ghost-button"
+                onClick={() => {
+                  const firstArea = planAreas[0];
+                  if (firstArea) {
+                    openProductSheet(firstArea);
+                    return;
+                  }
+                  addAreaWithName("商品清单");
+                }}
+              >
+                添加商品
+              </button>
+            </div>
+
+            <div className="empty-card" style={{ textAlign: "left", marginBottom: 12 }}>
+              <p>售卖订单不进入租赁配花流程</p>
+              <span>按商品清单、数量、单价和配送 / 安装备注计算销售合计。</span>
+            </div>
+
+            <div className="staff-material-card-flow">
+              {selectedRows.length === 0 ? (
+                <div className="empty-card"><p>暂无商品</p><span>点击“添加商品”维护售卖清单。</span></div>
+              ) : selectedRows.map((item) => {
+                const product = merchantProducts.find((p) => p.id === item.productId) || item;
+                const image = getProductImage(product);
+                return (
+                  <article className="staff-material-card" key={`${item.areaId}-${item.productId}`}>
+                    <span className="staff-material-thumb">
+                      {isImageUrl(image) ? <img src={image} alt={item.name} /> : image}
+                    </span>
+                    <div className="staff-material-info">
+                      <strong>{item.name}</strong>
+                      <em>数量：{item.quantity} · 单价：¥{money(item.pricePerDay)}</em>
+                      <small>小计 ¥{money(Number(item.pricePerDay || 0) * Number(item.quantity || 0))}</small>
+                    </div>
+                    <div className="staff-material-controls">
+                      <input inputMode="numeric" type="number" value={item.quantity} min="1" onChange={(e) => {
+                        const nextQty = Math.max(1, Number(e.target.value || 1));
+                        updateOrderPlan(currentOrder.id, (plan) => ({
+                          ...plan,
+                          areas: safeAreas(plan).map((area) => area.id === item.areaId ? {
+                            ...area,
+                            items: safeItems(area).map((old) => old.productId === item.productId ? { ...old, quantity: nextQty } : old)
+                          } : area),
+                        }), "售卖数量已同步");
+                      }} />
+                      <button className="staff-material-remove" onClick={() => removeItemFromArea(item.areaId, item.productId)}>删除</button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="maintenance-detail-grid" style={{ marginTop: 12 }}>
+              <div className="sheet-block">
+                <p className="sheet-label">配送 / 安装备注</p>
+                <input className="area-input" value={currentPlan.saleDeliveryNote || ""} onChange={(e) => updateCurrentPlanField("saleDeliveryNote", e.target.value)} placeholder="例如：送达后协助摆放到前台和会议室" />
+              </div>
+              <div className="sheet-block">
+                <p className="sheet-label">售后备注</p>
+                <input className="area-input" value={currentPlan.saleAftercareNote || ""} onChange={(e) => updateCurrentPlanField("saleAftercareNote", e.target.value)} placeholder="例如：交付后 7 天内提供状态咨询" />
+              </div>
+            </div>
+
+            <div className="rent-preview" style={{ marginTop: 12 }}>
+              <span>销售合计</span>
+              <strong>¥{money(currentStats.systemTotalRent)}</strong>
+            </div>
+          </section>
         )}
 
         {isMaintenancePlan && (
@@ -4725,9 +4878,11 @@ ${rentalText}`;
                     }
                   >
                     <strong>{pack.name}</strong>
+                    {pack.recommended && <span>推荐 / 默认</span>}
                     <span>{pack.frequency}</span>
                     <small>{pack.scene}</small>
                     <em>{pack.content}</em>
+                    <em>{pack.priceText}｜面积参考 {pack.areaPriceText}</em>
                   </button>
                 );
               })}
@@ -4757,9 +4912,43 @@ ${rentalText}`;
               <textarea className="area-input maintenance-textarea" value={currentPlan.maintenanceContent || ""} onChange={(e) => updateCurrentPlanField("maintenanceContent", e.target.value)} />
             </div>
 
+            <div className="sheet-block">
+              <p className="sheet-label">执行勾选项</p>
+              <div className="option-grid payment-grid">
+                {maintenanceChecklistOptions.map((item) => {
+                  const checkedItems = Array.isArray(currentPlan.maintenanceChecklist) ? currentPlan.maintenanceChecklist : [];
+                  const selected = checkedItems.includes(item);
+                  return (
+                    <button
+                      key={item}
+                      className={selected ? "selected" : ""}
+                      onClick={() => {
+                        const nextChecklist = selected
+                          ? checkedItems.filter((old) => old !== item)
+                          : [...checkedItems, item];
+                        updateCurrentPlanField("maintenanceChecklist", nextChecklist);
+                      }}
+                    >
+                      {selected ? `✓ ${item}` : item}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="sheet-block">
+              <p className="sheet-label">异常说明</p>
+              <textarea
+                className="area-input maintenance-textarea"
+                value={currentPlan.maintenanceExceptionNote || ""}
+                onChange={(e) => updateCurrentPlanField("maintenanceExceptionNote", e.target.value)}
+                placeholder="例如：发现虫害、缺水、黄叶偏多、需补土或更换植物"
+              />
+            </div>
+
             <div className="empty-card">
-              <p>客户侧只展示套餐、频次、周期、服务内容和最终报价。</p>
-              <span>按次、按月、按面积、按盆数、上门费和特殊植物加价等复杂因素仅作为内部报价参考。</span>
+              <p>模拟报价，可在商户端调整</p>
+              <span>养护前 / 养护后照片仍在完成任务页上传；这里先记录套餐、完成项和异常说明。</span>
             </div>
           </section>
         )}
@@ -4779,7 +4968,7 @@ ${rentalText}`;
           {/* 1. 核心数据 */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
             <div style={planAmountCardStyle}>
-              <span style={planAmountLabelStyle}>{currentPlan?.planType === "零售方案" ? "商品金额" : "预估日租金"}</span>
+              <span style={planAmountLabelStyle}>{isRetailPlan ? "商品金额" : "预估日租金"}</span>
               <strong style={planAmountValueStyle}>¥{money(currentStats.dailyRent)}</strong>
             </div>
             <div style={planAmountCardStyle}>
@@ -4788,14 +4977,14 @@ ${rentalText}`;
             </div>
           </div>
 
-          {currentPlan?.planType === "租赁方案" && (
+          {safeCurrentPlanType === "租赁方案" && (
             <div className="empty-card" style={{ marginBottom: 18 }}>
-              <p>租赁方案默认包含基础养护</p>
-              <span>长期租摆报价中已包含基础浇水、修剪、清洁和状态检查，不需要客户额外再选养护订单。</span>
+              <p>租赁方案默认包含标准养护</p>
+              <span>用于保障植物状态与客户现场效果，可对外展示为赠送标准养护服务。</span>
             </div>
           )}
 
-          {currentPlan?.planType === "零售方案" && (
+          {isRetailPlan && (
             <div className="sheet-block">
               <p className="sheet-label">是否需要售后养护</p>
               <div className="option-grid payment-grid">
@@ -4815,7 +5004,7 @@ ${rentalText}`;
           )}
 
           {/* 2. 租期选择 */}
-          <div style={{ marginBottom: 18, display: currentPlan?.planType === "零售方案" ? "none" : "block" }}>
+          <div style={{ marginBottom: 18, display: isRetailPlan ? "none" : "block" }}>
             <span style={{ display: "block", color: "#647286", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>选择租期</span>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
               {[6, 12, 24, 36].map((m) => {
@@ -4842,7 +5031,7 @@ ${rentalText}`;
           </div>
 
           {/* 3. 支付方式 */}
-          <div style={{ marginBottom: 18, display: currentPlan?.planType === "零售方案" ? "none" : "block" }}>
+          <div style={{ marginBottom: 18, display: isRetailPlan ? "none" : "block" }}>
             <span style={{ display: "block", color: "#647286", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>支付方式</span>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
               {["月付", "季付", "半年付", "年付"].map((method) => {
@@ -4869,7 +5058,7 @@ ${rentalText}`;
           </div>
 
           {/* 4. 押金设置 */}
-          <div style={{ marginBottom: 18, display: currentPlan?.planType === "零售方案" ? "none" : "block" }}>
+          <div style={{ marginBottom: 18, display: isRetailPlan ? "none" : "block" }}>
             <span style={{ display: "block", color: "#647286", fontSize: 13, fontWeight: 800, marginBottom: 8 }}>是否需要押金</span>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <button
@@ -5025,6 +5214,7 @@ ${rentalText}`;
 
   function renderProductSheet() {
     const videoBlue = "#405a38";
+    const isSaleSelector = normalizePlanType(currentPlan?.planType) === "售卖订单";
     const sheetStyle = {
       height: "92vh",
       maxHeight: "92vh",
@@ -5114,7 +5304,7 @@ ${rentalText}`;
             <div style={selectorTitleStyle}>
               <div>
                 <p style={{ margin: 0, color: "#9a907d", fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 900 }}>Item Selector</p>
-                <h2 style={{ margin: "4px 0 0", color: "#20261f", fontSize: 21, lineHeight: 1.18 }}>{currentArea?.name || "当前场景"}物料选择</h2>
+                <h2 style={{ margin: "4px 0 0", color: "#20261f", fontSize: 21, lineHeight: 1.18 }}>{isSaleSelector ? "售卖商品选择" : `${currentArea?.name || "当前场景"}物料选择`}</h2>
               </div>
               <button style={selectorCloseStyle} onClick={() => setShowProductSheet(false)}>×</button>
             </div>
@@ -5152,7 +5342,7 @@ ${rentalText}`;
                     <span style={{ minWidth: 0 }}>
                       <strong style={{ display: "block", color: "#182536", fontSize: 15, marginBottom: 4 }}>{product.name}</strong>
                       <small style={{ display: "block", color: "#7b899a", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{product.description}</small>
-                      <b style={{ display: "block", color: videoBlue, marginTop: 5 }}>{currentPlan?.planType === "零售方案" ? `¥${money(product.pricePerDay)}/件` : `¥${money(product.pricePerDay)}/天`}</b>
+                      <b style={{ display: "block", color: videoBlue, marginTop: 5 }}>{normalizePlanType(currentPlan?.planType) === "售卖订单" ? `¥${money(product.pricePerDay)}/件` : `¥${money(product.pricePerDay)}/天`}</b>
                     </span>
                     <div className="staff-product-stepper" onClick={(event) => event.stopPropagation()}>
                       <button
@@ -5188,9 +5378,9 @@ ${rentalText}`;
 
           <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 60, background: "rgba(255,255,255,.98)", borderTop: "1px solid #e4eaf2", padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
             <button style={{ border: 0, borderRadius: 10, background: videoBlue, color: "#fff", fontWeight: 900, padding: "13px 12px", fontSize: 16 }} onClick={() => setShowProductSheet(false)}>
-              已选 {getAreaProductCount(currentArea)} 件｜{currentPlan?.planType === "零售方案" ? "商品金额" : "日租金"} ¥{money(getAreaDailyRent(currentArea))}｜完成选品
+              已选 {getAreaProductCount(currentArea)} 件｜{normalizePlanType(currentPlan?.planType) === "售卖订单" ? "商品金额" : "日租金"} ¥{money(getAreaDailyRent(currentArea))}｜完成选品
             </button>
-            <button style={{ border: "1px solid #f0c7c2", borderRadius: 10, background: "#fff7f6", color: "#b44a3e", fontWeight: 800, padding: "10px 12px" }} onClick={clearCurrentAreaItems}>清空当前场景物料</button>
+            <button style={{ border: "1px solid #f0c7c2", borderRadius: 10, background: "#fff7f6", color: "#b44a3e", fontWeight: 800, padding: "10px 12px" }} onClick={clearCurrentAreaItems}>{isSaleSelector ? "清空当前商品清单" : "清空当前场景物料"}</button>
           </div>
         </section>
       </div>
@@ -5209,7 +5399,7 @@ ${rentalText}`;
           }
         : {};
 
-    if (currentPlan?.planType === "养护服务") {
+    if (normalizePlanType(currentPlan?.planType) === "养护服务") {
       return (
         <div className="sheet-mask" onClick={() => setShowPaymentSheet(false)}>
           <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
@@ -5231,23 +5421,23 @@ ${rentalText}`;
       );
     }
 
-    if (currentPlan?.planType === "零售方案") {
+    if (normalizePlanType(currentPlan?.planType) === "售卖订单") {
       return (
         <div className="sheet-mask" onClick={() => setShowPaymentSheet(false)}>
           <section className="bottom-sheet" onClick={(event) => event.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-header">
-              <div><p className="eyebrow">Retail Plan</p><h2>零售方案报价</h2></div>
+              <div><p className="eyebrow">Sale Order</p><h2>售卖订单报价</h2></div>
               <button className="close-button" onClick={() => setShowPaymentSheet(false)}>×</button>
             </div>
 
             <div className="empty-card">
-              <p>零售方案不需要租期、支付周期和押金设置。</p>
-              <span>当前按商品单价 × 数量统计，可作为商户报价参考。</span>
+              <p>售卖订单不需要租期、支付周期和押金设置。</p>
+              <span>当前按商品单价 × 数量统计销售合计，可作为商户报价参考。</span>
             </div>
 
             <div className="rent-preview"><span>商品金额</span><strong>¥{money(currentStats.systemTotalRent)}</strong></div>
-            <button className="submit-sheet-button" onClick={() => setShowPaymentSheet(false)}>保存零售报价</button>
+            <button className="submit-sheet-button" onClick={() => setShowPaymentSheet(false)}>保存售卖报价</button>
           </section>
         </div>
       );
@@ -5324,7 +5514,7 @@ ${rentalText}`;
   }
 
   function renderPriceSheet() {
-    const isMaintenancePlan = currentPlan?.planType === "养护服务";
+    const isMaintenancePlan = normalizePlanType(currentPlan?.planType) === "养护服务";
 
     return (
       <div className="sheet-mask" onClick={() => setShowPriceSheet(false)}>
@@ -5516,8 +5706,8 @@ ${rentalText}`;
       order = ensureOrderDefaults(order);
       const orderPlan = order.plan || null;
       const stats = getPlanStats(orderPlan);
-      const isRetailPlan = orderPlan?.planType === "零售方案";
-      const isMaintenancePlan = orderPlan?.planType === "养护服务";
+      const isRetailPlan = normalizePlanType(orderPlan?.planType) === "售卖订单";
+      const isMaintenancePlan = normalizePlanType(orderPlan?.planType) === "养护服务";
       const isWaitingConfirm = order.status === "待商户确认";
       const isWaitingArchive = order.status === "待商户归档";
       const orderNotes = [order.merchantNote, order.description].map((item) => String(item || "").trim());
@@ -6759,11 +6949,7 @@ ${rentalText}`;
               <section className="plan-summary-card merchant-create-stage" style={{ margin: 0 }}>
                 <div className="section-title-row"><div><p className="eyebrow">Step 02</p><h2>项目需求</h2></div></div>
                 <div className="sheet-block"><p className="sheet-label">订单来源</p><div className="option-grid payment-grid order-source-segmented">{createOrderSourceOptions.map((source) => (<button key={source} className={newOrderForm.source === source ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, source }))}>{source}</button>))}</div></div>
-                <div className="sheet-block"><p className="sheet-label">方案类型</p><div className="plan-type-grid">{[
-                  ["租赁", "租赁方案"],
-                  ["零售", "零售方案"],
-                  ["养护", "养护服务"],
-                ].map(([serviceType, label]) => (<button key={serviceType} className={newOrderForm.serviceType === serviceType ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, serviceType }))}>{label}</button>))}</div></div>
+                <div className="sheet-block"><p className="sheet-label">方案类型</p><div className="plan-type-grid">{SERVICE_TYPE_OPTIONS.map(([serviceType, label]) => (<button key={serviceType} className={newOrderForm.serviceType === serviceType ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, serviceType }))}>{label}</button>))}</div></div>
                 <div className="sheet-block">
                   <p className="sheet-label">需求标签</p>
                   <div className="merchant-tag-picker">
@@ -6822,10 +7008,10 @@ ${rentalText}`;
                 <div className="merchant-plan-draft-grid">
                   <div className="sheet-block"><p className="sheet-label">租期</p><input className="area-input" type="number" value={newOrderForm.leaseMonths} onChange={(e) => setNewOrderForm((form) => ({ ...form, leaseMonths: e.target.value }))} /></div>
                   <div className="sheet-block"><p className="sheet-label">付款方式</p><select className="area-input" value={newOrderForm.paymentMethod} onChange={(e) => setNewOrderForm((form) => ({ ...form, paymentMethod: e.target.value }))}>{["月付", "季付", "半年付", "年付"].map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-                  <div className="sheet-block"><p className="sheet-label">基础养护</p><div className="empty-card"><p>默认包含基础养护</p><span>员工端可按现场情况校正商品、区域和数量。</span></div></div>
+                  <div className="sheet-block"><p className="sheet-label">默认养护</p><div className="empty-card"><p>默认包含标准养护</p><span>租赁方案默认包含标准养护，用于保障植物状态与客户现场效果。</span></div></div>
                 </div>
               )}
-              {newOrderForm.serviceType === "零售" && (
+              {newOrderForm.serviceType === "售卖" && (
                 <div className="sheet-block">
                   <p className="sheet-label">售后养护意向</p>
                   <div className="option-grid payment-grid">
@@ -6981,11 +7167,7 @@ ${rentalText}`;
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">方案类型</p>
             <div className="plan-type-grid">
-              {[
-                ["租赁", "租赁方案"],
-                ["零售", "零售方案"],
-                ["养护", "养护服务"],
-              ].map(([serviceType, label]) => (
+              {SERVICE_TYPE_OPTIONS.map(([serviceType, label]) => (
                 <button key={serviceType} className={newOrderForm.serviceType === serviceType ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, serviceType }))}>
                   {label}
                 </button>
@@ -7085,11 +7267,11 @@ ${rentalText}`;
                   <button key={month} className={Number(newOrderForm.leaseMonths || 12) === month ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, leaseMonths: String(month) }))}>{month} 月</button>
                 ))}
               </div>
-              <div className="empty-card"><p>默认包含基础养护</p><span>员工接单后可按现场情况校正区域和商品。</span></div>
+              <div className="empty-card"><p>默认包含标准养护</p><span>租赁方案默认包含标准养护，可对外展示为赠送标准养护服务。</span></div>
             </div>
           )}
 
-          {newOrderForm.serviceType === "零售" && (
+          {newOrderForm.serviceType === "售卖" && (
             <div className="sheet-block" style={compactBlockStyle}>
               <p className="sheet-label">售后养护意向</p>
               <div className="option-grid">
