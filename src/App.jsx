@@ -4,6 +4,7 @@ import { AuthPage } from "./components/auth/AuthPage";
 import { GardenIcons } from "./GardenIcons";
 import { StaffMobile } from "./components/staff/StaffMobile";
 import { supabase } from "./lib/supabaseClient";
+import defaultHomeHeroImage from "./assets/hero.png";
 import "./App.css";
 
 const SUPABASE_URL = "https://kvdxgyymlfnnurdigtkj.supabase.co";
@@ -71,9 +72,10 @@ const HOME_BANNER_LAYOUT_TYPES = [
 ];
 const HOME_BANNER_LINK_TYPES = [
   ["none", "不跳转"],
-  ["service", "服务页面"],
-  ["product_category", "商品分类"],
   ["garden_project", "园林改造咨询"],
+  ["care_service", "养护服务"],
+  ["rental_plan", "租赁方案"],
+  ["plant_shop", "花植选购"],
   ["custom", "自定义预留"],
 ];
 const HOME_HERO_LINK_TYPES = [
@@ -283,7 +285,7 @@ const defaultMiniProgramHomeConfig = {
       type: "hero",
       title: "首页主图",
       hero: {
-        imageUrl: "",
+        imageUrl: defaultHomeHeroImage,
         localPreviewUrl: "",
         title: "青庭花涧",
         subtitle: "花植 · 茶咖 · 园林生活空间",
@@ -303,7 +305,7 @@ const defaultMiniProgramHomeConfig = {
           layoutType: "single",
           images: [
             {
-              imageUrl: "",
+              imageUrl: defaultHomeHeroImage,
               localPreviewUrl: "",
               placeholder: "园林场景",
             },
@@ -996,8 +998,8 @@ function normalizeHomeHeroConfig(hero = {}) {
   const defaults = defaultMiniProgramHomeConfig.homeModules.find((module) => module.type === "hero")?.hero || {};
   const linkType = HOME_HERO_LINK_TYPES.some(([value]) => value === hero?.linkType) ? hero.linkType : defaults.linkType || "none";
   return {
-    imageUrl: hero?.imageUrl || "",
-    localPreviewUrl: hero?.localPreviewUrl || "",
+    imageUrl: hero?.imageUrl || defaults.imageUrl || "",
+    localPreviewUrl: hero?.localPreviewUrl || defaults.localPreviewUrl || "",
     title: hero?.title ?? defaults.title ?? "",
     subtitle: hero?.subtitle ?? defaults.subtitle ?? "",
     visible: hero?.visible ?? defaults.visible ?? true,
@@ -1044,6 +1046,7 @@ function normalizeMiniProgramHomeConfig(data) {
   return {
     ...source,
     hero: normalizedHeroModule.hero,
+    homeHero: normalizedHeroModule.hero,
     fixedEntrances,
     banners: normalizedBannerModule.items,
     homeModules: [normalizedHeroModule, normalizedBannerModule, ...otherModules],
