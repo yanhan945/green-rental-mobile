@@ -18,6 +18,7 @@ const SERVICE_CONFIG_STORAGE_KEY = "green-rental-service-config-v1";
 const PRODUCT_CATEGORY_STORAGE_KEY = "green-rental-product-categories-v1";
 const CUSTOMER_STORAGE_KEY = "green-rental-customers-v31";
 const PROJECT_INQUIRY_STORAGE_KEY = "green-rental-project-inquiries-v1";
+const MINI_PROGRAM_APPOINTMENT_STORAGE_KEY = "green-rental-mini-program-appointments-v1";
 const MINI_PROGRAM_HOME_STORAGE_KEY = "green-rental-mini-program-home-v1";
 const STAFF_DIRECTORY_STORAGE_KEY = "green-rental-staff-directory-v1";
 const STAFF_AVATAR_STORAGE_KEY = "green-rental-staff-avatar-v1";
@@ -31,7 +32,7 @@ const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "待执行", 
 const MERCHANT_STATUS_TABS = ["全部", ...ORDER_STATUS];
 const STAFF_TABS = ["待接单", "做方案", "执行中", "已完成"];
 const STAFF_APP_TABS = ["首页", "任务", "上报", "我的"];
-const MERCHANT_TABS = ["工作台", "订单管理", "项目线索", "团队成员", "执行监测", "商品与服务", "小程序装修", "客户库", "设置"];
+const MERCHANT_TABS = ["工作台", "订单管理", "团队成员", "执行监测", "商品与服务", "客户库", "项目线索", "小程序装修", "设置"];
 const APP_PAGES = ["orders", "plan", "completeUpload", "archiveDetail", "serviceRecord"];
 
 function getAppShellMode() {
@@ -66,6 +67,7 @@ const SERVICE_TYPE_OPTIONS = [
   ["园林", "园林改造"],
 ];
 const PROJECT_INQUIRY_STATUS = ["待跟进", "已联系", "已转订单", "暂缓", "无效"];
+const MINI_PROGRAM_APPOINTMENT_STATUS = ["待确认", "已联系", "已转订单", "暂缓", "已取消"];
 const HOME_BANNER_LAYOUT_TYPES = [
   ["single", "单图横幅"],
   ["triple", "三图拼接"],
@@ -275,6 +277,63 @@ const defaultProjectInquiries = [
     followUpNote: "",
     createdAt: "2026-05-30 09:10",
     convertedOrderId: "",
+  },
+];
+
+const defaultMiniProgramAppointments = [
+  {
+    id: "appt-care-001",
+    source: "mini_program",
+    type: "care_service",
+    serviceType: "maintenance",
+    packageName: "标准养护",
+    contactName: "周女士",
+    phone: "13800006661",
+    address: "杭州市滨江区春晓路 88 号",
+    serviceArea: "办公室前台与会议区",
+    areaSize: "约 120㎡",
+    plantCount: "约 26 盆",
+    appointmentDate: "2026-06-08",
+    timeWindow: "10:00-12:00",
+    expectedTime: "2026-06-08 10:00-12:00",
+    customerNote: "希望先处理黄叶和盆面清理，前台几盆植物状态比较差。",
+    quotedPrice: "280",
+    photos: [],
+    status: "待确认",
+    merchantNote: "",
+    createdAt: "2026-06-02 09:40",
+    convertedOrderId: "",
+    miniProgramPayload: {
+      entry: "养护服务",
+      submitAction: "立即预约",
+    },
+  },
+  {
+    id: "appt-care-002",
+    source: "mini_program",
+    type: "care_service",
+    serviceType: "maintenance",
+    packageName: "专项处理",
+    contactName: "林经理",
+    phone: "13900007772",
+    address: "杭州市上城区湖滨路 18 号",
+    serviceArea: "店铺入口绿植区",
+    areaSize: "约 35㎡",
+    plantCount: "8 盆",
+    appointmentDate: "2026-06-10",
+    timeWindow: "14:00-16:00",
+    expectedTime: "2026-06-10 14:00-16:00",
+    customerNote: "疑似虫害，想让师傅上门判断是否需要换盆或用药。",
+    quotedPrice: "",
+    photos: [],
+    status: "待确认",
+    merchantNote: "",
+    createdAt: "2026-06-02 11:15",
+    convertedOrderId: "",
+    miniProgramPayload: {
+      entry: "养护服务",
+      submitAction: "立即预约",
+    },
   },
 ];
 
@@ -821,9 +880,16 @@ function normalizeProducts(data) {
     const productType = ["rental", "sale"].includes(product?.productType)
       ? product.productType
       : product?.salePrice || product?.price ? "sale" : "rental";
-    const pricePerDay = Number(product?.pricePerDay || 0);
-    const monthlyRent = product?.monthlyRent || (pricePerDay ? String(Math.round(pricePerDay * 30)) : "");
-    const salePrice = product?.salePrice || product?.price || "";
+    const rawPricePerDay = Number(product?.pricePerDay || 0);
+    const monthlyRent = productType === "rental"
+      ? product?.monthlyRent || product?.price || seed.monthlyRent || seed.price || (rawPricePerDay ? String(Math.round(rawPricePerDay * 30)) : "")
+      : "";
+    const salePrice = productType === "sale"
+      ? product?.salePrice || product?.price || seed.salePrice || seed.price || (rawPricePerDay ? String(rawPricePerDay) : "")
+      : "";
+    const pricePerDay = productType === "sale"
+      ? Number(salePrice || rawPricePerDay || 0)
+      : rawPricePerDay || (Number(monthlyRent || 0) ? Number((Number(monthlyRent) / 30).toFixed(2)) : 0);
     const priceDisplay = product?.priceDisplay || (productType === "sale"
       ? (salePrice ? `¥${salePrice} / 件` : "")
       : (monthlyRent ? `¥${monthlyRent} / 月` : ""));
@@ -875,6 +941,12 @@ function normalizeProducts(data) {
       categoryId,
       categoryName,
       suitablePlaces,
+      pricePerDay,
+      monthlyRent,
+      salePrice,
+      price: productType === "sale" ? salePrice : monthlyRent,
+      priceUnit: productType === "sale" ? "元 / 件" : "元 / 月",
+      priceDisplay,
     };
   });
 }
@@ -951,6 +1023,65 @@ function persistProjectInquiriesToLocalStore(projectInquiries) {
       projectInquiries: normalizeProjectInquiries(projectInquiries),
     }),
     "项目线索"
+  );
+}
+
+function normalizeMiniProgramAppointments(data) {
+  const list = Array.isArray(data) && data.length ? data : defaultMiniProgramAppointments;
+  return list.map((item, index) => {
+    const appointmentDate = item?.appointmentDate || item?.date || "";
+    const timeWindow = item?.timeWindow || item?.timeRange || "";
+    return {
+      id: item?.id || `appt-${Date.now()}-${index}`,
+      source: item?.source || "mini_program",
+      type: item?.type || "care_service",
+      serviceType: item?.serviceType || "maintenance",
+      packageName: item?.packageName || item?.maintenancePackage || "标准养护",
+      contactName: item?.contactName || item?.name || "待确认客户",
+      phone: item?.phone || "",
+      address: item?.address || "",
+      serviceArea: item?.serviceArea || item?.areaNote || "",
+      areaSize: item?.areaSize || "",
+      plantCount: item?.plantCount || item?.plannedPlantCount || "",
+      appointmentDate,
+      timeWindow,
+      expectedTime: item?.expectedTime || [appointmentDate, timeWindow].filter(Boolean).join(" ") || "待确认",
+      customerNote: item?.customerNote || item?.note || "",
+      quotedPrice: item?.quotedPrice || item?.price || "",
+      photos: Array.isArray(item?.photos) ? item.photos : [],
+      status: MINI_PROGRAM_APPOINTMENT_STATUS.includes(item?.status) ? item.status : "待确认",
+      merchantNote: item?.merchantNote || item?.followUpNote || "",
+      createdAt: item?.createdAt || nowText(),
+      updatedAt: item?.updatedAt || "",
+      convertedOrderId: item?.convertedOrderId || "",
+      miniProgramPayload: item?.miniProgramPayload && typeof item.miniProgramPayload === "object"
+        ? item.miniProgramPayload
+        : {},
+    };
+  });
+}
+
+function loadMiniProgramAppointmentsFromLocalStore() {
+  try {
+    const raw = localStorage.getItem(MINI_PROGRAM_APPOINTMENT_STORAGE_KEY);
+    if (!raw) return normalizeMiniProgramAppointments(defaultMiniProgramAppointments);
+    const parsed = JSON.parse(raw);
+    return normalizeMiniProgramAppointments(parsed?.appointments || parsed?.miniProgramAppointments);
+  } catch (error) {
+    console.error("读取小程序预约失败：", error);
+    return normalizeMiniProgramAppointments(defaultMiniProgramAppointments);
+  }
+}
+
+function persistMiniProgramAppointmentsToLocalStore(appointments) {
+  safeSetLocalStorage(
+    MINI_PROGRAM_APPOINTMENT_STORAGE_KEY,
+    JSON.stringify({
+      source: "localStorage",
+      savedAt: nowText(),
+      miniProgramAppointments: normalizeMiniProgramAppointments(appointments),
+    }),
+    "小程序预约"
   );
 }
 
@@ -1944,6 +2075,33 @@ function getAreaDailyRent(area) {
   }, 0);
 }
 
+function getProductPlanUnitPrice(product, planType = "租赁方案") {
+  const safePlanType = normalizePlanType(planType);
+  if (safePlanType === "售卖订单") {
+    return Number(product?.salePrice || product?.price || product?.pricePerDay || 0);
+  }
+  const monthlyRent = Number(product?.monthlyRent || 0);
+  if (monthlyRent > 0) return Number((monthlyRent / 30).toFixed(2));
+  return Number(product?.pricePerDay || product?.price || 0);
+}
+
+function createPlanItemFromProduct(product, planType = "租赁方案", quantity = 1) {
+  const safePlanType = normalizePlanType(planType);
+  const unitPrice = getProductPlanUnitPrice(product, safePlanType);
+  return {
+    productId: product.id,
+    name: product.name,
+    productType: product.productType || (safePlanType === "售卖订单" ? "sale" : "rental"),
+    pricePerDay: unitPrice,
+    unitPrice,
+    priceUnit: safePlanType === "售卖订单" ? "元 / 件" : "元 / 天",
+    salePrice: product.salePrice || "",
+    monthlyRent: product.monthlyRent || "",
+    priceSource: "merchantProducts",
+    quantity,
+  };
+}
+
 const MAINTENANCE_PACKAGES = [
   {
     name: "基础养护",
@@ -2236,6 +2394,7 @@ function App() {
   const [merchantMaintenancePackages, setMerchantMaintenancePackages] = useState(() => loadMaintenancePackagesFromLocalStore());
   const [merchantProductCategories, setMerchantProductCategories] = useState(() => loadProductCategoriesFromLocalStore());
   const [projectInquiries, setProjectInquiries] = useState(() => loadProjectInquiriesFromLocalStore());
+  const [miniProgramAppointments, setMiniProgramAppointments] = useState(() => loadMiniProgramAppointmentsFromLocalStore());
   const [miniProgramHomeConfig, setMiniProgramHomeConfig] = useState(() => loadMiniProgramHomeConfigFromLocalStore());
   const [merchantCustomers, setMerchantCustomers] = useState(() => loadCustomersFromLocalStore());
   const [staffDirectory, setStaffDirectory] = useState(() => loadStaffDirectoryFromLocalStore());
@@ -2246,6 +2405,8 @@ function App() {
   const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
   const [selectedProjectInquiryId, setSelectedProjectInquiryId] = useState(null);
   const [projectInquiryFollowUpDraft, setProjectInquiryFollowUpDraft] = useState("");
+  const [selectedMiniProgramAppointmentId, setSelectedMiniProgramAppointmentId] = useState(null);
+  const [miniProgramAppointmentNoteDraft, setMiniProgramAppointmentNoteDraft] = useState("");
   const [merchantViewingOrder, setMerchantViewingOrder] = useState(null);
   const [editingStaffId, setEditingStaffId] = useState(null);
   const [editingStaffForm, setEditingStaffForm] = useState(null);
@@ -2319,6 +2480,7 @@ function App() {
     assignedStaffId: DEFAULT_STAFF_ID,
     communicationQrUrl: "",
     sourceInquiryId: "",
+    sourceAppointmentId: "",
   });
 
   const [newCustomerForm, setNewCustomerForm] = useState({
@@ -2384,6 +2546,7 @@ function App() {
   const safeMerchantMaintenancePackages = normalizeMaintenancePackages(merchantMaintenancePackages);
   const safeMerchantProductCategories = normalizeProductCategories(merchantProductCategories);
   const safeProjectInquiries = normalizeProjectInquiries(projectInquiries);
+  const safeMiniProgramAppointments = normalizeMiniProgramAppointments(miniProgramAppointments);
   const safeMiniProgramHomeConfig = normalizeMiniProgramHomeConfig(miniProgramHomeConfig);
   const safeMerchantCustomers = Array.isArray(merchantCustomers) ? merchantCustomers : [];
   const currentOrder = safeOrders.find((order) => String(order.id) === String(currentOrderId)) || null;
@@ -2535,6 +2698,10 @@ function App() {
   useEffect(() => {
     persistProjectInquiriesToLocalStore(projectInquiries);
   }, [projectInquiries]);
+
+  useEffect(() => {
+    persistMiniProgramAppointmentsToLocalStore(miniProgramAppointments);
+  }, [miniProgramAppointments]);
 
   useEffect(() => {
     persistMiniProgramHomeConfigToLocalStore(miniProgramHomeConfig);
@@ -2800,6 +2967,66 @@ function App() {
     const normalized = normalizeProductCategories(nextCategories);
     setMerchantProductCategories(normalized);
     window.setTimeout(() => syncProductsLibrary(merchantProducts, message, merchantMaintenancePackages, normalized), 0);
+  }
+
+  function syncProductPriceToOpenOrderPlans(product) {
+    if (!product?.id) return;
+    const normalizedProduct = normalizeProducts([product])[0];
+
+    setOrders((prevOrders) => {
+      const changedOrders = [];
+      const nextOrders = prevOrders.map((order) => {
+        if (!order?.plan || ["待商户归档", "已完成"].includes(order.status)) return order;
+
+        const planType = normalizePlanType(order.plan?.planType || order.planType);
+        let changed = false;
+        const areas = safeAreas(order.plan).map((area) => {
+          let areaChanged = false;
+          const items = safeItems(area).map((item) => {
+            if (String(item.productId) !== String(normalizedProduct.id)) return item;
+
+            const nextItem = createPlanItemFromProduct(normalizedProduct, planType, Number(item.quantity || 1));
+            const mergedItem = { ...item, ...nextItem, quantity: Number(item.quantity || 1) };
+            if (
+              Number(item.pricePerDay || 0) !== Number(mergedItem.pricePerDay || 0) ||
+              item.priceUnit !== mergedItem.priceUnit
+            ) {
+              areaChanged = true;
+              changed = true;
+            }
+            return mergedItem;
+          });
+          return areaChanged ? { ...area, items } : area;
+        });
+
+        if (!changed) return order;
+
+        const changedOrder = ensureOrderDefaults({
+          ...order,
+          plan: {
+            ...order.plan,
+            areas,
+            updatedAt: nowText(),
+          },
+        });
+        changedOrders.push(changedOrder);
+        return changedOrder;
+      });
+
+      if (changedOrders.length) {
+        window.setTimeout(() => {
+          changedOrders.forEach((changedOrder) => syncOneOrder(changedOrder, "商品价格已同步到订单方案"));
+          const replaceActiveOrder = (activeOrder) =>
+            activeOrder ? changedOrders.find((changedOrder) => changedOrder.id === activeOrder.id) || activeOrder : activeOrder;
+          setSelectedOrder(replaceActiveOrder);
+          setSelectedOrderDetail(replaceActiveOrder);
+          setMerchantViewingOrder(replaceActiveOrder);
+          setQrPreviewOrder(replaceActiveOrder);
+        }, 0);
+      }
+
+      return nextOrders;
+    });
   }
 
   function updateOrder(orderId, updater, cloudMessage = "订单已同步") {
@@ -3611,6 +3838,94 @@ function App() {
     setShowCreateOrderSheet(true);
   }
 
+  function updateMiniProgramAppointment(appointmentId, patch) {
+    setMiniProgramAppointments((prev) =>
+      normalizeMiniProgramAppointments(prev).map((item) =>
+        item.id === appointmentId ? { ...item, ...patch, updatedAt: nowText() } : item
+      )
+    );
+  }
+
+  function openMiniProgramAppointmentDetail(appointment) {
+    setSelectedMiniProgramAppointmentId(appointment.id);
+    setMiniProgramAppointmentNoteDraft(appointment.merchantNote || "");
+  }
+
+  function saveMiniProgramAppointmentNote() {
+    if (!selectedMiniProgramAppointmentId) return;
+    const patch = {
+      merchantNote: miniProgramAppointmentNoteDraft,
+    };
+    if (miniProgramAppointmentNoteDraft.trim()) patch.status = "已联系";
+    updateMiniProgramAppointment(selectedMiniProgramAppointmentId, patch);
+  }
+
+  function buildMiniProgramAppointmentDescription(appointment) {
+    return [
+      `客户小程序养护预约：${appointment.packageName || "标准养护"}`,
+      `预约日期：${appointment.appointmentDate || "待确认"}`,
+      `服务时间：${appointment.timeWindow || "待确认"}`,
+      appointment.serviceArea ? `服务区域：${appointment.serviceArea}` : "",
+      appointment.areaSize ? `面积/范围：${appointment.areaSize}` : "",
+      appointment.plantCount ? `植物数量：${appointment.plantCount}` : "",
+      appointment.quotedPrice ? `小程序预估价：¥${appointment.quotedPrice}` : "",
+      appointment.customerNote ? `客户备注：${appointment.customerNote}` : "",
+    ].filter(Boolean).join("\n");
+  }
+
+  function convertMiniProgramAppointmentToOrderDraft(appointment) {
+    const firstStaff = assignableStaffMembers[0] || activeStaffMembers.find(canAssignStaff) || getDefaultAssignedStaff();
+    const selectedMaintenancePackage =
+      safeMerchantMaintenancePackages.find((item) => item.name === (appointment.packageName || "标准养护")) ||
+      getMaintenancePackage(appointment.packageName || "标准养护");
+    const description = buildMiniProgramAppointmentDescription(appointment);
+    const activeDraftNote = selectedMiniProgramAppointmentId === appointment.id ? miniProgramAppointmentNoteDraft : "";
+    const merchantNote = [activeDraftNote || appointment.merchantNote, description]
+      .filter(Boolean)
+      .join("\n\n");
+
+    setNewOrderForm((form) => ({
+      ...form,
+      customerName: `养护预约 - ${appointment.contactName || "客户"}`,
+      contactName: appointment.contactName || "",
+      phone: appointment.phone || "",
+      areaSize: appointment.areaSize || "",
+      expectedDate: appointment.expectedTime || [appointment.appointmentDate, appointment.timeWindow].filter(Boolean).join(" "),
+      address: appointment.address || "",
+      description,
+      tagsText: "小程序预约,养护服务,待确认",
+      source: "客户预约",
+      serviceType: "养护",
+      leaseMonths: "12",
+      paymentMethod: "月付",
+      needDeposit: false,
+      budget: appointment.quotedPrice || "",
+      plannedPlantCount: appointment.plantCount || "",
+      areaNote: appointment.serviceArea || appointment.packageName || "养护服务",
+      merchantNote,
+      retailNeedsMaintenance: false,
+      maintenancePackage: selectedMaintenancePackage.name,
+      maintenanceCycle: selectedMaintenancePackage.cycle || "按预约确认",
+      maintenanceFrequency: selectedMaintenancePackage.frequency || "按预约确认",
+      maintenanceContent: selectedMaintenancePackage.content || appointment.customerNote || "",
+      maintenanceFinalPrice: appointment.quotedPrice || "",
+      maintenanceInternalNote: merchantNote,
+      assignedStaffId: firstStaff?.id || "",
+      communicationQrUrl: "",
+      sourceInquiryId: "",
+      sourceAppointmentId: appointment.id,
+    }));
+
+    updateMiniProgramAppointment(appointment.id, {
+      status: appointment.status === "待确认" ? "已联系" : appointment.status,
+      merchantNote: activeDraftNote || appointment.merchantNote || "",
+    });
+    setSelectedMiniProgramAppointmentId(null);
+    setMerchantTab("订单管理");
+    setIsCreateOrderInputFocused(false);
+    setShowCreateOrderSheet(true);
+  }
+
   function updateHomeHeroConfig(patch) {
     setMiniProgramHomeConfig((prevConfig) => {
       const normalized = normalizeMiniProgramHomeConfig(prevConfig);
@@ -3766,39 +4081,35 @@ function App() {
 
     updateOrderPlan(
       currentOrder.id,
-      (plan) => ({
-        ...plan,
-        areas: safeAreas(plan).map((area) => {
-          if (area.id !== currentAreaId) return area;
+      (plan) => {
+        const planTypeForPrice = normalizePlanType(plan?.planType || currentPlan?.planType);
+        const planItem = createPlanItemFromProduct(product, planTypeForPrice, 1);
+        return {
+          ...plan,
+          areas: safeAreas(plan).map((area) => {
+            if (area.id !== currentAreaId) return area;
 
-          const items = safeItems(area);
-          const existed = items.find((item) => item.productId === product.id);
+            const items = safeItems(area);
+            const existed = items.find((item) => item.productId === product.id);
 
-          if (existed) {
+            if (existed) {
+              return {
+                ...area,
+                items: items.map((item) =>
+                  item.productId === product.id
+                    ? { ...item, ...planItem, quantity: Number(item.quantity || 0) + 1 }
+                    : item
+                ),
+              };
+            }
+
             return {
               ...area,
-              items: items.map((item) =>
-                item.productId === product.id
-                  ? { ...item, quantity: Number(item.quantity || 0) + 1 }
-                  : item
-              ),
+              items: [...items, planItem],
             };
-          }
-
-          return {
-            ...area,
-            items: [
-              ...items,
-              {
-                productId: product.id,
-                name: product.name,
-                pricePerDay: Number(product.pricePerDay || 0),
-                quantity: 1,
-              },
-            ],
-          };
-        }),
-      }),
+          }),
+        };
+      },
       "商品已同步"
     );
   }
@@ -3810,46 +4121,42 @@ function App() {
 
     updateOrderPlan(
       currentOrder.id,
-      (plan) => ({
-        ...plan,
-        areas: safeAreas(plan).map((area) => {
-          if (area.id !== currentAreaId) return area;
+      (plan) => {
+        const planTypeForPrice = normalizePlanType(plan?.planType || currentPlan?.planType);
+        const planItem = createPlanItemFromProduct(product, planTypeForPrice, nextQuantity);
+        return {
+          ...plan,
+          areas: safeAreas(plan).map((area) => {
+            if (area.id !== currentAreaId) return area;
 
-          const items = safeItems(area);
-          const existed = items.some((item) => item.productId === product.id);
+            const items = safeItems(area);
+            const existed = items.some((item) => item.productId === product.id);
 
-          if (nextQuantity <= 0) {
+            if (nextQuantity <= 0) {
+              return {
+                ...area,
+                items: items.filter((item) => item.productId !== product.id),
+              };
+            }
+
+            if (existed) {
+              return {
+                ...area,
+                items: items.map((item) =>
+                  item.productId === product.id
+                    ? { ...item, ...planItem, quantity: nextQuantity }
+                    : item
+                ),
+              };
+            }
+
             return {
               ...area,
-              items: items.filter((item) => item.productId !== product.id),
+              items: [...items, planItem],
             };
-          }
-
-          if (existed) {
-            return {
-              ...area,
-              items: items.map((item) =>
-                item.productId === product.id
-                  ? { ...item, quantity: nextQuantity }
-                  : item
-              ),
-            };
-          }
-
-          return {
-            ...area,
-            items: [
-              ...items,
-              {
-                productId: product.id,
-                name: product.name,
-                pricePerDay: Number(product.pricePerDay || 0),
-                quantity: nextQuantity,
-              },
-            ],
-          };
-        }),
-      }),
+          }),
+        };
+      },
       "数量已同步"
     );
   }
@@ -4256,10 +4563,12 @@ function App() {
       communicationQrUrl: newOrderForm.communicationQrUrl || "",
       sourceInquiryId: newOrderForm.sourceInquiryId || "",
       sourceInquiryType: newOrderForm.sourceInquiryId ? "garden_project" : "",
+      sourceAppointmentId: newOrderForm.sourceAppointmentId || "",
+      sourceAppointmentType: newOrderForm.sourceAppointmentId ? "care_service" : "",
       fieldNote: "",
       internalNote: "",
       revisionReason: "",
-      timeline: [{ time, action: "商户创建并派发订单" }],
+      timeline: [{ time, action: newOrderForm.sourceAppointmentId ? "小程序预约转为订单并派发" : "商户创建并派发订单" }],
       plan: planDraft,
     });
 
@@ -4273,6 +4582,13 @@ function App() {
       };
       if (projectInquiryFollowUpDraft) inquiryPatch.followUpNote = projectInquiryFollowUpDraft;
       updateProjectInquiry(newOrderForm.sourceInquiryId, inquiryPatch);
+    }
+    if (newOrderForm.sourceAppointmentId) {
+      updateMiniProgramAppointment(newOrderForm.sourceAppointmentId, {
+        status: "已转订单",
+        convertedOrderId: newOrder.id,
+        merchantNote: newOrderForm.maintenanceInternalNote || newOrderForm.merchantNote || "",
+      });
     }
 
     setNewOrderForm({
@@ -4303,6 +4619,7 @@ function App() {
       assignedStaffId: assignableStaffMembers[0]?.id || DEFAULT_STAFF_ID,
       communicationQrUrl: "",
       sourceInquiryId: "",
+      sourceAppointmentId: "",
     });
 
     setShowCreateOrderSheet(false);
@@ -4444,6 +4761,7 @@ function App() {
       : [productPayload, ...merchantProducts];
 
     updateProducts(nextProducts, editingProductId ? "商品修改已同步" : "新商品已同步");
+    syncProductPriceToOpenOrderPlans(productPayload);
     resetNewProductForm();
     setShowCreateProductSheet(false);
     setMerchantTab("商品与服务");
@@ -6435,13 +6753,14 @@ ${rentalText}`;
                 const selected = safeItems(currentArea).find((item) => item.productId === product.id);
                 const selectedQuantity = selected ? Number(selected.quantity || 0) : 0;
                 const image = getProductImage(product);
+                const productUnitPrice = getProductPlanUnitPrice(product, currentPlan?.planType);
                 return (
                   <article key={product.id} className={selectedQuantity > 0 ? "staff-product-picker-card selected" : "staff-product-picker-card"} onClick={() => setProductQuantityInCurrentArea(product, selectedQuantity + 1)}>
                     <span style={{ width: 54, height: 54, borderRadius: 8, background: "#f2f5f8", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", fontSize: 24 }}>{isImageUrl(image) ? <img src={image} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : image}</span>
                     <span style={{ minWidth: 0 }}>
                       <strong style={{ display: "block", color: "#182536", fontSize: 15, marginBottom: 4 }}>{product.name}</strong>
                       <small style={{ display: "block", color: "#7b899a", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{product.description}</small>
-                      <b style={{ display: "block", color: videoBlue, marginTop: 5 }}>{normalizePlanType(currentPlan?.planType) === "售卖订单" ? `¥${money(product.pricePerDay)}/件` : `¥${money(product.pricePerDay)}/天`}</b>
+                      <b style={{ display: "block", color: videoBlue, marginTop: 5 }}>{isSaleSelector ? `¥${money(productUnitPrice)}/件` : `¥${money(productUnitPrice)}/天`}</b>
                     </span>
                     <div className="staff-product-stepper" onClick={(event) => event.stopPropagation()}>
                       <button
@@ -6730,12 +7049,12 @@ ${rentalText}`;
     const navItems = [
       { key: "工作台", Icon: GardenIcons.Dashboard },
       { key: "订单管理", Icon: GardenIcons.Orders },
-      { key: "项目线索", Icon: GardenIcons.Customers },
       { key: "团队成员", Icon: GardenIcons.Team },
       { key: "执行监测", Icon: GardenIcons.Monitor },
       { key: "商品与服务", Icon: GardenIcons.Products },
-      { key: "小程序装修", Icon: GardenIcons.Image },
       { key: "客户库", Icon: GardenIcons.Customers },
+      { key: "项目线索", Icon: GardenIcons.ProjectLeads },
+      { key: "小程序装修", Icon: GardenIcons.Image },
       { key: "设置", Icon: GardenIcons.Settings },
     ];
     const todoOrders = [...(Array.isArray(pendingMerchantConfirmOrders) ? pendingMerchantConfirmOrders : []), ...(Array.isArray(pendingArchiveOrders) ? pendingArchiveOrders : [])];
@@ -6744,6 +7063,12 @@ ${rentalText}`;
     const pendingProjectInquiryCount = displayProjectInquiries.filter((item) => item.status === "待跟进").length;
     const selectedProjectInquiry = selectedProjectInquiryId
       ? displayProjectInquiries.find((item) => item.id === selectedProjectInquiryId) || null
+      : null;
+    const displayMiniProgramAppointments = safeMiniProgramAppointments;
+    const pendingMiniProgramAppointments = displayMiniProgramAppointments.filter((item) => item.status === "待确认");
+    const pendingMiniProgramAppointmentCount = pendingMiniProgramAppointments.length;
+    const selectedMiniProgramAppointment = selectedMiniProgramAppointmentId
+      ? displayMiniProgramAppointments.find((item) => item.id === selectedMiniProgramAppointmentId) || null
       : null;
     const homeBannerItems = getHomeBannerItems(safeMiniProgramHomeConfig);
     const homeHeroConfig = getHomeHeroConfig(safeMiniProgramHomeConfig);
@@ -7155,6 +7480,16 @@ ${rentalText}`;
                 </button>
               )}
 
+              {pendingMiniProgramAppointmentCount > 0 && (
+                <button className="project-inquiry-reminder mini-appointment-reminder" onClick={() => setMerchantTab("订单管理")}>
+                  <span>
+                    <strong>小程序养护预约：{pendingMiniProgramAppointmentCount} 条待确认</strong>
+                    <em>客户已在小程序选择养护套餐并提交地址与服务时间，可在订单管理中打开预约卡片后转为订单。</em>
+                  </span>
+                  <b>处理预约</b>
+                </button>
+              )}
+
               <div className="admin-card">
                 <h2 className="merchant-card-title"><GardenIcons.Todo size={18} />待办审核 <span>Todo</span></h2>
                 {todoOrders.length === 0 ? (
@@ -7208,6 +7543,38 @@ ${rentalText}`;
                   <span>创建新派单</span>
                 </button>
               </div>
+
+              {pendingMiniProgramAppointments.length > 0 && (
+                <div className="mini-appointment-panel">
+                  <div className="section-title-row">
+                    <div>
+                      <p className="eyebrow">Mini Program Booking</p>
+                      <h2>小程序养护预约待确认</h2>
+                    </div>
+                    <span>客户提交后先进入这里，商户确认或修改后再派给员工。</span>
+                  </div>
+                  <div className="mini-appointment-grid">
+                    {pendingMiniProgramAppointments.slice(0, 4).map((appointment) => (
+                      <article className="mini-appointment-card" key={appointment.id}>
+                        <header>
+                          <span>{appointment.packageName || "养护服务"}</span>
+                          <b>{appointment.status}</b>
+                        </header>
+                        <h3>{appointment.contactName || "待确认客户"}</h3>
+                        <p>{appointment.address || "地址待确认"}</p>
+                        <div className="mini-appointment-meta">
+                          <span>{appointment.expectedTime || "时间待确认"}</span>
+                          <span>{appointment.plantCount || appointment.areaSize || "范围待确认"}</span>
+                        </div>
+                        <div className="mini-appointment-actions">
+                          <button className="ghost-button" onClick={() => openMiniProgramAppointmentDetail(appointment)}>查看</button>
+                          <button className="primary-button" onClick={() => convertMiniProgramAppointmentToOrderDraft(appointment)}>转订单草稿</button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="admin-filter-row">
                 <div className="admin-filter-field"><GardenIcons.Search size={16} />
@@ -8356,6 +8723,69 @@ ${rentalText}`;
             </div>
           )}
 
+          {selectedMiniProgramAppointment && (
+            <div className="sheet-mask project-inquiry-mask" onClick={() => setSelectedMiniProgramAppointmentId(null)}>
+              <section className="project-inquiry-detail mini-appointment-detail" onClick={(event) => event.stopPropagation()}>
+                <header className="project-inquiry-detail-head">
+                  <div>
+                    <p className="eyebrow">Care Service Booking</p>
+                    <h2>{selectedMiniProgramAppointment.packageName || "养护服务预约"}</h2>
+                    <span>{selectedMiniProgramAppointment.createdAt || "暂无提交时间"} · 客户小程序立即预约</span>
+                  </div>
+                  <button className="close-button" onClick={() => setSelectedMiniProgramAppointmentId(null)} aria-label="关闭预约详情">×</button>
+                </header>
+
+                <div className="project-inquiry-detail-body">
+                  <section className="project-inquiry-section">
+                    <h3>客户预约信息</h3>
+                    <div className="project-inquiry-detail-grid">
+                      <div><span>联系人</span><strong>{selectedMiniProgramAppointment.contactName || "-"}</strong></div>
+                      <div><span>手机号</span><strong>{selectedMiniProgramAppointment.phone || "-"}</strong></div>
+                      <div><span>服务地址</span><strong>{selectedMiniProgramAppointment.address || "-"}</strong></div>
+                      <div><span>养护套餐</span><strong>{selectedMiniProgramAppointment.packageName || "标准养护"}</strong></div>
+                      <div><span>预约日期</span><strong>{selectedMiniProgramAppointment.appointmentDate || "-"}</strong></div>
+                      <div><span>时间段</span><strong>{selectedMiniProgramAppointment.timeWindow || "-"}</strong></div>
+                      <div><span>服务区域</span><strong>{selectedMiniProgramAppointment.serviceArea || "-"}</strong></div>
+                      <div><span>面积 / 数量</span><strong>{[selectedMiniProgramAppointment.areaSize, selectedMiniProgramAppointment.plantCount].filter(Boolean).join(" · ") || "-"}</strong></div>
+                      <div><span>小程序预估价</span><strong>{selectedMiniProgramAppointment.quotedPrice ? `¥${selectedMiniProgramAppointment.quotedPrice}` : "待商户确认"}</strong></div>
+                      <div><span>当前状态</span><strong>{selectedMiniProgramAppointment.status}</strong></div>
+                      <div><span>转化订单</span><strong>{selectedMiniProgramAppointment.convertedOrderId || "尚未转订单"}</strong></div>
+                    </div>
+                  </section>
+
+                  <section className="project-inquiry-section">
+                    <h3>客户备注</h3>
+                    <div className="project-inquiry-note">{selectedMiniProgramAppointment.customerNote || "客户暂未填写备注。"}</div>
+                  </section>
+
+                  <section className="project-inquiry-section">
+                    <h3>商户沟通备注</h3>
+                    <textarea
+                      className="area-input project-inquiry-textarea"
+                      value={miniProgramAppointmentNoteDraft}
+                      onChange={(event) => setMiniProgramAppointmentNoteDraft(event.target.value)}
+                      placeholder="记录与客户沟通后的调整建议，例如改套餐、改时间、补充报价说明等。"
+                    />
+                  </section>
+                </div>
+
+                <footer className="project-inquiry-actions">
+                  <button className="ghost-button" onClick={() => updateMiniProgramAppointment(selectedMiniProgramAppointment.id, { status: "已联系" })}>标记已联系</button>
+                  <button className="ghost-button" onClick={saveMiniProgramAppointmentNote}>保存沟通备注</button>
+                  <button className="ghost-button" onClick={() => updateMiniProgramAppointment(selectedMiniProgramAppointment.id, { status: "暂缓" })}>标记暂缓</button>
+                  <button className="ghost-button danger" onClick={() => updateMiniProgramAppointment(selectedMiniProgramAppointment.id, { status: "已取消" })}>标记取消</button>
+                  <button
+                    className="primary-button"
+                    onClick={() => convertMiniProgramAppointmentToOrderDraft(selectedMiniProgramAppointment)}
+                    disabled={selectedMiniProgramAppointment.status === "已转订单"}
+                  >
+                    {selectedMiniProgramAppointment.status === "已转订单" ? "已转正式订单" : "转为订单草稿"}
+                  </button>
+                </footer>
+              </section>
+            </div>
+          )}
+
           {selectedProjectInquiry && (
             <div className="sheet-mask project-inquiry-mask" onClick={() => setSelectedProjectInquiryId(null)}>
               <section className="project-inquiry-detail" onClick={(event) => event.stopPropagation()}>
@@ -8913,6 +9343,7 @@ ${rentalText}`;
     const createOrderSourceOptions = Array.isArray(ORDER_SOURCES) ? ORDER_SOURCES : [];
     const createOrderMaintenancePackages = safeMerchantMaintenancePackages;
     const createOrderAssignableStaff = Array.isArray(assignableStaffMembers) ? assignableStaffMembers : [];
+    const isMiniProgramAppointmentDraft = Boolean(newOrderForm.sourceAppointmentId);
     const resolveCreateOrderMaintenancePackage = (name) =>
       createOrderMaintenancePackages.find((item) => item.name === name) ||
       getMaintenancePackage(name || "标准养护");
@@ -8972,7 +9403,7 @@ ${rentalText}`;
         >
           <section className="merchant-create-order-dialog" style={panelStyle} onClick={(event) => event.stopPropagation()}>
             <div className="section-title-row" style={panelHeaderStyle}>
-              <div><p className="eyebrow">New Order · v3.8</p><h2>创建新订单</h2></div>
+              <div><p className="eyebrow">New Order · v3.8</p><h2>{isMiniProgramAppointmentDraft ? "确认小程序预约并派单" : "创建新订单"}</h2></div>
               <button
                 className="close-button"
                 onClick={() => {
@@ -8983,6 +9414,12 @@ ${rentalText}`;
             </div>
 
             <div className="merchant-create-order-scroll" style={panelScrollStyle}>
+            {isMiniProgramAppointmentDraft && (
+              <div className="empty-card mini-appointment-draft-tip" style={{ marginBottom: 16 }}>
+                <p>来自客户小程序的养护预约</p>
+                <span>客户已提交套餐、地址和服务时间。商户可先电话沟通，修改下方内容后再创建并派发给员工。</span>
+              </div>
+            )}
             <div className="merchant-create-stage-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
               <section className="plan-summary-card merchant-create-stage" style={{ margin: 0 }}>
                 <div className="section-title-row"><div><p className="eyebrow">Step 01</p><h2>基础客户信息</h2></div></div>
@@ -9114,7 +9551,7 @@ ${rentalText}`;
                 }}
                 onClick={createMerchantOrder}
               >
-                创建并派发订单
+                {isMiniProgramAppointmentDraft ? "确认并派发订单" : "创建并派发订单"}
               </button>
             </div>
           </section>
