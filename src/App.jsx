@@ -177,15 +177,17 @@ const productCategories = ["室内绿植", "室外植物", "月租套餐", "仿�
 const subCategories = ["大型植物", "中型植物", "小型植物", "水培植物", "盆景植物"];
 
 const defaultProducts = [
-  { id: 1, name: "原生发财树", category: "室内绿植", subCategory: "大型植物", description: "寓意财源滚滚，适合前台、办公室、会议室。", pricePerDay: 2.5, image: "🌳" },
-  { id: 2, name: "天堂鸟", category: "室内绿植", subCategory: "大型植物", description: "株型舒展，适合大堂、休息区、开放办公区。", pricePerDay: 3.2, image: "🪴" },
-  { id: 3, name: "绿萝柱", category: "室内绿植", subCategory: "中型植物", description: "耐阴好养，适合办公室角落和走廊区域。", pricePerDay: 1.6, image: "🌿" },
-  { id: 4, name: "红掌", category: "室内绿植", subCategory: "小型植物", description: "颜色鲜明，适合前台、桌面、接待区点缀。", pricePerDay: 0.8, image: "🌺" },
-  { id: 5, name: "水培白掌", category: "室内绿植", subCategory: "水培植物", description: "干净清爽，适合会议桌、茶水间、前台。", pricePerDay: 0.7, image: "💧" },
-  { id: 6, name: "罗汉松盆景", category: "室内绿植", subCategory: "盆景植物", description: "稳重大气，适合老板办公室、会客区。", pricePerDay: 4.5, image: "🎍" },
-  { id: 7, name: "户外铁树", category: "室外植物", subCategory: "大型植物", description: "耐晒耐养，适合门口、庭院、园区入口。", pricePerDay: 3.8, image: "🌴" },
-  { id: 8, name: "月租前台组合", category: "月租套餐", subCategory: "中型植物", description: "适合前台和接待区的基础组合套餐。", pricePerDay: 5.8, image: "🧺" },
-  { id: 9, name: "仿真龟背竹", category: "仿真植物", subCategory: "大型植物", description: "无需养护，适合光线不足或维护不便区域。", pricePerDay: 1.2, image: "🍃" },
+  { id: "rental-facai", name: "发财树", category: "室内绿植", subCategory: "大型植物", description: "寓意财源滚滚，适合前台、办公室、会议室。", displayDescription: "适合前台、办公室、会议室。", pricePerDay: 2.5, monthlyRent: "75", deposit: "100", applicableScenes: "前台、办公室、会议室", note: "常规租赁款，注意盆面清洁。", productType: "rental", serviceType: "租赁", priceUnit: "元 / 月", image: "🌳", status: "已上架" },
+  { id: "rental-tiantianniao", name: "天堂鸟", category: "室内绿植", subCategory: "大型植物", description: "株型舒展，适合大堂、休息区、开放办公区。", displayDescription: "株型舒展，适合大堂和开放办公区。", pricePerDay: 3.2, monthlyRent: "96", deposit: "120", applicableScenes: "大堂、休息区、开放办公区", note: "需要较好采光。", productType: "rental", serviceType: "租赁", priceUnit: "元 / 月", image: "🪴", status: "已上架" },
+  { id: "rental-sanweikui", name: "散尾葵", category: "室内绿植", subCategory: "大型植物", description: "叶片舒展，适合接待区、洽谈区和门厅。", displayDescription: "叶片舒展，适合接待区和门厅。", pricePerDay: 2.8, monthlyRent: "84", deposit: "100", applicableScenes: "接待区、洽谈区、门厅", note: "避免空调直吹。", productType: "rental", serviceType: "租赁", priceUnit: "元 / 月", image: "🌿", status: "已上架" },
+  { id: "rental-guibeizhu", name: "龟背竹", category: "室内绿植", subCategory: "中型植物", description: "造型现代，适合办公室角落、茶水间和休闲区。", displayDescription: "造型现代，适合办公室角落和休闲区。", pricePerDay: 2.2, monthlyRent: "66", deposit: "80", applicableScenes: "办公室角落、茶水间、休闲区", note: "保持叶面清洁。", productType: "rental", serviceType: "租赁", priceUnit: "元 / 月", image: "🍃", status: "已上架" },
+  { id: "rental-longxueshu", name: "龙血树", category: "室内绿植", subCategory: "中型植物", description: "耐养挺拔，适合会议室、走廊和电梯厅。", displayDescription: "耐养挺拔，适合会议室和走廊。", pricePerDay: 2, monthlyRent: "60", deposit: "80", applicableScenes: "会议室、走廊、电梯厅", note: "适合低频维护点位。", productType: "rental", serviceType: "租赁", priceUnit: "元 / 月", image: "🎍", status: "已上架" },
+  { id: "sale-lvluo", name: "绿萝", category: "室内绿植", subCategory: "小型植物", description: "耐阴好养，适合办公室桌面和角落。", displayDescription: "耐阴好养，适合办公室桌面和角落。", salePrice: "38", price: "38", stock: "现货", supportDelivery: true, supportInstall: false, supportDeliveryInstall: true, note: "可搭配简易盆器。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🌿", status: "已上架" },
+  { id: "sale-heijingang", name: "黑金刚", category: "室内绿植", subCategory: "中型植物", description: "叶色厚重，适合办公室和门厅点缀。", displayDescription: "叶色厚重，适合办公室和门厅点缀。", salePrice: "98", price: "98", stock: "现货", supportDelivery: true, supportInstall: true, supportDeliveryInstall: true, note: "配送后建议现场摆放调整。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🪴", status: "已上架" },
+  { id: "sale-facai", name: "发财树", category: "室内绿植", subCategory: "大型植物", description: "寓意好，适合开业、前台和办公室。", displayDescription: "适合开业、前台和办公室。", salePrice: "168", price: "168", stock: "现货", supportDelivery: true, supportInstall: true, supportDeliveryInstall: true, note: "价格按规格可调整。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🌳", status: "已上架" },
+  { id: "sale-tiantianniao", name: "天堂鸟", category: "室内绿植", subCategory: "大型植物", description: "形象感强，适合会客空间和大堂。", displayDescription: "形象感强，适合会客空间和大堂。", salePrice: "228", price: "228", stock: "需确认", supportDelivery: true, supportInstall: true, supportDeliveryInstall: true, note: "大规格需提前确认现货。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🪴", status: "已上架" },
+  { id: "sale-sanweikui", name: "散尾葵", category: "室内绿植", subCategory: "大型植物", description: "氛围柔和，适合洽谈区和休闲区。", displayDescription: "氛围柔和，适合洽谈区和休闲区。", salePrice: "198", price: "198", stock: "现货", supportDelivery: true, supportInstall: true, supportDeliveryInstall: true, note: "注意运输保护叶片。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🌿", status: "已上架" },
+  { id: "sale-guibeizhu", name: "龟背竹", category: "室内绿植", subCategory: "中型植物", description: "现代感强，适合办公室、茶水间和居家空间。", displayDescription: "现代感强，适合办公室和茶水间。", salePrice: "128", price: "128", stock: "现货", supportDelivery: true, supportInstall: false, supportDeliveryInstall: true, note: "可选不同盆器。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🍃", status: "已上架" },
 ];
 
 const initialOrders = [
@@ -652,6 +654,9 @@ function normalizeProducts(data) {
     const pricePerDay = Number(product?.pricePerDay || 0);
     const monthlyRent = product?.monthlyRent || (pricePerDay ? String(Math.round(pricePerDay * 30)) : "");
     const salePrice = product?.salePrice || product?.price || "";
+    const priceDisplay = product?.priceDisplay || (productType === "sale"
+      ? (salePrice ? `¥${salePrice} / 件` : "")
+      : (monthlyRent ? `¥${monthlyRent} / 月` : ""));
     return {
       stock: "充足",
       imageUrl: "",
@@ -667,7 +672,13 @@ function normalizeProducts(data) {
       salePrice,
       price: productType === "sale" ? salePrice : monthlyRent,
       priceUnit: productType === "sale" ? "元 / 件" : "元 / 月",
+      priceDisplay,
       applicableScenes: product?.applicableScenes || product?.scene || "",
+      careNote: product?.careNote || "",
+      deliveryNote: product?.deliveryNote || "",
+      afterSaleNote: product?.afterSaleNote || "",
+      supportDelivery: product?.supportDelivery ?? Boolean(product?.supportDeliveryInstall),
+      supportInstall: product?.supportInstall ?? Boolean(product?.supportDeliveryInstall),
       supportDeliveryInstall: Boolean(product?.supportDeliveryInstall),
       ...product,
       productType,
@@ -676,21 +687,75 @@ function normalizeProducts(data) {
   });
 }
 
+function ensureProductSeedData(products) {
+  const list = normalizeProducts(products);
+  const existingIds = new Set(list.map((product) => String(product.id)));
+  const existingTypeNames = new Set(list.map((product) => `${product.productType}:${product.name}`));
+  const missingSeeds = defaultProducts.filter((seed) => {
+    if (existingIds.has(String(seed.id))) return false;
+    return !existingTypeNames.has(`${seed.productType}:${seed.name}`);
+  });
+  return normalizeProducts([...list, ...missingSeeds]);
+}
+
+function formatMaintenancePrice(config = {}) {
+  const unit = normalizeMaintenancePriceUnit(config.priceUnit || "元 / 盆 / 次").replace(/^元\s*\/?\s*/, "").trim() || "盆 / 次";
+  if (config.priceType === "project") return "按项目报价";
+  if (config.priceType === "fixed") {
+    const value = config.fixedPrice || config.priceMin || config.price || "";
+    return value ? `¥${value} / ${unit}` : "待配置";
+  }
+  const min = config.priceMin || "";
+  const max = config.priceMax || "";
+  if (min && max) return `¥${min}-${max} / ${unit}`;
+  if (min) return `¥${min} 起 / ${unit}`;
+  return config.priceDisplay || config.priceText || "待配置";
+}
+
+function normalizeMaintenancePriceUnit(value = "") {
+  const text = String(value || "").trim();
+  if (!text || text === "/盆/次" || text === "/ 盆 / 次" || text === "盆/次") return "元 / 盆 / 次";
+  if (text === "/㎡/年" || text === "/ ㎡ / 年" || text === "㎡/年") return "元 / 平方米 / 年";
+  if (/项目报价/.test(text)) return "按项目报价";
+  if (text.startsWith("元")) return text.replace(/\/㎡/g, "/ 平方米");
+  if (text.startsWith("/")) return `元 ${text.replace(/㎡/g, "平方米")}`;
+  return text;
+}
+
+function inferMaintenancePriceFields(saved = {}, defaults = {}) {
+  const merged = { ...defaults, ...saved };
+  const normalizedUnit = normalizeMaintenancePriceUnit(merged.priceUnit || defaults.priceUnit || "元 / 盆 / 次");
+  if (merged.priceType) return { ...merged, priceUnit: normalizedUnit };
+  const text = String(merged.price || merged.priceText || "");
+  if (/项目|按次/.test(text) && !/\d/.test(text)) return { ...merged, priceType: "project", priceUnit: "按项目报价" };
+  const numbers = text.match(/\d+(?:\.\d+)?/g) || [];
+  if (numbers.length >= 2) {
+    return { ...merged, priceType: "range", priceMin: numbers[0], priceMax: numbers[1], priceUnit: normalizedUnit };
+  }
+  if (numbers.length === 1) {
+    return { ...merged, priceType: "fixed", fixedPrice: numbers[0], priceUnit: normalizedUnit };
+  }
+  return { ...merged, priceType: defaults.priceType || "range", priceUnit: normalizedUnit };
+}
+
 function normalizeMaintenancePackages(data) {
   const source = Array.isArray(data) && data.length ? data : MAINTENANCE_PACKAGES;
   return MAINTENANCE_PACKAGES.map((defaults, index) => {
     const saved = source.find((item) => item?.name === defaults.name) || {};
-    const priceText = saved.priceText || defaults.priceText || "";
+    const priceFields = inferMaintenancePriceFields(saved, defaults);
+    const priceDisplay = formatMaintenancePrice(priceFields);
     return {
       ...defaults,
       ...saved,
+      ...priceFields,
       name: defaults.name,
       serviceType: "养护",
       productType: "maintenance",
       displayName: saved.displayName || defaults.name,
       displayDescription: saved.displayDescription || saved.scene || defaults.scene,
-      price: saved.price || priceText,
-      priceUnit: saved.priceUnit || (defaults.name === "专项处理" ? "按项目报价" : "/盆/次"),
+      price: priceFields.priceType === "fixed" ? priceFields.fixedPrice || "" : priceFields.priceMin || "",
+      priceDisplay,
+      priceUnit: priceFields.priceUnit || (defaults.name === "专项处理" ? "按项目报价" : "元 / 盆 / 次"),
       areaPriceText: saved.areaPriceText || defaults.areaPriceText || "",
       visibleInMiniProgram: saved.visibleInMiniProgram ?? true,
       sortOrder: Number(saved.sortOrder ?? index + 1),
@@ -702,13 +767,13 @@ function normalizeMaintenancePackages(data) {
 function loadProductsFromLocalStore() {
   try {
     const raw = localStorage.getItem(PRODUCT_STORAGE_KEY);
-    if (!raw) return normalizeProducts(defaultProducts);
+    if (!raw) return ensureProductSeedData(defaultProducts);
 
     const parsed = JSON.parse(raw);
-    return normalizeProducts(parsed?.products);
+    return ensureProductSeedData(parsed?.products);
   } catch (error) {
     console.error("读取本地商品库失败：", error);
-    return normalizeProducts(defaultProducts);
+    return ensureProductSeedData(defaultProducts);
   }
 }
 
@@ -1300,7 +1365,7 @@ async function fetchProductsFromCloud() {
 
   const rows = await response.json();
   const cloudProducts = rows?.[0]?.data?.products;
-  return Array.isArray(cloudProducts) ? normalizeProducts(cloudProducts) : [];
+  return Array.isArray(cloudProducts) ? ensureProductSeedData(cloudProducts) : [];
 }
 
 async function fetchProductLibraryFromCloud() {
@@ -1317,7 +1382,7 @@ async function fetchProductLibraryFromCloud() {
   const rows = await response.json();
   const data = rows?.[0]?.data || {};
   return {
-    products: normalizeProducts(data.products),
+    products: ensureProductSeedData(data.products),
     maintenancePackages: normalizeMaintenancePackages(data.maintenancePackages),
   };
 }
@@ -1438,6 +1503,12 @@ const MAINTENANCE_PACKAGES = [
     frequency: "按次或低频维护",
     content: "基础浇水、简单清洁、植物状态查看",
     cycle: "按次 / 短期",
+    shortDescription: "基础浇水、简单清洁、状态查看。",
+    position: "作为最低服务说明和销售话术对比，不作为主推。",
+    priceType: "range",
+    priceMin: "3",
+    priceMax: "5",
+    priceUnit: "元 / 盆 / 次",
     priceText: "¥3-5 / 盆 / 次",
     areaPriceText: "¥6-8 / ㎡ / 年",
   },
@@ -1447,6 +1518,12 @@ const MAINTENANCE_PACKAGES = [
     frequency: "每月 2 次",
     content: "浇水、擦叶、黄叶修剪、盆面清理、摆放调整、植物状态记录",
     cycle: "6 个月",
+    shortDescription: "浇水、擦叶、黄叶修剪、盆面清理、摆放调整、状态记录。",
+    position: "推荐项，租赁方案默认包含。",
+    priceType: "range",
+    priceMin: "6",
+    priceMax: "10",
+    priceUnit: "元 / 盆 / 次",
     priceText: "¥6-10 / 盆 / 次",
     areaPriceText: "¥9-12 / ㎡ / 年",
     recommended: true,
@@ -1457,6 +1534,12 @@ const MAINTENANCE_PACKAGES = [
     frequency: "每周 1 次或按约定",
     content: "标准养护 + 植物健康巡检 + 重点客户复查 + 更详细照片记录",
     cycle: "按项目约定",
+    shortDescription: "标准养护基础上增加植物健康巡检、重点区域复查、更详细照片记录。",
+    position: "重点客户和形象区域推荐。",
+    priceType: "range",
+    priceMin: "12",
+    priceMax: "20",
+    priceUnit: "元 / 盆 / 次",
     priceText: "¥12-20 / 盆 / 次",
     areaPriceText: "¥15-20 / ㎡ / 年",
   },
@@ -1466,6 +1549,11 @@ const MAINTENANCE_PACKAGES = [
     frequency: "按次 / 按项目",
     content: "虫害处理、换盆、补土、施肥、植物替换、枯萎补救、加急上门",
     cycle: "按项目报价",
+    shortDescription: "虫害处理、换盆、补土、施肥、植物替换、枯萎补救、加急上门。",
+    position: "特殊情况单独报价。",
+    priceType: "project",
+    priceUnit: "按项目报价",
+    projectPriceNote: "按项目报价",
     priceText: "按次 / 按项目报价",
     areaPriceText: "按次 / 按项目",
   },
@@ -1798,10 +1886,15 @@ function App() {
     imageUrl: "",
     image: "🪴",
     stock: "充足",
+    supportDelivery: true,
+    supportInstall: true,
     supportDeliveryInstall: true,
     visibleInMiniProgram: false,
     sortOrder: "",
     applicableScenes: "",
+    careNote: "",
+    deliveryNote: "",
+    afterSaleNote: "",
     note: "",
     status: "已上架",
     productType: "rental",
@@ -3544,10 +3637,15 @@ function App() {
       imageUrl: "",
       image: "🪴",
       stock: "充足",
+      supportDelivery: true,
+      supportInstall: true,
       supportDeliveryInstall: true,
       visibleInMiniProgram: false,
       sortOrder: "",
       applicableScenes: "",
+      careNote: "",
+      deliveryNote: "",
+      afterSaleNote: "",
       note: "",
       status: "已上架",
       productType: serviceConfigTab === "售卖植物" ? "sale" : "rental",
@@ -3589,14 +3687,20 @@ function App() {
       salePrice: productType === "sale" ? String(price) : "",
       price: String(price),
       priceUnit: productType === "sale" ? "元 / 件" : "元 / 月",
+      priceDisplay: productType === "sale" ? `¥${price} / 件` : `¥${price} / 月`,
       // Image upload integration can replace preview data with a remote URL.
       imageUrl: newProductForm.imageUrl.trim(),
       image: newProductForm.image || "🪴",
       stock: newProductForm.stock || "充足",
-      supportDeliveryInstall: productType === "sale" ? Boolean(newProductForm.supportDeliveryInstall) : false,
+      supportDelivery: productType === "sale" ? Boolean(newProductForm.supportDelivery) : false,
+      supportInstall: productType === "sale" ? Boolean(newProductForm.supportInstall) : false,
+      supportDeliveryInstall: productType === "sale" ? Boolean(newProductForm.supportDelivery || newProductForm.supportInstall || newProductForm.supportDeliveryInstall) : false,
       visibleInMiniProgram: Boolean(newProductForm.visibleInMiniProgram),
       sortOrder: Number(newProductForm.sortOrder || 0),
       applicableScenes: newProductForm.applicableScenes || "",
+      careNote: productType === "rental" ? newProductForm.careNote || "" : "",
+      deliveryNote: productType === "sale" ? newProductForm.deliveryNote || "" : "",
+      afterSaleNote: productType === "sale" ? newProductForm.afterSaleNote || "" : "",
       note: newProductForm.note.trim(),
       status: newProductForm.status || "已上架",
       createdAt: newProductForm.createdAt || nowText(),
@@ -3628,10 +3732,15 @@ function App() {
       imageUrl: product.imageUrl || "",
       image: product.image || "🪴",
       stock: product.stock || "充足",
+      supportDelivery: product.supportDelivery ?? Boolean(product.supportDeliveryInstall),
+      supportInstall: product.supportInstall ?? Boolean(product.supportDeliveryInstall),
       supportDeliveryInstall: Boolean(product.supportDeliveryInstall),
       visibleInMiniProgram: Boolean(product.visibleInMiniProgram),
       sortOrder: String(product.sortOrder || ""),
       applicableScenes: product.applicableScenes || "",
+      careNote: product.careNote || "",
+      deliveryNote: product.deliveryNote || "",
+      afterSaleNote: product.afterSaleNote || "",
       note: product.note || "",
       status: product.status || "已上架",
       productType: product.productType || "rental",
@@ -5061,7 +5170,7 @@ ${rentalText}`;
                     <span>{pack.frequency}</span>
                     <small>{pack.scene}</small>
                     <em>{pack.content}</em>
-                    <em>{pack.priceText}｜面积参考 {pack.areaPriceText}</em>
+                    <em>{pack.priceDisplay || formatMaintenancePrice(pack)}｜面积参考 {pack.areaPriceText}</em>
                   </button>
                 );
               })}
@@ -5840,6 +5949,21 @@ ${rentalText}`;
         "养护套餐已同步"
       );
     };
+
+    const updateMaintenancePackagePriceType = (packageName, priceType) => {
+      updateMaintenancePackages(
+        safeMerchantMaintenancePackages.map((item) => {
+          if (item.name !== packageName) return item;
+          const nextUnit = priceType === "project"
+            ? "按项目报价"
+            : item.priceUnit === "按项目报价"
+              ? "元 / 盆 / 次"
+              : item.priceUnit;
+          return { ...item, priceType, priceUnit: nextUnit, updatedAt: nowText() };
+        }),
+        "养护套餐已同步"
+      );
+    };
     
     const activeReviewOrder = merchantViewingOrder || selectedOrderDetail;
 
@@ -6534,7 +6658,7 @@ ${rentalText}`;
                             {serviceConfigTab === "售卖植物" ? (
                               <>
                                 <strong>{product.stock || "充足"}</strong>
-                                <em>{product.supportDeliveryInstall ? "支持配送 / 安装" : "仅到店或人工确认"}</em>
+                                <em>{product.supportDelivery || product.supportInstall ? `${product.supportDelivery ? "配送" : ""}${product.supportDelivery && product.supportInstall ? " / " : ""}${product.supportInstall ? "安装" : ""}` : "人工确认"}</em>
                               </>
                             ) : (
                               <>
@@ -6570,10 +6694,11 @@ ${rentalText}`;
                     <span>租赁植物和售卖植物更适合提交意向、工作人员确认、商户端代下单后进入客户小程序待付款。</span>
                   </div>
 
-                  <div className="admin-table product-admin-table">
+                  <div className="admin-table product-admin-table maintenance-package-admin-table">
                     <div className="admin-table-row admin-table-head">
                       <span>套餐</span>
-                      <span>价格</span>
+                      <span>展示价格</span>
+                      <span>价格设置</span>
                       <span>计价单位</span>
                       <span>推荐</span>
                       <span>小程序展示</span>
@@ -6585,21 +6710,73 @@ ${rentalText}`;
                         <span>
                           <strong>{item.displayName || item.name}</strong>
                           <em>{item.shortDescription || item.scene || item.displayDescription}</em>
+                          {item.name === "标准养护" && <b className="admin-status-chip">租赁默认包含</b>}
                         </span>
                         <span>
-                          <input
-                            className="area-input"
-                            value={item.price || item.priceText || ""}
-                            onChange={(e) => updateMaintenancePackageField(item.name, "price", e.target.value)}
-                            placeholder={item.name === "专项处理" ? "按项目报价" : "例如：¥6-10"}
-                          />
+                          <strong>{item.priceDisplay || formatMaintenancePrice(item)}</strong>
+                          <em>{item.position || item.scene}</em>
                         </span>
                         <span>
-                          <input
+                          <select
                             className="area-input"
-                            value={item.priceUnit || (item.name === "专项处理" ? "按项目报价" : "/ 盆 / 次")}
+                            value={item.priceType || "range"}
+                            onChange={(e) => updateMaintenancePackagePriceType(item.name, e.target.value)}
+                          >
+                            <option value="fixed">固定价</option>
+                            <option value="range">区间价</option>
+                            <option value="project">按项目报价</option>
+                          </select>
+                          {item.priceType === "fixed" && (
+                            <input
+                              className="area-input"
+                              type="number"
+                              value={item.fixedPrice || ""}
+                              onChange={(e) => updateMaintenancePackageField(item.name, "fixedPrice", e.target.value)}
+                              placeholder="价格，例如：8"
+                              style={{ marginTop: 8 }}
+                            />
+                          )}
+                          {item.priceType === "range" && (
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+                              <input
+                                className="area-input"
+                                type="number"
+                                value={item.priceMin || ""}
+                                onChange={(e) => updateMaintenancePackageField(item.name, "priceMin", e.target.value)}
+                                placeholder="最低价"
+                              />
+                              <input
+                                className="area-input"
+                                type="number"
+                                value={item.priceMax || ""}
+                                onChange={(e) => updateMaintenancePackageField(item.name, "priceMax", e.target.value)}
+                                placeholder="最高价"
+                              />
+                            </div>
+                          )}
+                          {item.priceType === "project" && (
+                            <input
+                              className="area-input"
+                              value={item.projectPriceNote || ""}
+                              onChange={(e) => updateMaintenancePackageField(item.name, "projectPriceNote", e.target.value)}
+                              placeholder="例如：按项目报价"
+                              style={{ marginTop: 8 }}
+                            />
+                          )}
+                        </span>
+                        <span>
+                          <select
+                            className="area-input"
+                            value={item.priceUnit || "元 / 盆 / 次"}
                             onChange={(e) => updateMaintenancePackageField(item.name, "priceUnit", e.target.value)}
-                          />
+                            disabled={item.priceType === "project"}
+                          >
+                            <option value="元 / 盆 / 次">元 / 盆 / 次</option>
+                            <option value="元 / 平方米 / 年">元 / 平方米 / 年</option>
+                            <option value="元 / 次">元 / 次</option>
+                            <option value="元 / 项">元 / 项</option>
+                            <option value="按项目报价">按项目报价</option>
+                          </select>
                         </span>
                         <span>
                           <label className="staff-toggle-row" style={{ justifyContent: "flex-start" }}>
@@ -6985,6 +7162,8 @@ ${rentalText}`;
             {STAFF_AREA_OPTIONS.map((area) => <option key={area} value={area} />)}
           </datalist>
 
+          {showCreateProductSheet && renderCreateProductSheet()}
+          {showCreateCustomerSheet && renderCreateCustomerSheet()}
           {showCreateOrderSheet && renderCreateOrderSheet()}
         </main>
       </div>
@@ -7120,8 +7299,13 @@ ${rentalText}`;
                   </div>
 
                   <label className="staff-toggle-row">
-                    <input type="checkbox" checked={Boolean(newProductForm.supportDeliveryInstall)} onChange={(e) => setNewProductForm((form) => ({ ...form, supportDeliveryInstall: e.target.checked }))} />
-                    <span>支持配送 / 安装</span>
+                    <input type="checkbox" checked={Boolean(newProductForm.supportDelivery)} onChange={(e) => setNewProductForm((form) => ({ ...form, supportDelivery: e.target.checked }))} />
+                    <span>支持配送</span>
+                  </label>
+
+                  <label className="staff-toggle-row">
+                    <input type="checkbox" checked={Boolean(newProductForm.supportInstall)} onChange={(e) => setNewProductForm((form) => ({ ...form, supportInstall: e.target.checked }))} />
+                    <span>支持安装</span>
                   </label>
                 </>
               ) : (
@@ -7139,6 +7323,11 @@ ${rentalText}`;
                   <div className="sheet-block">
                     <p className="sheet-label">适用场景</p>
                     <input className="area-input" value={newProductForm.applicableScenes} onChange={(e) => setNewProductForm((form) => ({ ...form, applicableScenes: e.target.value }))} placeholder="例如：办公室、前台、会议室" />
+                  </div>
+
+                  <div className="sheet-block">
+                    <p className="sheet-label">养护说明</p>
+                    <input className="area-input" value={newProductForm.careNote} onChange={(e) => setNewProductForm((form) => ({ ...form, careNote: e.target.value }))} placeholder="例如：每周检查叶面，避免空调直吹" />
                   </div>
                 </>
               )}
@@ -7183,6 +7372,18 @@ ${rentalText}`;
           </div>
 
           <section className="plan-summary-card" style={{ marginTop: 16 }}>
+            {isSaleProduct && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 12 }}>
+                <div className="sheet-block">
+                  <p className="sheet-label">配送 / 安装备注</p>
+                  <input className="area-input" value={newProductForm.deliveryNote} onChange={(e) => setNewProductForm((form) => ({ ...form, deliveryNote: e.target.value }))} placeholder="例如：同城可配送，大型植物需现场确认" />
+                </div>
+                <div className="sheet-block">
+                  <p className="sheet-label">售后备注</p>
+                  <input className="area-input" value={newProductForm.afterSaleNote} onChange={(e) => setNewProductForm((form) => ({ ...form, afterSaleNote: e.target.value }))} placeholder="例如：交付后 7 天内提供状态咨询" />
+                </div>
+              </div>
+            )}
             <div className="sheet-block">
               <p className="sheet-label">备注</p>
               <input className="area-input" value={newProductForm.note} onChange={(e) => setNewProductForm((form) => ({ ...form, note: e.target.value }))} placeholder="内部备注，不直接展示给客户" />
