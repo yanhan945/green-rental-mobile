@@ -12,7 +12,7 @@ const STAFF_BOTTOM_TABS = [
   { key: "我的", Icon: GardenIcons.StaffMine, label: "我的" },
 ];
 
-const STAFF_PLAN_TYPES = ["租赁方案", "养护服务", "售卖订单", "临时摆场"];
+const STAFF_PLAN_TYPES = ["租赁方案", "养护服务", "售卖订单", "临时摆场", "园林改造"];
 
 export function StaffMobile({
   staffAppTab,
@@ -366,6 +366,7 @@ export function StaffMobile({
                 {planType === "养护服务" && "适用于客户已有植物或追加上门维护，按养护套餐执行。"}
                 {planType === "售卖订单" && "适用于一次性售卖植物 / 花盆 / 资材，按商品清单交付。"}
                 {planType === "临时摆场" && "适用于活动、展会、临时形象区等短期现场交付。"}
+                {planType === "园林改造" && "适用于园林改造、造景和项目工程咨询转单，当前先进入待勘察 / 待方案。"}
               </div>
             </div>
 
