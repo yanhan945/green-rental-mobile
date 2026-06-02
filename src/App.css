@@ -2275,6 +2275,10 @@ button.danger,
   gap: 10px;
 }
 
+.admin-layout .admin-sidebar {
+  overflow-y: auto !important;
+}
+
 .mini-program-decor-layout {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
