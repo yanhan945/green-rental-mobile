@@ -14,6 +14,7 @@ const ORDERS_API = `${SUPABASE_URL}/rest/v1/orders`;
 const STORAGE_KEY = "green-rental-mobile-v24";
 const PRODUCT_STORAGE_KEY = "green-rental-products-v29";
 const SERVICE_CONFIG_STORAGE_KEY = "green-rental-service-config-v1";
+const PRODUCT_CATEGORY_STORAGE_KEY = "green-rental-product-categories-v1";
 const CUSTOMER_STORAGE_KEY = "green-rental-customers-v31";
 const STAFF_DIRECTORY_STORAGE_KEY = "green-rental-staff-directory-v1";
 const STAFF_AVATAR_STORAGE_KEY = "green-rental-staff-avatar-v1";
@@ -175,6 +176,22 @@ const DEFAULT_STAFF_ID = "staff-001";
 
 const productCategories = ["室内绿植", "室外植物", "月租套餐", "仿真植物"];
 const subCategories = ["大型植物", "中型植物", "小型植物", "水培植物", "盆景植物"];
+const PRODUCT_PLACE_TAGS = ["客厅", "前台", "办公室", "会议室", "走廊", "阳台", "玄关", "大堂", "商业空间", "展厅", "茶室", "店铺", "桌面", "窗边", "阴凉处"];
+const CARE_DIFFICULTY_OPTIONS = [
+  ["简单", "适合新手，耐养护，日常维护简单。"],
+  ["中等", "需要定期观察光照、浇水和叶片状态。"],
+  ["较高", "对环境和养护频率要求更高，适合有经验客户或专业养护。"],
+];
+const defaultProductCategories = [
+  { id: "cat-large-plants", nameZh: "大型绿植", nameEn: "Large Plants", showEnglish: false, visibleInMiniProgram: true, sortOrder: 10, businessType: "sale" },
+  { id: "cat-medium-plants", nameZh: "中型绿植", nameEn: "Medium Plants", showEnglish: false, visibleInMiniProgram: true, sortOrder: 20, businessType: "sale" },
+  { id: "cat-desk-plants", nameZh: "桌面盆栽", nameEn: "Desk Plants", showEnglish: false, visibleInMiniProgram: true, sortOrder: 30, businessType: "sale" },
+  { id: "cat-opening-gifts", nameZh: "开业绿植", nameEn: "Opening Gifts", showEnglish: false, visibleInMiniProgram: true, sortOrder: 40, businessType: "sale" },
+  { id: "cat-planters", nameZh: "花盆花器", nameEn: "Planters", showEnglish: false, visibleInMiniProgram: true, sortOrder: 50, businessType: "sale" },
+  { id: "cat-care-supplies", nameZh: "养护用品", nameEn: "Care Supplies", showEnglish: false, visibleInMiniProgram: true, sortOrder: 60, businessType: "care" },
+  { id: "cat-rental-indoor", nameZh: "室内绿植", nameEn: "Indoor Plants", showEnglish: false, visibleInMiniProgram: false, sortOrder: 70, businessType: "rental" },
+  { id: "cat-rental-outdoor", nameZh: "室外植物", nameEn: "Outdoor Plants", showEnglish: false, visibleInMiniProgram: false, sortOrder: 80, businessType: "rental" },
+];
 
 const defaultProducts = [
   { id: "rental-facai", name: "发财树", category: "室内绿植", subCategory: "大型植物", description: "寓意财源滚滚，适合前台、办公室、会议室。", displayDescription: "适合前台、办公室、会议室。", pricePerDay: 2.5, monthlyRent: "75", deposit: "100", applicableScenes: "前台、办公室、会议室", note: "常规租赁款，注意盆面清洁。", productType: "rental", serviceType: "租赁", priceUnit: "元 / 月", image: "🌳", status: "已上架" },
@@ -182,12 +199,16 @@ const defaultProducts = [
   { id: "rental-sanweikui", name: "散尾葵", category: "室内绿植", subCategory: "大型植物", description: "叶片舒展，适合接待区、洽谈区和门厅。", displayDescription: "叶片舒展，适合接待区和门厅。", pricePerDay: 2.8, monthlyRent: "84", deposit: "100", applicableScenes: "接待区、洽谈区、门厅", note: "避免空调直吹。", productType: "rental", serviceType: "租赁", priceUnit: "元 / 月", image: "🌿", status: "已上架" },
   { id: "rental-guibeizhu", name: "龟背竹", category: "室内绿植", subCategory: "中型植物", description: "造型现代，适合办公室角落、茶水间和休闲区。", displayDescription: "造型现代，适合办公室角落和休闲区。", pricePerDay: 2.2, monthlyRent: "66", deposit: "80", applicableScenes: "办公室角落、茶水间、休闲区", note: "保持叶面清洁。", productType: "rental", serviceType: "租赁", priceUnit: "元 / 月", image: "🍃", status: "已上架" },
   { id: "rental-longxueshu", name: "龙血树", category: "室内绿植", subCategory: "中型植物", description: "耐养挺拔，适合会议室、走廊和电梯厅。", displayDescription: "耐养挺拔，适合会议室和走廊。", pricePerDay: 2, monthlyRent: "60", deposit: "80", applicableScenes: "会议室、走廊、电梯厅", note: "适合低频维护点位。", productType: "rental", serviceType: "租赁", priceUnit: "元 / 月", image: "🎍", status: "已上架" },
-  { id: "sale-lvluo", name: "绿萝", category: "室内绿植", subCategory: "小型植物", description: "耐阴好养，适合办公室桌面和角落。", displayDescription: "耐阴好养，适合办公室桌面和角落。", salePrice: "38", price: "38", stock: "现货", supportDelivery: true, supportInstall: false, supportDeliveryInstall: true, note: "可搭配简易盆器。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🌿", status: "已上架" },
-  { id: "sale-heijingang", name: "黑金刚", category: "室内绿植", subCategory: "中型植物", description: "叶色厚重，适合办公室和门厅点缀。", displayDescription: "叶色厚重，适合办公室和门厅点缀。", salePrice: "98", price: "98", stock: "现货", supportDelivery: true, supportInstall: true, supportDeliveryInstall: true, note: "配送后建议现场摆放调整。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🪴", status: "已上架" },
-  { id: "sale-facai", name: "发财树", category: "室内绿植", subCategory: "大型植物", description: "寓意好，适合开业、前台和办公室。", displayDescription: "适合开业、前台和办公室。", salePrice: "168", price: "168", stock: "现货", supportDelivery: true, supportInstall: true, supportDeliveryInstall: true, note: "价格按规格可调整。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🌳", status: "已上架" },
-  { id: "sale-tiantianniao", name: "天堂鸟", category: "室内绿植", subCategory: "大型植物", description: "形象感强，适合会客空间和大堂。", displayDescription: "形象感强，适合会客空间和大堂。", salePrice: "228", price: "228", stock: "需确认", supportDelivery: true, supportInstall: true, supportDeliveryInstall: true, note: "大规格需提前确认现货。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🪴", status: "已上架" },
-  { id: "sale-sanweikui", name: "散尾葵", category: "室内绿植", subCategory: "大型植物", description: "氛围柔和，适合洽谈区和休闲区。", displayDescription: "氛围柔和，适合洽谈区和休闲区。", salePrice: "198", price: "198", stock: "现货", supportDelivery: true, supportInstall: true, supportDeliveryInstall: true, note: "注意运输保护叶片。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🌿", status: "已上架" },
-  { id: "sale-guibeizhu", name: "龟背竹", category: "室内绿植", subCategory: "中型植物", description: "现代感强，适合办公室、茶水间和居家空间。", displayDescription: "现代感强，适合办公室和茶水间。", salePrice: "128", price: "128", stock: "现货", supportDelivery: true, supportInstall: false, supportDeliveryInstall: true, note: "可选不同盆器。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🍃", status: "已上架" },
+  { id: "sale-lvluo", name: "绿萝", displayNameEn: "Pothos", showEnglishName: true, categoryId: "cat-desk-plants", category: "桌面盆栽", description: "耐阴好养，适合办公室桌面和角落。", displayDescription: "耐阴好养，适合办公室桌面和角落。", salePrice: "38", price: "38", stock: "现货", stockStatus: "现货", suitablePlaces: ["办公室", "桌面", "阴凉处"], lightRequirement: "耐阴，明亮散射光更佳。", wateringCare: "土表微干后浇水，避免长期积水。", careDifficulty: "简单", supportDelivery: true, supportInstall: false, supportDeliveryInstall: true, visibleInMiniProgram: true, note: "可搭配简易盆器。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🌿", status: "已上架" },
+  { id: "sale-heijingang", name: "黑金刚", displayNameEn: "Rubber Plant", showEnglishName: true, categoryId: "cat-medium-plants", category: "中型绿植", description: "叶片油亮，株形挺拔，适合办公室前台与客厅空间。", displayDescription: "叶片油亮，株形挺拔，适合办公室前台与客厅空间。", salePrice: "98", price: "98", stock: "现货", stockStatus: "现货", suitablePlaces: ["客厅", "前台", "办公室"], lightRequirement: "明亮散射光，避免长时间暴晒。", wateringCare: "土表微干后浇水，保持通风。", careDifficulty: "简单", supportDelivery: true, supportInstall: true, supportDeliveryInstall: true, visibleInMiniProgram: true, note: "配送后建议现场摆放调整。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🪴", status: "已上架" },
+  { id: "sale-facai", name: "发财树", displayNameEn: "Money Tree", showEnglishName: true, categoryId: "cat-opening-gifts", category: "开业绿植", description: "寓意好，适合开业、前台和办公室。", displayDescription: "寓意好，适合开业、前台和办公室。", salePrice: "168", price: "168", stock: "现货", stockStatus: "现货", suitablePlaces: ["前台", "办公室", "店铺"], lightRequirement: "明亮散射光，避免暴晒。", wateringCare: "盆土偏干后浇透，避免积水。", careDifficulty: "简单", supportDelivery: true, supportInstall: true, supportDeliveryInstall: true, visibleInMiniProgram: true, note: "价格按规格可调整。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🌳", status: "已上架" },
+  { id: "sale-tiantianniao", name: "天堂鸟", displayNameEn: "Bird of Paradise", showEnglishName: true, categoryId: "cat-large-plants", category: "大型绿植", description: "株形舒展，形象感强，适合会客空间和大堂。", displayDescription: "株形舒展，形象感强，适合会客空间和大堂。", salePrice: "228", price: "228", stock: "需确认", stockStatus: "需确认", suitablePlaces: ["客厅", "大堂", "展厅"], lightRequirement: "需要明亮散射光，避免长期阴暗。", wateringCare: "保持盆土微润，夏季适当增加喷雾。", careDifficulty: "中等", supportDelivery: true, supportInstall: true, supportDeliveryInstall: true, visibleInMiniProgram: true, note: "大规格需提前确认现货。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🪴", status: "已上架" },
+  { id: "sale-sanweikui", name: "散尾葵", displayNameEn: "Areca Palm", showEnglishName: true, categoryId: "cat-large-plants", category: "大型绿植", description: "氛围柔和，适合洽谈区和休闲区。", displayDescription: "氛围柔和，适合洽谈区和休闲区。", salePrice: "198", price: "198", stock: "现货", stockStatus: "现货", suitablePlaces: ["客厅", "会议室", "大堂"], lightRequirement: "明亮散射光，避免空调直吹。", wateringCare: "保持通风，土表微干后补水。", careDifficulty: "中等", supportDelivery: true, supportInstall: true, supportDeliveryInstall: true, visibleInMiniProgram: true, note: "注意运输保护叶片。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🌿", status: "已上架" },
+  { id: "sale-qinyerong", name: "琴叶榕", displayNameEn: "Fiddle Leaf Fig", showEnglishName: true, categoryId: "cat-large-plants", category: "大型绿植", description: "叶片大而有质感，适合客厅、展厅与形象区域。", displayDescription: "叶片大而有质感，适合客厅、展厅与形象区域。", salePrice: "268", price: "268", stock: "需确认", stockStatus: "需确认", suitablePlaces: ["客厅", "展厅", "窗边"], lightRequirement: "明亮散射光，避免频繁移动。", wateringCare: "土表干燥后浇水，注意通风和叶面清洁。", careDifficulty: "较高", supportDelivery: true, supportInstall: true, supportDeliveryInstall: true, visibleInMiniProgram: true, note: "适合有养护经验客户。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🍃", status: "已上架" },
+  { id: "sale-guibeizhu", name: "龟背竹", displayNameEn: "Monstera", showEnglishName: true, categoryId: "cat-medium-plants", category: "中型绿植", description: "现代感强，适合办公室、茶水间和居家空间。", displayDescription: "现代感强，适合办公室、茶水间和居家空间。", salePrice: "128", price: "128", stock: "现货", stockStatus: "现货", suitablePlaces: ["办公室", "茶室", "窗边"], lightRequirement: "明亮散射光，避免夏季暴晒。", wateringCare: "土表微干后浇水，保持叶面清洁。", careDifficulty: "中等", supportDelivery: true, supportInstall: false, supportDeliveryInstall: true, visibleInMiniProgram: true, note: "可选不同盆器。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🍃", status: "已上架" },
+  { id: "sale-hupilan", name: "虎皮兰", displayNameEn: "Snake Plant", showEnglishName: true, categoryId: "cat-medium-plants", category: "中型绿植", description: "耐旱耐阴，线条利落，适合办公室和玄关。", displayDescription: "耐旱耐阴，线条利落，适合办公室和玄关。", salePrice: "88", price: "88", stock: "现货", stockStatus: "现货", suitablePlaces: ["办公室", "玄关", "阴凉处"], lightRequirement: "耐阴，散射光环境更佳。", wateringCare: "宁干勿湿，避免频繁浇水。", careDifficulty: "简单", supportDelivery: true, supportInstall: false, supportDeliveryInstall: true, visibleInMiniProgram: true, note: "适合新手客户。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🌱", status: "已上架" },
+  { id: "sale-taocihuapen", name: "陶瓷花盆", displayNameEn: "Ceramic Planter", showEnglishName: true, categoryId: "cat-planters", category: "花盆花器", description: "简洁耐看，适合搭配中小型绿植。", displayDescription: "简洁耐看，适合搭配中小型绿植。", salePrice: "58", price: "58", stock: "现货", stockStatus: "现货", suitablePlaces: ["客厅", "办公室", "桌面"], lightRequirement: "不涉及光照需求。", wateringCare: "根据搭配植物养护。", careDifficulty: "简单", supportDelivery: true, supportInstall: false, supportDeliveryInstall: true, visibleInMiniProgram: true, note: "按尺寸和材质调整价格。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🏺", status: "已上架" },
+  { id: "sale-yingyangye", name: "营养液 / 养护用品", displayNameEn: "Plant Nutrient", showEnglishName: true, categoryId: "cat-care-supplies", category: "养护用品", description: "适合日常补充营养，辅助绿植保持状态。", displayDescription: "适合日常补充营养，辅助绿植保持状态。", salePrice: "29", price: "29", stock: "现货", stockStatus: "现货", suitablePlaces: ["办公室", "客厅", "店铺"], lightRequirement: "不涉及光照需求。", wateringCare: "按说明稀释使用，避免过量。", careDifficulty: "简单", supportDelivery: true, supportInstall: false, supportDeliveryInstall: true, visibleInMiniProgram: true, note: "适合与植物一起销售。", productType: "sale", serviceType: "售卖", priceUnit: "元 / 件", image: "🧴", status: "已上架" },
 ];
 
 const initialOrders = [
@@ -645,7 +666,12 @@ function persistOrdersToLocalStore(orders) {
 
 function normalizeProducts(data) {
   const list = Array.isArray(data) ? data : defaultProducts;
-  return list.map((product) => {
+  return list.map((rawProduct) => {
+    const seed = defaultProducts.find((item) =>
+      item.id === rawProduct?.id ||
+      (item.productType === rawProduct?.productType && item.name === rawProduct?.name)
+    ) || {};
+    const product = { ...seed, ...rawProduct };
     const rawStatus = product?.status || "已上架";
     const status = rawStatus === "停用" || rawStatus === "未上架" ? "未上架" : "已上架";
     const productType = ["rental", "sale"].includes(product?.productType)
@@ -657,6 +683,14 @@ function normalizeProducts(data) {
     const priceDisplay = product?.priceDisplay || (productType === "sale"
       ? (salePrice ? `¥${salePrice} / 件` : "")
       : (monthlyRent ? `¥${monthlyRent} / 月` : ""));
+    const suitablePlaces = Array.isArray(product?.suitablePlaces)
+      ? product.suitablePlaces
+      : String(product?.suitablePlaces || product?.applicableScenes || "")
+          .split(/[,，]/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+    const categoryId = product?.categoryId || defaultProductCategories.find((category) => category.nameZh === product?.category)?.id || "";
+    const categoryName = product?.categoryName || product?.category || defaultProductCategories.find((category) => category.id === categoryId)?.nameZh || "";
     return {
       stock: "充足",
       imageUrl: "",
@@ -664,6 +698,8 @@ function normalizeProducts(data) {
       productType,
       serviceType: productType === "sale" ? "售卖" : "租赁",
       displayName: product?.displayName || product?.name || "",
+      displayNameEn: product?.displayNameEn || "",
+      showEnglishName: Boolean(product?.showEnglishName),
       displayDescription: product?.displayDescription || product?.description || "",
       visibleInMiniProgram: Boolean(product?.visibleInMiniProgram),
       sortOrder: Number(product?.sortOrder || 0),
@@ -673,18 +709,57 @@ function normalizeProducts(data) {
       price: productType === "sale" ? salePrice : monthlyRent,
       priceUnit: productType === "sale" ? "元 / 件" : "元 / 月",
       priceDisplay,
+      categoryId,
+      categoryName,
+      stockStatus: product?.stockStatus || product?.stock || "现货",
+      suitablePlaces,
+      lightRequirement: product?.lightRequirement || "",
+      wateringCare: product?.wateringCare || product?.careNote || "",
+      careDifficulty: product?.careDifficulty || "简单",
       applicableScenes: product?.applicableScenes || product?.scene || "",
       careNote: product?.careNote || "",
       deliveryNote: product?.deliveryNote || "",
       afterSaleNote: product?.afterSaleNote || "",
       supportDelivery: product?.supportDelivery ?? Boolean(product?.supportDeliveryInstall),
       supportInstall: product?.supportInstall ?? Boolean(product?.supportDeliveryInstall),
+      supportsDelivery: product?.supportsDelivery ?? product?.supportDelivery ?? Boolean(product?.supportDeliveryInstall),
+      supportsInstallation: product?.supportsInstallation ?? product?.supportInstall ?? Boolean(product?.supportDeliveryInstall),
       supportDeliveryInstall: Boolean(product?.supportDeliveryInstall),
       ...product,
       productType,
       status,
+      categoryId,
+      categoryName,
+      suitablePlaces,
     };
   });
+}
+
+function normalizeProductCategories(data) {
+  const list = Array.isArray(data) && data.length ? data : defaultProductCategories;
+  const normalized = list.map((category, index) => {
+    const fallback = defaultProductCategories.find((item) => item.id === category?.id || item.nameZh === category?.nameZh) || {};
+    const businessType = ["rental", "sale", "care"].includes(category?.businessType) ? category.businessType : fallback.businessType || "sale";
+    return {
+      ...fallback,
+      ...category,
+      id: category?.id || fallback.id || `cat-${Date.now()}-${index}`,
+      nameZh: category?.nameZh || category?.name || fallback.nameZh || "未命名分类",
+      nameEn: category?.nameEn || fallback.nameEn || "",
+      showEnglish: Boolean(category?.showEnglish ?? fallback.showEnglish),
+      visibleInMiniProgram: category?.visibleInMiniProgram ?? fallback.visibleInMiniProgram ?? true,
+      sortOrder: Number(category?.sortOrder ?? fallback.sortOrder ?? index + 1),
+      businessType,
+    };
+  });
+  const ids = new Set(normalized.map((category) => category.id));
+  const missing = defaultProductCategories.filter((category) => !ids.has(category.id));
+  return [...normalized, ...missing].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+}
+
+function getCategoryDisplayName(category = {}) {
+  if (category.showEnglish && category.nameEn) return `${category.nameEn} / ${category.nameZh}`;
+  return category.nameZh || category.nameEn || "未命名分类";
 }
 
 function ensureProductSeedData(products) {
@@ -699,7 +774,7 @@ function ensureProductSeedData(products) {
 }
 
 function formatMaintenancePrice(config = {}) {
-  const unit = normalizeMaintenancePriceUnit(config.priceUnit || "元 / 盆 / 次").replace(/^元\s*\/?\s*/, "").trim() || "盆 / 次";
+  const unit = getMaintenanceUnitDisplay(config);
   if (config.priceType === "project") return "按项目报价";
   if (config.priceType === "fixed") {
     const value = config.fixedPrice || config.priceMin || config.price || "";
@@ -710,6 +785,12 @@ function formatMaintenancePrice(config = {}) {
   if (min && max) return `¥${min}-${max} / ${unit}`;
   if (min) return `¥${min} 起 / ${unit}`;
   return config.priceDisplay || config.priceText || "待配置";
+}
+
+function getMaintenanceUnitDisplay(config = {}) {
+  if (config.priceType === "project") return "按项目报价";
+  if (config.priceObject && config.priceCycle) return `${config.priceObject} / ${config.priceCycle}`;
+  return normalizeMaintenancePriceUnit(config.priceUnit || "元 / 盆 / 次").replace(/^元\s*\/?\s*/, "").trim() || "盆 / 次";
 }
 
 function normalizeMaintenancePriceUnit(value = "") {
@@ -725,17 +806,23 @@ function normalizeMaintenancePriceUnit(value = "") {
 function inferMaintenancePriceFields(saved = {}, defaults = {}) {
   const merged = { ...defaults, ...saved };
   const normalizedUnit = normalizeMaintenancePriceUnit(merged.priceUnit || defaults.priceUnit || "元 / 盆 / 次");
-  if (merged.priceType) return { ...merged, priceUnit: normalizedUnit };
+  const unitText = normalizedUnit.replace(/^元\s*\/?\s*/, "");
+  const parts = unitText.split("/").map((item) => item.trim()).filter(Boolean);
+  const unitFields = {
+    priceObject: merged.priceObject || parts[0] || defaults.priceObject || "盆",
+    priceCycle: merged.priceCycle || parts[1] || defaults.priceCycle || "次",
+  };
+  if (merged.priceType) return { ...merged, ...unitFields, priceUnit: normalizedUnit };
   const text = String(merged.price || merged.priceText || "");
-  if (/项目|按次/.test(text) && !/\d/.test(text)) return { ...merged, priceType: "project", priceUnit: "按项目报价" };
+  if (/项目|按次/.test(text) && !/\d/.test(text)) return { ...merged, priceType: "project", priceObject: "项", priceCycle: "次", priceUnit: "按项目报价" };
   const numbers = text.match(/\d+(?:\.\d+)?/g) || [];
   if (numbers.length >= 2) {
-    return { ...merged, priceType: "range", priceMin: numbers[0], priceMax: numbers[1], priceUnit: normalizedUnit };
+    return { ...merged, ...unitFields, priceType: "range", priceMin: numbers[0], priceMax: numbers[1], priceUnit: normalizedUnit };
   }
   if (numbers.length === 1) {
-    return { ...merged, priceType: "fixed", fixedPrice: numbers[0], priceUnit: normalizedUnit };
+    return { ...merged, ...unitFields, priceType: "fixed", fixedPrice: numbers[0], priceUnit: normalizedUnit };
   }
-  return { ...merged, priceType: defaults.priceType || "range", priceUnit: normalizedUnit };
+  return { ...merged, ...unitFields, priceType: defaults.priceType || "range", priceUnit: normalizedUnit };
 }
 
 function normalizeMaintenancePackages(data) {
@@ -755,7 +842,9 @@ function normalizeMaintenancePackages(data) {
       displayDescription: saved.displayDescription || saved.scene || defaults.scene,
       price: priceFields.priceType === "fixed" ? priceFields.fixedPrice || "" : priceFields.priceMin || "",
       priceDisplay,
-      priceUnit: priceFields.priceUnit || (defaults.name === "专项处理" ? "按项目报价" : "元 / 盆 / 次"),
+      priceObject: priceFields.priceObject || (defaults.name === "专项处理" ? "项" : "盆"),
+      priceCycle: priceFields.priceCycle || (defaults.name === "专项处理" ? "次" : "次"),
+      priceUnit: priceFields.priceType === "project" ? "按项目报价" : `元 / ${priceFields.priceObject || "盆"} / ${priceFields.priceCycle || "次"}`,
       areaPriceText: saved.areaPriceText || defaults.areaPriceText || "",
       visibleInMiniProgram: saved.visibleInMiniProgram ?? true,
       sortOrder: Number(saved.sortOrder ?? index + 1),
@@ -813,6 +902,30 @@ function persistMaintenancePackagesToLocalStore(maintenancePackages) {
       maintenancePackages: normalizeMaintenancePackages(maintenancePackages),
     }),
     "服务配置"
+  );
+}
+
+function loadProductCategoriesFromLocalStore() {
+  try {
+    const raw = localStorage.getItem(PRODUCT_CATEGORY_STORAGE_KEY);
+    if (!raw) return normalizeProductCategories(defaultProductCategories);
+    const parsed = JSON.parse(raw);
+    return normalizeProductCategories(parsed?.categories);
+  } catch (error) {
+    console.error("读取商品分类失败：", error);
+    return normalizeProductCategories(defaultProductCategories);
+  }
+}
+
+function persistProductCategoriesToLocalStore(categories) {
+  safeSetLocalStorage(
+    PRODUCT_CATEGORY_STORAGE_KEY,
+    JSON.stringify({
+      source: "localStorage",
+      savedAt: nowText(),
+      categories: normalizeProductCategories(categories),
+    }),
+    "商品分类"
   );
 }
 
@@ -1384,10 +1497,11 @@ async function fetchProductLibraryFromCloud() {
   return {
     products: ensureProductSeedData(data.products),
     maintenancePackages: normalizeMaintenancePackages(data.maintenancePackages),
+    productCategories: normalizeProductCategories(data.productCategories),
   };
 }
 
-async function upsertProductsToCloud(products, maintenancePackages = []) {
+async function upsertProductsToCloud(products, maintenancePackages = [], productCategoriesConfig = defaultProductCategories) {
   const response = await fetch(`${ORDERS_API}?on_conflict=id`, {
     method: "POST",
     headers: cloudHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
@@ -1397,6 +1511,7 @@ async function upsertProductsToCloud(products, maintenancePackages = []) {
         type: "product_library",
         products: normalizeProducts(products),
         maintenancePackages: normalizeMaintenancePackages(maintenancePackages),
+        productCategories: normalizeProductCategories(productCategoriesConfig),
         miniProgramSyncNote: "养护套餐适合小程序自助下单；租赁植物和售卖植物更适合提交意向、工作人员确认、商户端代下单后再进入客户小程序待付款。",
         updatedAt: nowText(),
       },
@@ -1786,6 +1901,7 @@ function App() {
   const [orders, setOrders] = useState(() => loadOrdersFromLocalStore());
   const [merchantProducts, setMerchantProducts] = useState(() => loadProductsFromLocalStore());
   const [merchantMaintenancePackages, setMerchantMaintenancePackages] = useState(() => loadMaintenancePackagesFromLocalStore());
+  const [merchantProductCategories, setMerchantProductCategories] = useState(() => loadProductCategoriesFromLocalStore());
   const [merchantCustomers, setMerchantCustomers] = useState(() => loadCustomersFromLocalStore());
   const [staffDirectory, setStaffDirectory] = useState(() => loadStaffDirectoryFromLocalStore());
 
@@ -1819,8 +1935,10 @@ function App() {
   const [showCreateOrderSheet, setShowCreateOrderSheet] = useState(false);
   const [showCreateProductSheet, setShowCreateProductSheet] = useState(false);
   const [showCreateCustomerSheet, setShowCreateCustomerSheet] = useState(false);
+  const [showProductCategorySheet, setShowProductCategorySheet] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
   const [editingCustomerId, setEditingCustomerId] = useState(null);
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [productSearchText, setProductSearchText] = useState("");
   const [productCategoryFilter, setProductCategoryFilter] = useState("全部");
   const [customerSearchText, setCustomerSearchText] = useState("");
@@ -1895,6 +2013,16 @@ function App() {
     careNote: "",
     deliveryNote: "",
     afterSaleNote: "",
+    displayNameEn: "",
+    showEnglishName: false,
+    categoryId: "",
+    categoryName: "",
+    suitablePlaces: [],
+    customPlaceText: "",
+    lightRequirement: "",
+    wateringCare: "",
+    careDifficulty: "简单",
+    stockStatus: "现货",
     note: "",
     status: "已上架",
     productType: "rental",
@@ -1902,10 +2030,20 @@ function App() {
     displayDescription: "",
   });
 
+  const [categoryForm, setCategoryForm] = useState({
+    nameZh: "",
+    nameEn: "",
+    showEnglish: false,
+    visibleInMiniProgram: true,
+    sortOrder: "",
+    businessType: "sale",
+  });
+
   const safeOrders = Array.isArray(orders) ? orders : [];
   const safeStaffDirectory = Array.isArray(staffDirectory) ? staffDirectory : [];
   const safeMerchantProducts = Array.isArray(merchantProducts) ? merchantProducts : [];
   const safeMerchantMaintenancePackages = normalizeMaintenancePackages(merchantMaintenancePackages);
+  const safeMerchantProductCategories = normalizeProductCategories(merchantProductCategories);
   const safeMerchantCustomers = Array.isArray(merchantCustomers) ? merchantCustomers : [];
   const currentOrder = safeOrders.find((order) => String(order.id) === String(currentOrderId)) || null;
   const currentPlan =
@@ -2048,6 +2186,10 @@ function App() {
   useEffect(() => {
     persistMaintenancePackagesToLocalStore(merchantMaintenancePackages);
   }, [merchantMaintenancePackages]);
+
+  useEffect(() => {
+    persistProductCategoriesToLocalStore(merchantProductCategories);
+  }, [merchantProductCategories]);
 
   useEffect(() => {
     persistCustomersToLocalStore(merchantCustomers);
@@ -2268,10 +2410,11 @@ function App() {
       });
   }
 
-  function syncProductsLibrary(nextProducts, message = "商品与服务已同步", nextMaintenancePackages = merchantMaintenancePackages) {
+  function syncProductsLibrary(nextProducts, message = "商品与服务已同步", nextMaintenancePackages = merchantMaintenancePackages, nextCategories = merchantProductCategories) {
     persistProductsToLocalStore(nextProducts);
     persistMaintenancePackagesToLocalStore(nextMaintenancePackages);
-    upsertProductsToCloud(nextProducts, nextMaintenancePackages)
+    persistProductCategoriesToLocalStore(nextCategories);
+    upsertProductsToCloud(nextProducts, nextMaintenancePackages, nextCategories)
       .then(() => {
         setSyncState("已同步");
         setSyncMessage(`${message}：${nowText()}`);
@@ -2292,7 +2435,13 @@ function App() {
   function updateMaintenancePackages(nextPackages, message = "养护套餐已同步") {
     const normalized = normalizeMaintenancePackages(nextPackages);
     setMerchantMaintenancePackages(normalized);
-    window.setTimeout(() => syncProductsLibrary(merchantProducts, message, normalized), 0);
+    window.setTimeout(() => syncProductsLibrary(merchantProducts, message, normalized, merchantProductCategories), 0);
+  }
+
+  function updateProductCategories(nextCategories, message = "商品分类已同步") {
+    const normalized = normalizeProductCategories(nextCategories);
+    setMerchantProductCategories(normalized);
+    window.setTimeout(() => syncProductsLibrary(merchantProducts, message, merchantMaintenancePackages, normalized), 0);
   }
 
   function updateOrder(orderId, updater, cloudMessage = "订单已同步") {
@@ -2586,7 +2735,7 @@ function App() {
     try {
       const [cloudOrders, cloudLibrary] = await Promise.all([
         fetchOrdersFromCloud(),
-        fetchProductLibraryFromCloud().catch(() => ({ products: [], maintenancePackages: [] })),
+        fetchProductLibraryFromCloud().catch(() => ({ products: [], maintenancePackages: [], productCategories: [] })),
       ]);
 
       if (cloudLibrary.products.length > 0) {
@@ -2594,6 +2743,9 @@ function App() {
       }
       if (cloudLibrary.maintenancePackages.length > 0) {
         setMerchantMaintenancePackages(cloudLibrary.maintenancePackages);
+      }
+      if (cloudLibrary.productCategories.length > 0) {
+        setMerchantProductCategories(cloudLibrary.productCategories);
       }
 
       if (cloudOrders.length === 0) {
@@ -2617,7 +2769,7 @@ function App() {
     try {
       const [cloudOrders, cloudLibrary] = await Promise.all([
         fetchOrdersFromCloud().catch(() => []),
-        fetchProductLibraryFromCloud().catch(() => ({ products: [], maintenancePackages: [] })),
+        fetchProductLibraryFromCloud().catch(() => ({ products: [], maintenancePackages: [], productCategories: [] })),
       ]);
 
       const viewState = activeViewRef.current;
@@ -2654,6 +2806,15 @@ function App() {
           const prevText = JSON.stringify(prevPackages);
           const nextText = JSON.stringify(normalizedPackages);
           return prevText === nextText ? prevPackages : normalizedPackages;
+        });
+      }
+
+      if (cloudLibrary.productCategories.length > 0 && !isReadingDetail) {
+        const normalizedCategories = normalizeProductCategories(cloudLibrary.productCategories);
+        setMerchantProductCategories((prevCategories) => {
+          const prevText = JSON.stringify(prevCategories);
+          const nextText = JSON.stringify(normalizedCategories);
+          return prevText === nextText ? prevCategories : normalizedCategories;
         });
       }
 
@@ -3624,10 +3785,14 @@ function App() {
   }
 
   function resetNewProductForm() {
+    const productType = serviceConfigTab === "售卖植物" ? "sale" : "rental";
+    const defaultCategory = safeMerchantProductCategories.find((category) =>
+      productType === "sale" ? category.businessType === "sale" : category.businessType === "rental"
+    );
     setEditingProductId(null);
     setNewProductForm({
       name: "",
-      category: "室内绿植",
+      category: defaultCategory?.nameZh || "室内绿植",
       subCategory: "大型植物",
       description: "",
       pricePerDay: "",
@@ -3646,9 +3811,19 @@ function App() {
       careNote: "",
       deliveryNote: "",
       afterSaleNote: "",
+      displayNameEn: "",
+      showEnglishName: false,
+      categoryId: defaultCategory?.id || "",
+      categoryName: defaultCategory?.nameZh || "",
+      suitablePlaces: [],
+      customPlaceText: "",
+      lightRequirement: "",
+      wateringCare: "",
+      careDifficulty: "简单",
+      stockStatus: "现货",
       note: "",
       status: "已上架",
-      productType: serviceConfigTab === "售卖植物" ? "sale" : "rental",
+      productType,
       displayName: "",
       displayDescription: "",
     });
@@ -3671,13 +3846,21 @@ function App() {
       ? Number(newProductForm.pricePerDay || Math.max(1, Math.round(price / 30)))
       : Number(newProductForm.pricePerDay || price);
 
+    const selectedCategory = safeMerchantProductCategories.find((category) => category.id === newProductForm.categoryId);
+    const categoryName = selectedCategory?.nameZh || newProductForm.category || "室内绿植";
+    const suitablePlaces = Array.isArray(newProductForm.suitablePlaces) ? newProductForm.suitablePlaces : [];
+    const stockStatus = newProductForm.stockStatus || newProductForm.stock || "现货";
     const productPayload = {
       id: editingProductId || Date.now(),
       name,
-      category: newProductForm.category || "室内绿植",
+      category: categoryName,
+      categoryId: selectedCategory?.id || newProductForm.categoryId || "",
+      categoryName,
       subCategory: newProductForm.subCategory || "大型植物",
-      description: newProductForm.description.trim() || "暂无描述，可在商品与服务中补充。",
+      description: newProductForm.description.trim() || newProductForm.displayDescription.trim() || "暂无简介，可在商品与服务中补充。",
       displayName: newProductForm.displayName || name,
+      displayNameEn: productType === "sale" ? newProductForm.displayNameEn || "" : "",
+      showEnglishName: productType === "sale" ? Boolean(newProductForm.showEnglishName) : false,
       displayDescription: newProductForm.displayDescription || newProductForm.description.trim(),
       productType,
       serviceType: productType === "sale" ? "售卖" : "租赁",
@@ -3691,13 +3874,20 @@ function App() {
       // Image upload integration can replace preview data with a remote URL.
       imageUrl: newProductForm.imageUrl.trim(),
       image: newProductForm.image || "🪴",
-      stock: newProductForm.stock || "充足",
+      stock: stockStatus,
+      stockStatus,
       supportDelivery: productType === "sale" ? Boolean(newProductForm.supportDelivery) : false,
       supportInstall: productType === "sale" ? Boolean(newProductForm.supportInstall) : false,
+      supportsDelivery: productType === "sale" ? Boolean(newProductForm.supportDelivery) : false,
+      supportsInstallation: productType === "sale" ? Boolean(newProductForm.supportInstall) : false,
       supportDeliveryInstall: productType === "sale" ? Boolean(newProductForm.supportDelivery || newProductForm.supportInstall || newProductForm.supportDeliveryInstall) : false,
       visibleInMiniProgram: Boolean(newProductForm.visibleInMiniProgram),
       sortOrder: Number(newProductForm.sortOrder || 0),
-      applicableScenes: newProductForm.applicableScenes || "",
+      applicableScenes: productType === "sale" ? suitablePlaces.join("，") : newProductForm.applicableScenes || "",
+      suitablePlaces: productType === "sale" ? suitablePlaces : [],
+      lightRequirement: newProductForm.lightRequirement || "",
+      wateringCare: productType === "sale" ? newProductForm.wateringCare || "" : "",
+      careDifficulty: productType === "sale" ? newProductForm.careDifficulty || "简单" : "",
       careNote: productType === "rental" ? newProductForm.careNote || "" : "",
       deliveryNote: productType === "sale" ? newProductForm.deliveryNote || "" : "",
       afterSaleNote: productType === "sale" ? newProductForm.afterSaleNote || "" : "",
@@ -3718,11 +3908,12 @@ function App() {
   }
 
   function openEditProduct(product) {
+    const inferredCategory = safeMerchantProductCategories.find((category) => category.id === product.categoryId || category.nameZh === product.category);
     setEditingProductId(product.id);
     setServiceConfigTab(product.productType === "sale" ? "售卖植物" : "租赁植物");
     setNewProductForm({
       name: product.name || "",
-      category: product.category || "室内绿植",
+      category: inferredCategory?.nameZh || product.category || "室内绿植",
       subCategory: product.subCategory || "大型植物",
       description: product.description || "",
       pricePerDay: String(product.pricePerDay || ""),
@@ -3741,6 +3932,16 @@ function App() {
       careNote: product.careNote || "",
       deliveryNote: product.deliveryNote || "",
       afterSaleNote: product.afterSaleNote || "",
+      displayNameEn: product.displayNameEn || "",
+      showEnglishName: Boolean(product.showEnglishName),
+      categoryId: inferredCategory?.id || product.categoryId || "",
+      categoryName: inferredCategory?.nameZh || product.categoryName || product.category || "",
+      suitablePlaces: Array.isArray(product.suitablePlaces) ? product.suitablePlaces : String(product.applicableScenes || "").split(/[,，]/).map((item) => item.trim()).filter(Boolean),
+      customPlaceText: "",
+      lightRequirement: product.lightRequirement || "",
+      wateringCare: product.wateringCare || product.careNote || "",
+      careDifficulty: product.careDifficulty || "简单",
+      stockStatus: product.stockStatus || product.stock || "现货",
       note: product.note || "",
       status: product.status || "已上架",
       productType: product.productType || "rental",
@@ -3758,6 +3959,74 @@ function App() {
         : product
     );
     updateProducts(nextProducts, "商品上下架状态已同步");
+  }
+
+  function resetCategoryForm() {
+    setEditingCategoryId(null);
+    setCategoryForm({
+      nameZh: "",
+      nameEn: "",
+      showEnglish: false,
+      visibleInMiniProgram: true,
+      sortOrder: "",
+      businessType: serviceConfigTab === "租赁植物" ? "rental" : "sale",
+    });
+  }
+
+  function openEditCategory(category) {
+    setEditingCategoryId(category.id);
+    setCategoryForm({
+      nameZh: category.nameZh || "",
+      nameEn: category.nameEn || "",
+      showEnglish: Boolean(category.showEnglish),
+      visibleInMiniProgram: Boolean(category.visibleInMiniProgram),
+      sortOrder: String(category.sortOrder || ""),
+      businessType: category.businessType || "sale",
+    });
+  }
+
+  function saveProductCategory() {
+    const nameZh = categoryForm.nameZh.trim();
+    if (!nameZh) {
+      alert("请填写分类中文名称");
+      return;
+    }
+    const payload = {
+      id: editingCategoryId || `cat-${Date.now()}`,
+      nameZh,
+      nameEn: categoryForm.nameEn.trim(),
+      showEnglish: Boolean(categoryForm.showEnglish),
+      visibleInMiniProgram: Boolean(categoryForm.visibleInMiniProgram),
+      sortOrder: Number(categoryForm.sortOrder || 0),
+      businessType: categoryForm.businessType || "sale",
+      updatedAt: nowText(),
+    };
+    const nextCategories = editingCategoryId
+      ? merchantProductCategories.map((category) => category.id === editingCategoryId ? payload : category)
+      : [payload, ...merchantProductCategories];
+    updateProductCategories(nextCategories, editingCategoryId ? "分类修改已同步" : "新分类已同步");
+    resetCategoryForm();
+  }
+
+  function toggleSuitablePlace(place) {
+    setNewProductForm((form) => {
+      const selected = Array.isArray(form.suitablePlaces) ? form.suitablePlaces : [];
+      const next = selected.includes(place) ? selected.filter((item) => item !== place) : [...selected, place];
+      return { ...form, suitablePlaces: next };
+    });
+  }
+
+  function addCustomSuitablePlace() {
+    const place = String(newProductForm.customPlaceText || "").trim();
+    if (!place) return;
+    setNewProductForm((form) => {
+      const selected = Array.isArray(form.suitablePlaces) ? form.suitablePlaces : [];
+      return {
+        ...form,
+        suitablePlaces: selected.includes(place) ? selected : [...selected, place],
+        customPlaceText: "",
+      };
+    });
   }
 
   function resetNewCustomerForm() {
@@ -5932,12 +6201,17 @@ ${rentalText}`;
     const editingStaffMember = activeStaffMembers.find((member) => member.id === editingStaffId) || null;
     const serviceProductType = serviceConfigTab === "售卖植物" ? "sale" : "rental";
     const serviceConfigTabs = ["租赁植物", "售卖植物", "养护套餐"];
+    const productCategoryOptions = safeMerchantProductCategories.filter((category) =>
+      serviceConfigTab === "售卖植物"
+        ? ["sale", "care"].includes(category.businessType)
+        : category.businessType === "rental"
+    );
     
     const filteredMerchantProducts = (Array.isArray(merchantProducts) ? merchantProducts : []).filter((product) => {
       const keyword = productSearchText.trim();
       const matchType = product.productType === serviceProductType || (!product.productType && serviceProductType === "rental");
-      const matchCategory = productCategoryFilter === "全部" || product.category === productCategoryFilter;
-      const text = [product.name, product.category, product.subCategory, product.description, product.note, product.status, product.applicableScenes].join(" ");
+      const matchCategory = productCategoryFilter === "全部" || product.category === productCategoryFilter || product.categoryId === productCategoryFilter;
+      const text = [product.name, product.displayNameEn, product.category, product.subCategory, product.description, product.note, product.status, product.applicableScenes, product.lightRequirement, product.wateringCare].join(" ");
       return matchType && matchCategory && (!keyword || text.includes(keyword));
     });
 
@@ -5959,7 +6233,14 @@ ${rentalText}`;
             : item.priceUnit === "按项目报价"
               ? "元 / 盆 / 次"
               : item.priceUnit;
-          return { ...item, priceType, priceUnit: nextUnit, updatedAt: nowText() };
+          return {
+            ...item,
+            priceType,
+            priceObject: priceType === "project" ? "项" : item.priceObject || "盆",
+            priceCycle: priceType === "project" ? "次" : item.priceCycle || "次",
+            priceUnit: nextUnit,
+            updatedAt: nowText(),
+          };
         }),
         "养护套餐已同步"
       );
@@ -6563,17 +6844,30 @@ ${rentalText}`;
                   <h2>商品与服务</h2>
                   <p>分开维护租赁植物、售卖植物和标准养护套餐，为后续客户小程序同步准备数据。</p>
                 </div>
-                {serviceConfigTab !== "养护套餐" && (
-                  <button
-                    className="primary-button"
-                    onClick={() => {
-                      resetNewProductForm();
-                      setShowCreateProductSheet(true);
-                    }}
-                  >
-                    + 新增{serviceConfigTab === "售卖植物" ? "售卖植物" : "租赁植物"}
-                  </button>
-                )}
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  {serviceConfigTab !== "养护套餐" && (
+                    <button
+                      className="ghost-button"
+                      onClick={() => {
+                        resetCategoryForm();
+                        setShowProductCategorySheet(true);
+                      }}
+                    >
+                      分类管理
+                    </button>
+                  )}
+                  {serviceConfigTab !== "养护套餐" && (
+                    <button
+                      className="primary-button"
+                      onClick={() => {
+                        resetNewProductForm();
+                        setShowCreateProductSheet(true);
+                      }}
+                    >
+                      + 新增{serviceConfigTab === "售卖植物" ? "售卖植物" : "租赁植物"}
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="plan-type-grid" style={{ marginBottom: 16 }}>
@@ -6601,9 +6895,9 @@ ${rentalText}`;
                       onChange={(e) => setProductCategoryFilter(e.target.value)}
                     >
                       <option value="全部">全部分类</option>
-                      {productCategories.map((category) => (
-                        <option key={category} value={category}>
-                          {category}
+                      {productCategoryOptions.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {getCategoryDisplayName(category)}
                         </option>
                       ))}
                     </select>
@@ -6765,18 +7059,22 @@ ${rentalText}`;
                           )}
                         </span>
                         <span>
-                          <select
-                            className="area-input"
-                            value={item.priceUnit || "元 / 盆 / 次"}
-                            onChange={(e) => updateMaintenancePackageField(item.name, "priceUnit", e.target.value)}
-                            disabled={item.priceType === "project"}
-                          >
-                            <option value="元 / 盆 / 次">元 / 盆 / 次</option>
-                            <option value="元 / 平方米 / 年">元 / 平方米 / 年</option>
-                            <option value="元 / 次">元 / 次</option>
-                            <option value="元 / 项">元 / 项</option>
-                            <option value="按项目报价">按项目报价</option>
-                          </select>
+                          {item.priceType === "project" ? (
+                            <strong>按项目报价</strong>
+                          ) : (
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              <select className="area-input" value={item.priceObject || "盆"} onChange={(e) => updateMaintenancePackageField(item.name, "priceObject", e.target.value)}>
+                                <option value="盆">盆</option>
+                                <option value="㎡">㎡</option>
+                                <option value="项">项</option>
+                              </select>
+                              <select className="area-input" value={item.priceCycle || "次"} onChange={(e) => updateMaintenancePackageField(item.name, "priceCycle", e.target.value)}>
+                                <option value="次">次</option>
+                                <option value="月">月</option>
+                                <option value="年">年</option>
+                              </select>
+                            </div>
+                          )}
                         </span>
                         <span>
                           <label className="staff-toggle-row" style={{ justifyContent: "flex-start" }}>
@@ -7164,6 +7462,7 @@ ${rentalText}`;
 
           {showCreateProductSheet && renderCreateProductSheet()}
           {showCreateCustomerSheet && renderCreateCustomerSheet()}
+          {showProductCategorySheet && renderProductCategorySheet()}
           {showCreateOrderSheet && renderCreateOrderSheet()}
         </main>
       </div>
@@ -7228,6 +7527,100 @@ ${rentalText}`;
     );
   }
 
+  function renderProductCategorySheet() {
+    const overlayStyle = {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(15, 39, 26, 0.36)",
+      zIndex: 82,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    };
+    const panelStyle = {
+      width: "min(900px, calc(100vw - 48px))",
+      maxHeight: "88vh",
+      overflow: "hidden",
+      background: "rgba(255,255,255,0.98)",
+      borderRadius: 28,
+      boxShadow: "0 28px 80px rgba(20, 54, 34, 0.22)",
+      display: "flex",
+      flexDirection: "column",
+    };
+    const visibleCategories = safeMerchantProductCategories.filter((category) =>
+      serviceConfigTab === "租赁植物"
+        ? category.businessType === "rental"
+        : ["sale", "care"].includes(category.businessType)
+    );
+
+    return (
+      <div style={overlayStyle} onClick={() => { setShowProductCategorySheet(false); resetCategoryForm(); }}>
+        <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
+          <div className="section-title-row" style={{ padding: "24px 24px 14px" }}>
+            <div><p className="eyebrow">Category</p><h2>分类管理</h2></div>
+            <button className="close-button" onClick={() => { setShowProductCategorySheet(false); resetCategoryForm(); }}>×</button>
+          </div>
+
+          <div className="merchant-create-order-scroll" style={{ overflowY: "auto", padding: "0 18px 18px 24px", marginRight: 6 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.1fr", gap: 16 }}>
+              <section className="plan-summary-card" style={{ margin: 0 }}>
+                <div className="section-title-row"><div><p className="eyebrow">Edit</p><h2>{editingCategoryId ? "编辑分类" : "新增分类"}</h2></div></div>
+                <div className="sheet-block">
+                  <p className="sheet-label">中文名称</p>
+                  <input className="area-input" value={categoryForm.nameZh} onChange={(e) => setCategoryForm((form) => ({ ...form, nameZh: e.target.value }))} placeholder="例如：大型绿植" />
+                </div>
+                <div className="sheet-block">
+                  <p className="sheet-label">英文名称</p>
+                  <input className="area-input" value={categoryForm.nameEn} onChange={(e) => setCategoryForm((form) => ({ ...form, nameEn: e.target.value }))} placeholder="例如：Large Plants" />
+                </div>
+                <label className="staff-toggle-row">
+                  <input type="checkbox" checked={Boolean(categoryForm.showEnglish)} onChange={(e) => setCategoryForm((form) => ({ ...form, showEnglish: e.target.checked }))} />
+                  <span>展示英文名称</span>
+                </label>
+                <label className="staff-toggle-row">
+                  <input type="checkbox" checked={Boolean(categoryForm.visibleInMiniProgram)} onChange={(e) => setCategoryForm((form) => ({ ...form, visibleInMiniProgram: e.target.checked }))} />
+                  <span>显示在客户小程序</span>
+                </label>
+                <div className="sheet-block">
+                  <p className="sheet-label">排序</p>
+                  <input className="area-input" type="number" value={categoryForm.sortOrder} onChange={(e) => setCategoryForm((form) => ({ ...form, sortOrder: e.target.value }))} placeholder="例如：10" />
+                </div>
+                <div className="sheet-block">
+                  <p className="sheet-label">适用业务类型</p>
+                  <select className="area-input" value={categoryForm.businessType} onChange={(e) => setCategoryForm((form) => ({ ...form, businessType: e.target.value }))}>
+                    <option value="rental">租赁植物</option>
+                    <option value="sale">售卖植物</option>
+                    <option value="care">养护用品</option>
+                  </select>
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
+                  <button className="ghost-button" onClick={resetCategoryForm}>清空</button>
+                  <button className="primary-button" onClick={saveProductCategory}>{editingCategoryId ? "保存分类" : "新增分类"}</button>
+                </div>
+              </section>
+
+              <section className="plan-summary-card" style={{ margin: 0 }}>
+                <div className="section-title-row"><div><p className="eyebrow">List</p><h2>当前分类</h2></div></div>
+                <div className="category-list">
+                  {visibleCategories.map((category) => (
+                    <button key={category.id} className={`category-list-item ${editingCategoryId === category.id ? "selected" : ""}`} onClick={() => openEditCategory(category)}>
+                      <span>
+                        <strong>{getCategoryDisplayName(category)}</strong>
+                        <em>{category.businessType === "rental" ? "租赁植物" : category.businessType === "care" ? "养护用品" : "售卖植物"} · 排序 {category.sortOrder || 0}</em>
+                      </span>
+                      <b className={category.visibleInMiniProgram ? "admin-status-chip" : "admin-status-chip muted"}>{category.visibleInMiniProgram ? "小程序显示" : "不显示"}</b>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   function renderCreateProductSheet() {
     const overlayStyle = {
       position: "fixed",
@@ -7241,15 +7634,37 @@ ${rentalText}`;
     };
 
     const panelStyle = {
-      width: "min(920px, calc(100vw - 48px))",
+      width: "min(980px, calc(100vw - 48px))",
       maxHeight: "88vh",
-      overflowY: "auto",
+      overflow: "hidden",
       background: "rgba(255,255,255,0.98)",
       borderRadius: 28,
-      padding: 24,
       boxShadow: "0 28px 80px rgba(20, 54, 34, 0.22)",
+      display: "flex",
+      flexDirection: "column",
     };
-
+    const panelHeaderStyle = {
+      flex: "0 0 auto",
+      padding: "24px 24px 14px",
+    };
+    const panelScrollStyle = {
+      flex: "1 1 auto",
+      minHeight: 0,
+      overflowY: "auto",
+      padding: "0 18px 18px 24px",
+      marginRight: 6,
+      scrollbarGutter: "stable",
+    };
+    const panelFooterStyle = {
+      flex: "0 0 auto",
+      display: "flex",
+      gap: 14,
+      justifyContent: "flex-end",
+      alignItems: "center",
+      padding: "16px 24px 20px",
+      background: "rgba(239, 247, 241, 0.92)",
+      borderTop: "1px solid rgba(34, 116, 67, 0.12)",
+    };
     const gridStyle = {
       display: "grid",
       gridTemplateColumns: "1fr 1fr",
@@ -7263,31 +7678,51 @@ ${rentalText}`;
     const previewPrice = isSaleProduct
       ? (newProductForm.salePrice ? `¥${money(newProductForm.salePrice)}` : "-")
       : (newProductForm.monthlyRent ? `¥${money(newProductForm.monthlyRent)} / 月` : "-");
+    const productCategoryOptions = safeMerchantProductCategories.filter((category) =>
+      isSaleProduct ? ["sale", "care"].includes(category.businessType) : category.businessType === "rental"
+    );
+    const selectedPlaces = Array.isArray(newProductForm.suitablePlaces) ? newProductForm.suitablePlaces : [];
 
     return (
       <div style={overlayStyle} onClick={() => setShowCreateProductSheet(false)}>
         <section style={panelStyle} onClick={(event) => event.stopPropagation()}>
-          <div className="section-title-row">
+          <div className="section-title-row" style={panelHeaderStyle}>
             <div><p className="eyebrow">Product & Service</p><h2>{editingProductId ? `编辑${productTitle}` : `新增${productTitle}`}</h2></div>
             <button className="close-button" onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}>×</button>
           </div>
 
+          <div className="merchant-create-order-scroll product-editor-scroll" style={panelScrollStyle}>
           <div style={gridStyle}>
             <section className="plan-summary-card" style={{ margin: 0 }}>
+              <div className="section-title-row"><div><p className="eyebrow">Step 01</p><h2>{isSaleProduct ? "基础信息" : "租赁配置"}</h2></div></div>
               <div className="sheet-block">
-                <p className="sheet-label">{productTitle}名称</p>
-                <input className="area-input" value={newProductForm.name} onChange={(e) => setNewProductForm((form) => ({ ...form, name: e.target.value }))} placeholder="例如：天堂鸟 / 发财树 / 前台组合" />
-              </div>
-
-              <div className="sheet-block">
-                <p className="sheet-label">分类</p>
-                <select className="area-input" value={newProductForm.category} onChange={(e) => setNewProductForm((form) => ({ ...form, category: e.target.value }))}>
-                  {productCategories.map((category) => <option key={category} value={category}>{category}</option>)}
-                </select>
+                <p className="sheet-label">{isSaleProduct ? "售卖植物名称 / 中文名" : "植物名称"}</p>
+                <input className="area-input" value={newProductForm.name} onChange={(e) => setNewProductForm((form) => ({ ...form, name: e.target.value }))} placeholder="例如：天堂鸟 / 发财树 / 绿萝" />
               </div>
 
               {isSaleProduct ? (
                 <>
+                  <div className="sheet-block">
+                    <p className="sheet-label">英文名</p>
+                    <input className="area-input" value={newProductForm.displayNameEn} onChange={(e) => setNewProductForm((form) => ({ ...form, displayNameEn: e.target.value }))} placeholder="例如：Bird of Paradise" />
+                  </div>
+
+                  <label className="staff-toggle-row">
+                    <input type="checkbox" checked={Boolean(newProductForm.showEnglishName)} onChange={(e) => setNewProductForm((form) => ({ ...form, showEnglishName: e.target.checked }))} />
+                    <span>在小程序展示英文名</span>
+                  </label>
+
+                  <div className="sheet-block">
+                    <p className="sheet-label">分类</p>
+                    <select className="area-input" value={newProductForm.categoryId || ""} onChange={(e) => {
+                      const category = safeMerchantProductCategories.find((item) => item.id === e.target.value);
+                      setNewProductForm((form) => ({ ...form, categoryId: e.target.value, category: category?.nameZh || form.category, categoryName: category?.nameZh || form.categoryName }));
+                    }}>
+                      <option value="">请选择分类</option>
+                      {productCategoryOptions.map((category) => <option key={category.id} value={category.id}>{getCategoryDisplayName(category)}</option>)}
+                    </select>
+                  </div>
+
                   <div className="sheet-block">
                     <p className="sheet-label">售卖价</p>
                     <input className="area-input" type="number" value={newProductForm.salePrice} onChange={(e) => setNewProductForm((form) => ({ ...form, salePrice: e.target.value }))} placeholder="例如：188" />
@@ -7295,7 +7730,11 @@ ${rentalText}`;
 
                   <div className="sheet-block">
                     <p className="sheet-label">库存 / 现货状态</p>
-                    <input className="area-input" value={newProductForm.stock} onChange={(e) => setNewProductForm((form) => ({ ...form, stock: e.target.value }))} placeholder="例如：现货充足 / 需预订" />
+                    <div className="merchant-tag-picker">
+                      {["现货", "需确认", "暂缺"].map((status) => (
+                        <button key={status} className={(newProductForm.stockStatus || newProductForm.stock) === status ? "selected" : ""} onClick={() => setNewProductForm((form) => ({ ...form, stockStatus: status, stock: status }))}>{status}</button>
+                      ))}
+                    </div>
                   </div>
 
                   <label className="staff-toggle-row">
@@ -7307,9 +7746,25 @@ ${rentalText}`;
                     <input type="checkbox" checked={Boolean(newProductForm.supportInstall)} onChange={(e) => setNewProductForm((form) => ({ ...form, supportInstall: e.target.checked }))} />
                     <span>支持安装</span>
                   </label>
+
+                  <label className="staff-toggle-row">
+                    <input type="checkbox" checked={Boolean(newProductForm.visibleInMiniProgram)} onChange={(e) => setNewProductForm((form) => ({ ...form, visibleInMiniProgram: e.target.checked }))} />
+                    <span>上架到客户小程序展示</span>
+                  </label>
                 </>
               ) : (
                 <>
+                  <div className="sheet-block">
+                    <p className="sheet-label">分类</p>
+                    <select className="area-input" value={newProductForm.categoryId || ""} onChange={(e) => {
+                      const category = safeMerchantProductCategories.find((item) => item.id === e.target.value);
+                      setNewProductForm((form) => ({ ...form, categoryId: e.target.value, category: category?.nameZh || form.category, categoryName: category?.nameZh || form.categoryName }));
+                    }}>
+                      <option value="">请选择分类</option>
+                      {productCategoryOptions.map((category) => <option key={category.id} value={category.id}>{getCategoryDisplayName(category)}</option>)}
+                    </select>
+                  </div>
+
                   <div className="sheet-block">
                     <p className="sheet-label">月租价</p>
                     <input className="area-input" type="number" value={newProductForm.monthlyRent} onChange={(e) => setNewProductForm((form) => ({ ...form, monthlyRent: e.target.value }))} placeholder="例如：36" />
@@ -7326,14 +7781,25 @@ ${rentalText}`;
                   </div>
 
                   <div className="sheet-block">
+                    <p className="sheet-label">光照需求</p>
+                    <input className="area-input" value={newProductForm.lightRequirement} onChange={(e) => setNewProductForm((form) => ({ ...form, lightRequirement: e.target.value }))} placeholder="例如：明亮散射光，避免长时间暴晒" />
+                  </div>
+
+                  <div className="sheet-block">
                     <p className="sheet-label">养护说明</p>
                     <input className="area-input" value={newProductForm.careNote} onChange={(e) => setNewProductForm((form) => ({ ...form, careNote: e.target.value }))} placeholder="例如：每周检查叶面，避免空调直吹" />
                   </div>
+
+                  <label className="staff-toggle-row">
+                    <input type="checkbox" checked={Boolean(newProductForm.visibleInMiniProgram)} onChange={(e) => setNewProductForm((form) => ({ ...form, visibleInMiniProgram: e.target.checked }))} />
+                    <span>上架到客户小程序展示</span>
+                  </label>
                 </>
               )}
             </section>
 
             <section className="plan-summary-card" style={{ margin: 0 }}>
+              <div className="section-title-row"><div><p className="eyebrow">Step 02</p><h2>{isSaleProduct ? "小程序展示内容" : "图片与备注"}</h2></div></div>
               <div className="sheet-block">
                 <p className="sheet-label">商品照片</p>
                 <ImageUploader
@@ -7349,25 +7815,64 @@ ${rentalText}`;
                 <input className="area-input" value={newProductForm.image} onChange={(e) => setNewProductForm((form) => ({ ...form, image: e.target.value }))} placeholder="例如：🪴" />
               </div>
 
+              {isSaleProduct && (
+                <>
+                  <div className="sheet-block">
+                    <p className="sheet-label">简介</p>
+                    <textarea className="area-input maintenance-textarea" value={newProductForm.displayDescription || newProductForm.description} onChange={(e) => setNewProductForm((form) => ({ ...form, displayDescription: e.target.value, description: e.target.value }))} placeholder="例如：叶片油亮，株形挺拔，适合办公室前台与客厅空间。" />
+                  </div>
+
+                  <div className="sheet-block">
+                    <p className="sheet-label">适合位置</p>
+                    <div className="merchant-tag-picker product-place-picker">
+                      {PRODUCT_PLACE_TAGS.map((place) => (
+                        <button key={place} className={selectedPlaces.includes(place) ? "selected" : ""} onClick={() => toggleSuitablePlace(place)}>{place}</button>
+                      ))}
+                    </div>
+                    <div className="product-inline-add">
+                      <input className="area-input" value={newProductForm.customPlaceText || ""} onChange={(e) => setNewProductForm((form) => ({ ...form, customPlaceText: e.target.value }))} placeholder="自定义位置" />
+                      <button className="ghost-button" onClick={addCustomSuitablePlace}>添加</button>
+                    </div>
+                  </div>
+
+                  <div className="sheet-block">
+                    <p className="sheet-label">光照需求</p>
+                    <textarea className="area-input maintenance-textarea" value={newProductForm.lightRequirement} onChange={(e) => setNewProductForm((form) => ({ ...form, lightRequirement: e.target.value }))} placeholder="例如：明亮散射光，避免长时间暴晒" />
+                  </div>
+
+                  <div className="sheet-block">
+                    <p className="sheet-label">浇水 / 养护说明</p>
+                    <textarea className="area-input maintenance-textarea" value={newProductForm.wateringCare} onChange={(e) => setNewProductForm((form) => ({ ...form, wateringCare: e.target.value }))} placeholder="例如：土表微干后浇水，保持通风，避免积水" />
+                  </div>
+
+                  <div className="sheet-block">
+                    <p className="sheet-label">养护难度</p>
+                    <div className="merchant-tag-picker difficulty-picker">
+                      {CARE_DIFFICULTY_OPTIONS.map(([level, description]) => (
+                        <button key={level} className={newProductForm.careDifficulty === level ? "selected" : ""} title={description} onClick={() => setNewProductForm((form) => ({ ...form, careDifficulty: level }))}>{level}</button>
+                      ))}
+                    </div>
+                    <em className="field-helper">{CARE_DIFFICULTY_OPTIONS.find(([level]) => level === newProductForm.careDifficulty)?.[1]}</em>
+                  </div>
+                </>
+              )}
+
               <div className="sheet-block">
                 <p className="sheet-label">展示名称</p>
                 <input className="area-input" value={newProductForm.displayName || ""} onChange={(e) => setNewProductForm((form) => ({ ...form, displayName: e.target.value }))} placeholder="小程序或客户侧展示名称，可留空" />
               </div>
 
-              <div className="sheet-block">
-                <p className="sheet-label">展示说明</p>
-                <input className="area-input" value={newProductForm.displayDescription || newProductForm.description} onChange={(e) => setNewProductForm((form) => ({ ...form, displayDescription: e.target.value, description: e.target.value }))} placeholder="适合什么场景、寓意、养护难度" />
-              </div>
+              {!isSaleProduct && (
+                <div className="sheet-block">
+                  <p className="sheet-label">展示说明</p>
+                  <input className="area-input" value={newProductForm.displayDescription || newProductForm.description} onChange={(e) => setNewProductForm((form) => ({ ...form, displayDescription: e.target.value, description: e.target.value }))} placeholder="适合什么场景、寓意、养护难度" />
+                </div>
+              )}
 
               <div className="sheet-block">
                 <p className="sheet-label">排序</p>
                 <input className="area-input" type="number" value={newProductForm.sortOrder} onChange={(e) => setNewProductForm((form) => ({ ...form, sortOrder: e.target.value }))} placeholder="例如：10" />
               </div>
-
-              <label className="staff-toggle-row">
-                <input type="checkbox" checked={Boolean(newProductForm.visibleInMiniProgram)} onChange={(e) => setNewProductForm((form) => ({ ...form, visibleInMiniProgram: e.target.checked }))} />
-                <span>上架到客户小程序展示</span>
-              </label>
             </section>
           </div>
 
@@ -7400,24 +7905,17 @@ ${rentalText}`;
               </div>
               <div className="product-info">
                 <h3>{newProductForm.displayName || newProductForm.name || `新${productTitle}名称`}</h3>
-                <p>{newProductForm.category}｜{isSaleProduct ? (newProductForm.stock || "库存状态") : (newProductForm.applicableScenes || "适用场景")}</p>
+                <p>{newProductForm.categoryName || newProductForm.category}｜{isSaleProduct ? (newProductForm.stockStatus || "库存状态") : (newProductForm.applicableScenes || "适用场景")}</p>
+                {isSaleProduct && newProductForm.showEnglishName && newProductForm.displayNameEn && <p>{newProductForm.displayNameEn}</p>}
                 <p>{newProductForm.displayDescription || newProductForm.description || "展示说明会显示在这里"}</p>
+                {isSaleProduct && <p>{selectedPlaces.join(" / ") || "适合位置"}</p>}
                 <strong>{previewPrice}</strong>
               </div>
             </article>
           </section>
+          </div>
 
-          <div style={{
-            display: "flex",
-            gap: 14,
-            justifyContent: "flex-end",
-            alignItems: "center",
-            marginTop: 18,
-            padding: 16,
-            borderRadius: 22,
-            background: "rgba(239, 247, 241, 0.92)",
-            border: "1px solid rgba(34, 116, 67, 0.12)"
-          }}>
+          <div style={panelFooterStyle}>
             <button
               style={{ minWidth: 128, border: 0, borderRadius: 18, padding: "14px 22px", background: "#eef4fb", color: "#334155", fontWeight: 900, cursor: "pointer" }}
               onClick={() => { setShowCreateProductSheet(false); resetNewProductForm(); }}
