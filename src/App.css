@@ -2085,6 +2085,118 @@ button.danger,
   font-weight: 900;
 }
 
+.mini-appointment-reminder {
+  border-color: rgba(94, 126, 74, 0.24);
+  background: linear-gradient(135deg, rgba(252, 250, 242, 0.96), rgba(232, 239, 222, 0.76));
+}
+
+.mini-appointment-panel {
+  margin: 0 0 18px;
+  padding: 18px;
+  border: 1px solid rgba(123, 108, 78, 0.13);
+  border-radius: 22px;
+  background:
+    var(--estate-texture-limestone, none),
+    linear-gradient(145deg, rgba(255, 252, 246, 0.94), rgba(240, 246, 232, 0.78));
+  box-shadow: 0 14px 34px rgba(65, 55, 33, 0.08);
+}
+
+.mini-appointment-panel .section-title-row {
+  margin-bottom: 12px;
+}
+
+.mini-appointment-panel .section-title-row > span {
+  max-width: 420px;
+  color: var(--garden-muted);
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.mini-appointment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mini-appointment-card {
+  min-width: 0;
+  border: 1px solid rgba(123, 108, 78, 0.12);
+  border-radius: 20px;
+  padding: 15px;
+  background: rgba(255, 252, 246, 0.84);
+  box-shadow: 0 10px 22px rgba(65, 55, 33, 0.07);
+}
+
+.mini-appointment-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.mini-appointment-card header span {
+  color: var(--garden-olive);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.mini-appointment-card header b {
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: rgba(237, 241, 231, 0.95);
+  color: var(--garden-olive);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.mini-appointment-card h3 {
+  margin: 0 0 6px;
+  color: var(--garden-ink);
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.mini-appointment-card p {
+  margin: 0 0 10px;
+  color: var(--garden-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mini-appointment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mini-appointment-meta span {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(245, 239, 226, 0.82);
+  color: var(--garden-text);
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.mini-appointment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.mini-appointment-detail .project-inquiry-detail-head {
+  background: linear-gradient(135deg, rgba(255, 252, 246, 0.98), rgba(236, 243, 226, 0.9));
+}
+
+.mini-appointment-draft-tip {
+  border-color: rgba(94, 126, 74, 0.18) !important;
+  background: rgba(237, 241, 231, 0.7) !important;
+}
+
 .project-inquiry-summary {
   min-width: 112px;
   border: 1px solid rgba(132, 149, 121, 0.2);
