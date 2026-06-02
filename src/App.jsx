@@ -16,6 +16,8 @@ const PRODUCT_STORAGE_KEY = "green-rental-products-v29";
 const SERVICE_CONFIG_STORAGE_KEY = "green-rental-service-config-v1";
 const PRODUCT_CATEGORY_STORAGE_KEY = "green-rental-product-categories-v1";
 const CUSTOMER_STORAGE_KEY = "green-rental-customers-v31";
+const PROJECT_INQUIRY_STORAGE_KEY = "green-rental-project-inquiries-v1";
+const MINI_PROGRAM_HOME_STORAGE_KEY = "green-rental-mini-program-home-v1";
 const STAFF_DIRECTORY_STORAGE_KEY = "green-rental-staff-directory-v1";
 const STAFF_AVATAR_STORAGE_KEY = "green-rental-staff-avatar-v1";
 const STAFF_AVATAR_CACHE_STORAGE_KEY = "green-rental-staff-avatar-cache-v1";
@@ -28,7 +30,7 @@ const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "待执行", 
 const MERCHANT_STATUS_TABS = ["全部", ...ORDER_STATUS];
 const STAFF_TABS = ["待接单", "做方案", "执行中", "已完成"];
 const STAFF_APP_TABS = ["首页", "任务", "上报", "我的"];
-const MERCHANT_TABS = ["工作台", "订单管理", "团队成员", "执行监测", "商品与服务", "客户库", "设置"];
+const MERCHANT_TABS = ["工作台", "订单管理", "项目线索", "团队成员", "执行监测", "商品与服务", "小程序装修", "客户库", "设置"];
 const APP_PAGES = ["orders", "plan", "completeUpload", "archiveDetail", "serviceRecord"];
 
 function getAppShellMode() {
@@ -54,13 +56,34 @@ const DELIVERY_STATUS = ["待执行", "前往中", "已到达", "已完成"];
 const EXECUTION_STATUS = ["待执行", "前往中", "已到达", "现场执行中", "已完成"];
 const CUSTOMER_CONFIRM_STATUS = ["待确认", "已确认", "有异议"];
 const PLAN_LINK_STATUS = ["未生成", "已复制", "已发送"];
-const BUSINESS_PLAN_TYPES = ["租赁方案", "养护服务", "售卖订单", "临时摆场"];
+const BUSINESS_PLAN_TYPES = ["租赁方案", "养护服务", "售卖订单", "临时摆场", "园林改造"];
 const SERVICE_TYPE_OPTIONS = [
   ["租赁", "租赁方案"],
   ["养护", "养护服务"],
   ["售卖", "售卖订单"],
   ["摆场", "临时摆场"],
+  ["园林", "园林改造"],
 ];
+const PROJECT_INQUIRY_STATUS = ["待跟进", "已联系", "已转订单", "暂缓", "无效"];
+const HOME_BANNER_LAYOUT_TYPES = [
+  ["single", "单图横幅"],
+  ["triple", "三图拼接"],
+];
+const HOME_BANNER_LINK_TYPES = [
+  ["none", "不跳转"],
+  ["service", "服务页面"],
+  ["product_category", "商品分类"],
+  ["garden_project", "园林改造咨询"],
+  ["custom", "自定义预留"],
+];
+const HOME_HERO_LINK_TYPES = [
+  ["none", "不跳转"],
+  ["garden_project", "园林改造咨询"],
+  ["care_service", "养护服务"],
+  ["rental_plan", "租赁方案"],
+  ["plant_shop", "花植选购"],
+];
+const MINI_PROGRAM_HOME_ENTRIES = ["养护服务", "租赁方案", "花植选购"];
 const STAFF_EMPLOYEE_TYPE_LABELS = {
   internal: "公司员工",
   partner: "外部执行方",
@@ -192,6 +215,122 @@ const defaultProductCategories = [
   { id: "cat-rental-indoor", nameZh: "室内绿植", nameEn: "Indoor Plants", showEnglish: false, visibleInMiniProgram: false, sortOrder: 70, businessType: "rental" },
   { id: "cat-rental-outdoor", nameZh: "室外植物", nameEn: "Outdoor Plants", showEnglish: false, visibleInMiniProgram: false, sortOrder: 80, businessType: "rental" },
 ];
+
+const defaultProjectInquiries = [
+  {
+    id: "inq-001",
+    source: "mini_program",
+    type: "garden_project",
+    contactName: "王经理",
+    phone: "13800008881",
+    address: "杭州市滨江区江南大道 1688 号",
+    projectType: "办公园区入口景观改造",
+    areaSize: "约 300-500㎡",
+    budgetRange: "10-20 万",
+    stylePreference: "现代自然、低维护、四季常绿",
+    expectedTime: "2026-07 前完成",
+    photos: ["🌿", "🏡"],
+    note: "希望先做入口两侧和休息区，后续再扩展到整园。",
+    status: "待跟进",
+    followUpNote: "",
+    createdAt: "2026-06-01 10:20",
+    convertedOrderId: "",
+  },
+  {
+    id: "inq-002",
+    source: "mini_program",
+    type: "garden_project",
+    contactName: "李总",
+    phone: "13900009992",
+    address: "杭州市上城区某商业街区",
+    projectType: "商业空间庭院造景",
+    areaSize: "约 80-120㎡",
+    budgetRange: "5-10 万",
+    stylePreference: "日式禅意、适合拍照打卡",
+    expectedTime: "一个月内",
+    photos: ["🏞️"],
+    note: "目前空间比较空，想要增加绿植、石景和夜间灯光氛围。",
+    status: "已联系",
+    followUpNote: "已电话沟通，客户希望本周安排现场勘察。",
+    createdAt: "2026-05-31 15:45",
+    convertedOrderId: "",
+  },
+  {
+    id: "inq-003",
+    source: "mini_program",
+    type: "garden_project",
+    contactName: "陈女士",
+    phone: "13700006663",
+    address: "杭州市西湖区别墅庭院",
+    projectType: "私家庭院局部翻新",
+    areaSize: "约 50㎡",
+    budgetRange: "3-5 万",
+    stylePreference: "自然花境、亲子活动区",
+    expectedTime: "暑假前",
+    photos: ["🌷", "🪴"],
+    note: "希望增加一块儿童活动区域，并减少蚊虫和积水。",
+    status: "待跟进",
+    followUpNote: "",
+    createdAt: "2026-05-30 09:10",
+    convertedOrderId: "",
+  },
+];
+
+const defaultMiniProgramHomeConfig = {
+  homeModules: [
+    {
+      id: "home-hero",
+      type: "hero",
+      title: "首页主图",
+      hero: {
+        imageUrl: "",
+        localPreviewUrl: "",
+        title: "青庭花涧",
+        subtitle: "花植 · 茶咖 · 园林生活空间",
+        visible: true,
+        linkType: "garden_project",
+        linkTarget: "garden_project",
+      },
+    },
+    {
+      id: "home-banner",
+      type: "banner",
+      title: "首页广告位",
+      items: [
+        {
+          id: "banner-garden-project",
+          title: "园林改造咨询",
+          layoutType: "single",
+          images: [
+            {
+              imageUrl: "",
+              localPreviewUrl: "",
+              placeholder: "园林场景",
+            },
+          ],
+          linkType: "garden_project",
+          linkTarget: "garden_project",
+          visible: true,
+          sortOrder: 10,
+        },
+        {
+          id: "banner-space-inspiration",
+          title: "空间灵感",
+          layoutType: "triple",
+          images: [
+            { imageUrl: "", localPreviewUrl: "", placeholder: "花植空间" },
+            { imageUrl: "", localPreviewUrl: "", placeholder: "庭院空间" },
+            { imageUrl: "", localPreviewUrl: "", placeholder: "茶咖空间" },
+          ],
+          linkType: "none",
+          linkTarget: "",
+          visible: true,
+          sortOrder: 20,
+        },
+      ],
+    },
+  ],
+};
 
 const defaultProducts = [
   { id: "rental-facai", name: "发财树", category: "室内绿植", subCategory: "大型植物", description: "寓意财源滚滚，适合前台、办公室、会议室。", displayDescription: "适合前台、办公室、会议室。", pricePerDay: 2.5, monthlyRent: "75", deposit: "100", applicableScenes: "前台、办公室、会议室", note: "常规租赁款，注意盆面清洁。", productType: "rental", serviceType: "租赁", priceUnit: "元 / 月", image: "🌳", status: "已上架" },
@@ -488,6 +627,7 @@ function normalizePlanType(value = "") {
   if (BUSINESS_PLAN_TYPES.includes(text)) return text;
   if (/售卖|零售|销售|买断|购买/.test(text)) return "售卖订单";
   if (/养护|维护/.test(text)) return "养护服务";
+  if (/园林|造景|改造|工程|庭院|景观/.test(text)) return "园林改造";
   if (/临时|摆场|活动|展会/.test(text)) return "临时摆场";
   return "租赁方案";
 }
@@ -497,18 +637,20 @@ function getPlanTypeForService(serviceType = "") {
   if (text === "养护") return "养护服务";
   if (text === "售卖" || text === "零售") return "售卖订单";
   if (text === "摆场" || text === "临时摆场") return "临时摆场";
+  if (text === "园林" || text === "园林改造" || text === "garden_project") return "园林改造";
   return "租赁方案";
 }
 
 function normalizeServiceType(serviceType = "", planType = "") {
   const text = String(serviceType || "").trim();
-  if (["租赁", "养护", "售卖", "摆场"].includes(text)) return text;
+  if (["租赁", "养护", "售卖", "摆场", "园林"].includes(text)) return text;
   if (text === "零售") return "售卖";
 
   const safePlanType = normalizePlanType(planType);
   if (safePlanType === "养护服务") return "养护";
   if (safePlanType === "售卖订单") return "售卖";
   if (safePlanType === "临时摆场") return "摆场";
+  if (safePlanType === "园林改造") return "园林";
   return "租赁";
 }
 
@@ -760,6 +902,194 @@ function normalizeProductCategories(data) {
 function getCategoryDisplayName(category = {}) {
   if (category.showEnglish && category.nameEn) return `${category.nameEn} / ${category.nameZh}`;
   return category.nameZh || category.nameEn || "未命名分类";
+}
+
+function normalizeProjectInquiries(data) {
+  const list = Array.isArray(data) && data.length ? data : defaultProjectInquiries;
+  return list.map((item, index) => ({
+    id: item?.id || `inq-${Date.now()}-${index}`,
+    source: item?.source || "mini_program",
+    type: item?.type || "garden_project",
+    contactName: item?.contactName || item?.name || "待确认客户",
+    phone: item?.phone || "",
+    address: item?.address || "",
+    projectType: item?.projectType || "园林改造咨询",
+    areaSize: item?.areaSize || "待确认",
+    budgetRange: item?.budgetRange || "待确认",
+    stylePreference: item?.stylePreference || "待确认",
+    expectedTime: item?.expectedTime || "待确认",
+    photos: Array.isArray(item?.photos) ? item.photos : [],
+    note: item?.note || "",
+    status: PROJECT_INQUIRY_STATUS.includes(item?.status) ? item.status : "待跟进",
+    followUpNote: item?.followUpNote || "",
+    createdAt: item?.createdAt || nowText(),
+    convertedOrderId: item?.convertedOrderId || "",
+    updatedAt: item?.updatedAt || "",
+  }));
+}
+
+function loadProjectInquiriesFromLocalStore() {
+  try {
+    const raw = localStorage.getItem(PROJECT_INQUIRY_STORAGE_KEY);
+    if (!raw) return normalizeProjectInquiries(defaultProjectInquiries);
+    const parsed = JSON.parse(raw);
+    return normalizeProjectInquiries(parsed?.projectInquiries);
+  } catch (error) {
+    console.error("读取项目线索失败：", error);
+    return normalizeProjectInquiries(defaultProjectInquiries);
+  }
+}
+
+function persistProjectInquiriesToLocalStore(projectInquiries) {
+  safeSetLocalStorage(
+    PROJECT_INQUIRY_STORAGE_KEY,
+    JSON.stringify({
+      source: "localStorage",
+      savedAt: nowText(),
+      projectInquiries: normalizeProjectInquiries(projectInquiries),
+    }),
+    "项目线索"
+  );
+}
+
+function normalizeHomeBannerImage(image, index = 0) {
+  if (typeof image === "string") {
+    return {
+      imageUrl: isImageUrl(image) && !image.startsWith("data:") ? image : "",
+      localPreviewUrl: image.startsWith("data:") ? image : "",
+      placeholder: "",
+    };
+  }
+  return {
+    imageUrl: image?.imageUrl || "",
+    localPreviewUrl: image?.localPreviewUrl || "",
+    placeholder: image?.placeholder || `广告图 ${index + 1}`,
+  };
+}
+
+function getHomeBannerImageCount(layoutType) {
+  return layoutType === "triple" ? 3 : 1;
+}
+
+function normalizeHomeBannerItem(item, index = 0) {
+  const layoutType = item?.layoutType === "triple" ? "triple" : "single";
+  const imageCount = getHomeBannerImageCount(layoutType);
+  const rawImages = Array.isArray(item?.images) ? item.images : [];
+  const images = Array.from({ length: imageCount }, (_, imageIndex) =>
+    normalizeHomeBannerImage(rawImages[imageIndex], imageIndex)
+  );
+  const linkType = HOME_BANNER_LINK_TYPES.some(([value]) => value === item?.linkType) ? item.linkType : "none";
+
+  return {
+    id: item?.id || `banner-${Date.now()}-${index}`,
+    title: item?.title || `首页广告位 ${index + 1}`,
+    layoutType,
+    images,
+    linkType,
+    linkTarget: item?.linkTarget || "",
+    visible: item?.visible ?? true,
+    sortOrder: Number(item?.sortOrder ?? (index + 1) * 10),
+  };
+}
+
+function normalizeHomeHeroConfig(hero = {}) {
+  const defaults = defaultMiniProgramHomeConfig.homeModules.find((module) => module.type === "hero")?.hero || {};
+  const linkType = HOME_HERO_LINK_TYPES.some(([value]) => value === hero?.linkType) ? hero.linkType : defaults.linkType || "none";
+  return {
+    imageUrl: hero?.imageUrl || "",
+    localPreviewUrl: hero?.localPreviewUrl || "",
+    title: hero?.title ?? defaults.title ?? "",
+    subtitle: hero?.subtitle ?? defaults.subtitle ?? "",
+    visible: hero?.visible ?? defaults.visible ?? true,
+    linkType,
+    linkTarget: hero?.linkTarget ?? defaults.linkTarget ?? "",
+  };
+}
+
+function normalizeMiniProgramHomeConfig(data) {
+  const source = data && typeof data === "object" ? data : defaultMiniProgramHomeConfig;
+  const modules = Array.isArray(source.homeModules) && source.homeModules.length
+    ? source.homeModules
+    : defaultMiniProgramHomeConfig.homeModules;
+  const defaultHeroModule = defaultMiniProgramHomeConfig.homeModules.find((module) => module.type === "hero");
+  const defaultBannerModule = defaultMiniProgramHomeConfig.homeModules.find((module) => module.type === "banner");
+  const heroModule = modules.find((module) => module?.type === "hero") || {};
+  const normalizedHeroModule = {
+    id: heroModule?.id || defaultHeroModule.id,
+    type: "hero",
+    title: heroModule?.title || "首页主图",
+    hero: normalizeHomeHeroConfig(heroModule?.hero || source.hero || {}),
+  };
+  const bannerModule = modules.find((module) => module?.type === "banner") || defaultBannerModule;
+  const normalizedBannerModule = {
+    id: bannerModule?.id || "home-banner",
+    type: "banner",
+    title: bannerModule?.title || "首页广告位",
+    items: (Array.isArray(bannerModule?.items) && bannerModule.items.length
+      ? bannerModule.items
+      : defaultBannerModule.items
+    ).slice(0, 5).map(normalizeHomeBannerItem),
+  };
+  const otherModules = modules
+    .filter((module) => module?.type && !["hero", "banner"].includes(module.type))
+    .map((module) => ({ ...module }));
+  const fixedEntrances = Array.isArray(source.fixedEntrances) && source.fixedEntrances.length
+    ? source.fixedEntrances
+    : [
+      { key: "care", title: "养护服务" },
+      { key: "rental", title: "租赁方案" },
+      { key: "shop", title: "花植选购" },
+    ];
+
+  return {
+    ...source,
+    hero: normalizedHeroModule.hero,
+    fixedEntrances,
+    banners: normalizedBannerModule.items,
+    homeModules: [normalizedHeroModule, normalizedBannerModule, ...otherModules],
+  };
+}
+
+function getHomeHeroConfig(config) {
+  const normalized = normalizeMiniProgramHomeConfig(config);
+  return normalized.homeModules.find((module) => module.type === "hero")?.hero || normalizeHomeHeroConfig();
+}
+
+function getHomeBannerItems(config) {
+  const normalized = normalizeMiniProgramHomeConfig(config);
+  return normalized.homeModules.find((module) => module.type === "banner")?.items || [];
+}
+
+function getHomeHeroImageSrc(hero) {
+  return hero?.localPreviewUrl || hero?.imageUrl || "";
+}
+
+function getHomeBannerImageSrc(image) {
+  return image?.localPreviewUrl || image?.imageUrl || "";
+}
+
+function loadMiniProgramHomeConfigFromLocalStore() {
+  try {
+    const raw = localStorage.getItem(MINI_PROGRAM_HOME_STORAGE_KEY);
+    if (!raw) return normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig);
+    const parsed = JSON.parse(raw);
+    return normalizeMiniProgramHomeConfig(parsed?.miniProgramHomeConfig || parsed);
+  } catch (error) {
+    console.error("读取小程序首页配置失败：", error);
+    return normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig);
+  }
+}
+
+function persistMiniProgramHomeConfigToLocalStore(config) {
+  safeSetLocalStorage(
+    MINI_PROGRAM_HOME_STORAGE_KEY,
+    JSON.stringify({
+      source: "localStorage",
+      savedAt: nowText(),
+      miniProgramHomeConfig: normalizeMiniProgramHomeConfig(config),
+    }),
+    "小程序首页配置"
+  );
 }
 
 function ensureProductSeedData(products) {
@@ -1902,6 +2232,8 @@ function App() {
   const [merchantProducts, setMerchantProducts] = useState(() => loadProductsFromLocalStore());
   const [merchantMaintenancePackages, setMerchantMaintenancePackages] = useState(() => loadMaintenancePackagesFromLocalStore());
   const [merchantProductCategories, setMerchantProductCategories] = useState(() => loadProductCategoriesFromLocalStore());
+  const [projectInquiries, setProjectInquiries] = useState(() => loadProjectInquiriesFromLocalStore());
+  const [miniProgramHomeConfig, setMiniProgramHomeConfig] = useState(() => loadMiniProgramHomeConfigFromLocalStore());
   const [merchantCustomers, setMerchantCustomers] = useState(() => loadCustomersFromLocalStore());
   const [staffDirectory, setStaffDirectory] = useState(() => loadStaffDirectoryFromLocalStore());
 
@@ -1909,6 +2241,8 @@ function App() {
   const [currentOrderId, setCurrentOrderId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
+  const [selectedProjectInquiryId, setSelectedProjectInquiryId] = useState(null);
+  const [projectInquiryFollowUpDraft, setProjectInquiryFollowUpDraft] = useState("");
   const [merchantViewingOrder, setMerchantViewingOrder] = useState(null);
   const [editingStaffId, setEditingStaffId] = useState(null);
   const [editingStaffForm, setEditingStaffForm] = useState(null);
@@ -1942,6 +2276,7 @@ function App() {
   const [productSearchText, setProductSearchText] = useState("");
   const [productCategoryFilter, setProductCategoryFilter] = useState("全部");
   const [customerSearchText, setCustomerSearchText] = useState("");
+  const [activeHomeBannerIndex, setActiveHomeBannerIndex] = useState(0);
   const [isCreateOrderInputFocused, setIsCreateOrderInputFocused] = useState(false);
 
   const [showDetailBlock, setShowDetailBlock] = useState(false);
@@ -1980,6 +2315,7 @@ function App() {
     maintenanceInternalNote: "",
     assignedStaffId: DEFAULT_STAFF_ID,
     communicationQrUrl: "",
+    sourceInquiryId: "",
   });
 
   const [newCustomerForm, setNewCustomerForm] = useState({
@@ -2044,6 +2380,8 @@ function App() {
   const safeMerchantProducts = Array.isArray(merchantProducts) ? merchantProducts : [];
   const safeMerchantMaintenancePackages = normalizeMaintenancePackages(merchantMaintenancePackages);
   const safeMerchantProductCategories = normalizeProductCategories(merchantProductCategories);
+  const safeProjectInquiries = normalizeProjectInquiries(projectInquiries);
+  const safeMiniProgramHomeConfig = normalizeMiniProgramHomeConfig(miniProgramHomeConfig);
   const safeMerchantCustomers = Array.isArray(merchantCustomers) ? merchantCustomers : [];
   const currentOrder = safeOrders.find((order) => String(order.id) === String(currentOrderId)) || null;
   const currentPlan =
@@ -2190,6 +2528,23 @@ function App() {
   useEffect(() => {
     persistProductCategoriesToLocalStore(merchantProductCategories);
   }, [merchantProductCategories]);
+
+  useEffect(() => {
+    persistProjectInquiriesToLocalStore(projectInquiries);
+  }, [projectInquiries]);
+
+  useEffect(() => {
+    persistMiniProgramHomeConfigToLocalStore(miniProgramHomeConfig);
+  }, [miniProgramHomeConfig]);
+
+  useEffect(() => {
+    const visibleCount = getHomeBannerItems(miniProgramHomeConfig).filter((item) => item.visible).length;
+    if (visibleCount > 0 && activeHomeBannerIndex >= visibleCount) {
+      setActiveHomeBannerIndex(Math.max(0, visibleCount - 1));
+    } else if (visibleCount === 0 && activeHomeBannerIndex !== 0) {
+      setActiveHomeBannerIndex(0);
+    }
+  }, [miniProgramHomeConfig, activeHomeBannerIndex]);
 
   useEffect(() => {
     persistCustomersToLocalStore(merchantCustomers);
@@ -3186,6 +3541,178 @@ function App() {
     setShowCreateOrderSheet(true);
   }
 
+  function updateProjectInquiry(inquiryId, patch) {
+    setProjectInquiries((prev) =>
+      normalizeProjectInquiries(prev).map((item) =>
+        item.id === inquiryId ? { ...item, ...patch, updatedAt: nowText() } : item
+      )
+    );
+  }
+
+  function openProjectInquiryDetail(inquiry) {
+    setSelectedProjectInquiryId(inquiry.id);
+    setProjectInquiryFollowUpDraft(inquiry.followUpNote || "");
+  }
+
+  function saveProjectInquiryFollowUp() {
+    if (!selectedProjectInquiryId) return;
+    const patch = {
+      followUpNote: projectInquiryFollowUpDraft,
+    };
+    if (projectInquiryFollowUpDraft.trim()) patch.status = "已联系";
+    updateProjectInquiry(selectedProjectInquiryId, patch);
+  }
+
+  function buildProjectInquiryDescription(inquiry) {
+    return [
+      `项目类型：${inquiry.projectType || "园林改造咨询"}`,
+      `面积范围：${inquiry.areaSize || "待确认"}`,
+      `预算范围：${inquiry.budgetRange || "待确认"}`,
+      `期望风格：${inquiry.stylePreference || "待确认"}`,
+      `期望完成时间：${inquiry.expectedTime || "待确认"}`,
+      inquiry.note ? `客户备注：${inquiry.note}` : "",
+    ].filter(Boolean).join("\n");
+  }
+
+  function convertProjectInquiryToOrderDraft(inquiry) {
+    const firstStaff = assignableStaffMembers[0] || activeStaffMembers.find(canAssignStaff) || getDefaultAssignedStaff();
+    const description = buildProjectInquiryDescription(inquiry);
+    setNewOrderForm((form) => ({
+      ...form,
+      customerName: `园林改造咨询 - ${inquiry.contactName || "客户"}`,
+      contactName: inquiry.contactName || "",
+      phone: inquiry.phone || "",
+      areaSize: inquiry.areaSize || "",
+      expectedDate: inquiry.expectedTime || "",
+      address: inquiry.address || "",
+      description,
+      tagsText: "园林改造,待勘察,大项目",
+      source: "客户预约",
+      serviceType: "园林",
+      leaseMonths: "12",
+      paymentMethod: "月付",
+      needDeposit: false,
+      budget: inquiry.budgetRange || "",
+      plannedPlantCount: "",
+      areaNote: inquiry.projectType || "园林改造",
+      merchantNote: description,
+      retailNeedsMaintenance: false,
+      assignedStaffId: firstStaff?.id || "",
+      communicationQrUrl: "",
+      sourceInquiryId: inquiry.id,
+    }));
+    updateProjectInquiry(inquiry.id, { status: inquiry.status === "待跟进" ? "已联系" : inquiry.status });
+    setSelectedProjectInquiryId(null);
+    setMerchantTab("订单管理");
+    setIsCreateOrderInputFocused(false);
+    setShowCreateOrderSheet(true);
+  }
+
+  function updateHomeHeroConfig(patch) {
+    setMiniProgramHomeConfig((prevConfig) => {
+      const normalized = normalizeMiniProgramHomeConfig(prevConfig);
+      const modules = normalized.homeModules.map((module) => {
+        if (module.type !== "hero") return module;
+        return {
+          ...module,
+          hero: normalizeHomeHeroConfig({ ...module.hero, ...patch }),
+        };
+      });
+      const nextConfig = { ...normalized, homeModules: modules };
+      return normalizeMiniProgramHomeConfig(nextConfig);
+    });
+  }
+
+  function updateHomeHeroImage(nextValue) {
+    updateHomeHeroConfig({
+      imageUrl: nextValue && !String(nextValue).startsWith("data:") ? nextValue : "",
+      localPreviewUrl: nextValue && String(nextValue).startsWith("data:") ? nextValue : "",
+    });
+  }
+
+  function updateHomeBannerItems(updater) {
+    setMiniProgramHomeConfig((prevConfig) => {
+      const normalized = normalizeMiniProgramHomeConfig(prevConfig);
+      const modules = normalized.homeModules.map((module) => {
+        if (module.type !== "banner") return module;
+        const nextItems = typeof updater === "function" ? updater(module.items) : module.items;
+        return {
+          ...module,
+          items: nextItems.slice(0, 5).map(normalizeHomeBannerItem),
+        };
+      });
+      return { ...normalized, homeModules: modules };
+    });
+  }
+
+  function updateHomeBannerItem(itemId, patch) {
+    updateHomeBannerItems((items) =>
+      items.map((item) => {
+        if (item.id !== itemId) return item;
+        const nextItem = { ...item, ...patch };
+        if (patch.layoutType && patch.layoutType !== item.layoutType) {
+          const imageCount = getHomeBannerImageCount(patch.layoutType);
+          nextItem.images = Array.from({ length: imageCount }, (_, index) =>
+            normalizeHomeBannerImage(item.images?.[index], index)
+          );
+        }
+        return nextItem;
+      })
+    );
+  }
+
+  function updateHomeBannerImage(itemId, imageIndex, nextValue) {
+    updateHomeBannerItems((items) =>
+      items.map((item) => {
+        if (item.id !== itemId) return item;
+        const imageCount = getHomeBannerImageCount(item.layoutType);
+        const images = Array.from({ length: imageCount }, (_, index) => normalizeHomeBannerImage(item.images?.[index], index));
+        images[imageIndex] = {
+          ...images[imageIndex],
+          imageUrl: nextValue && !String(nextValue).startsWith("data:") ? nextValue : "",
+          localPreviewUrl: nextValue && String(nextValue).startsWith("data:") ? nextValue : "",
+        };
+        return { ...item, images };
+      })
+    );
+  }
+
+  function addHomeBannerItem() {
+    const items = getHomeBannerItems(miniProgramHomeConfig);
+    if (items.length >= 5) {
+      alert("首页广告位最多配置 5 组。");
+      return;
+    }
+    const nextSortOrder = Math.max(0, ...items.map((item) => Number(item.sortOrder || 0))) + 10;
+    updateHomeBannerItems((currentItems) => [
+      ...currentItems,
+      normalizeHomeBannerItem({
+        id: `banner-${Date.now()}`,
+        title: `首页广告位 ${currentItems.length + 1}`,
+        layoutType: "single",
+        images: [{ imageUrl: "", localPreviewUrl: "", placeholder: "广告图" }],
+        linkType: "none",
+        linkTarget: "",
+        visible: true,
+        sortOrder: nextSortOrder,
+      }, currentItems.length),
+    ]);
+    setActiveHomeBannerIndex(items.filter((item) => item.visible).length);
+  }
+
+  function removeHomeBannerItem(itemId) {
+    updateHomeBannerItems((items) => items.filter((item) => item.id !== itemId));
+    setActiveHomeBannerIndex(0);
+  }
+
+  function saveMiniProgramHomeConfig() {
+    const normalized = normalizeMiniProgramHomeConfig(miniProgramHomeConfig);
+    setMiniProgramHomeConfig(normalized);
+    persistMiniProgramHomeConfigToLocalStore(normalized);
+    setSyncMessage("小程序首页装修配置已保存到当前浏览器。");
+    alert("小程序首页装修配置已保存到当前浏览器。");
+  }
+
   function addAreaWithName(inputName) {
     const name = String(inputName || "").trim();
     if (!currentOrder || !name) return;
@@ -3714,6 +4241,7 @@ function App() {
       source: newOrderForm.source || "商户派单",
       serviceType,
       planType,
+      businessType: serviceType === "园林" || planType === "园林改造" ? "garden_project" : "",
       plannedPlantCount: newOrderForm.plannedPlantCount.trim(),
       budget: newOrderForm.budget.trim(),
       merchantNote: newOrderForm.merchantNote.trim(),
@@ -3723,6 +4251,8 @@ function App() {
       assignedStaffEmail: isPublicAssignment ? "" : assignedStaff?.email || "",
       assignedStaffType: isPublicAssignment ? "" : getStaffEmployeeType(assignedStaff),
       communicationQrUrl: newOrderForm.communicationQrUrl || "",
+      sourceInquiryId: newOrderForm.sourceInquiryId || "",
+      sourceInquiryType: newOrderForm.sourceInquiryId ? "garden_project" : "",
       fieldNote: "",
       internalNote: "",
       revisionReason: "",
@@ -3733,6 +4263,14 @@ function App() {
     setOrders((prevOrders) => [newOrder, ...prevOrders]);
     setMerchantCustomers((prev) => mergeCustomers(prev, [newOrder]));
     syncOneOrder(newOrder, "新订单已写入云端");
+    if (newOrderForm.sourceInquiryId) {
+      const inquiryPatch = {
+        status: "已转订单",
+        convertedOrderId: newOrder.id,
+      };
+      if (projectInquiryFollowUpDraft) inquiryPatch.followUpNote = projectInquiryFollowUpDraft;
+      updateProjectInquiry(newOrderForm.sourceInquiryId, inquiryPatch);
+    }
 
     setNewOrderForm({
       customerName: "",
@@ -3761,6 +4299,7 @@ function App() {
       maintenanceInternalNote: "",
       assignedStaffId: assignableStaffMembers[0]?.id || DEFAULT_STAFF_ID,
       communicationQrUrl: "",
+      sourceInquiryId: "",
     });
 
     setShowCreateOrderSheet(false);
@@ -6188,14 +6727,27 @@ ${rentalText}`;
     const navItems = [
       { key: "工作台", Icon: GardenIcons.Dashboard },
       { key: "订单管理", Icon: GardenIcons.Orders },
+      { key: "项目线索", Icon: GardenIcons.Customers },
       { key: "团队成员", Icon: GardenIcons.Team },
       { key: "执行监测", Icon: GardenIcons.Monitor },
       { key: "商品与服务", Icon: GardenIcons.Products },
+      { key: "小程序装修", Icon: GardenIcons.Image },
       { key: "客户库", Icon: GardenIcons.Customers },
       { key: "设置", Icon: GardenIcons.Settings },
     ];
     const todoOrders = [...(Array.isArray(pendingMerchantConfirmOrders) ? pendingMerchantConfirmOrders : []), ...(Array.isArray(pendingArchiveOrders) ? pendingArchiveOrders : [])];
     const displayOrders = Array.isArray(merchantOrders) ? merchantOrders : [];
+    const displayProjectInquiries = safeProjectInquiries;
+    const pendingProjectInquiryCount = displayProjectInquiries.filter((item) => item.status === "待跟进").length;
+    const selectedProjectInquiry = selectedProjectInquiryId
+      ? displayProjectInquiries.find((item) => item.id === selectedProjectInquiryId) || null
+      : null;
+    const homeBannerItems = getHomeBannerItems(safeMiniProgramHomeConfig);
+    const homeHeroConfig = getHomeHeroConfig(safeMiniProgramHomeConfig);
+    const homeHeroImageSrc = getHomeHeroImageSrc(homeHeroConfig);
+    const sortedHomeBannerItems = [...homeBannerItems].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+    const visibleHomeBannerItems = sortedHomeBannerItems.filter((item) => item.visible);
+    const activeHomeBanner = visibleHomeBannerItems[activeHomeBannerIndex] || visibleHomeBannerItems[0] || null;
     const activeStaffMembers = (Array.isArray(staffDirectory) ? staffDirectory : []).filter((member) => member.organizationId === currentMerchantUser?.organizationId);
     const assignableTeamMembers = activeStaffMembers.filter(canAssignStaff);
     const editingStaffMember = activeStaffMembers.find((member) => member.id === editingStaffId) || null;
@@ -6276,6 +6828,7 @@ ${rentalText}`;
                 onClick={() => {
                   setMerchantViewingOrder(null);
                   setSelectedOrderDetail(null);
+                  setSelectedProjectInquiryId(null);
                   setMerchantTab(item.key);
                 }}
               >
@@ -6464,7 +7017,7 @@ ${rentalText}`;
                  <div className="merchant-finance-grid">
                     <div className="merchant-finance-cell">
                       <span>预算</span>
-                      <strong>{order.budget ? <MoneyAmount value={order.budget} /> : "暂无预算"}</strong>
+                      <strong>{order.budget ? (Number.isFinite(Number(order.budget)) ? <MoneyAmount value={order.budget} /> : order.budget) : "暂无预算"}</strong>
                     </div>
                     <div className="merchant-finance-cell">
                       <span>{isMaintenancePlan ? "养护报价" : isRetailPlan ? "最终报价" : "最终租金"}</span>
@@ -6537,7 +7090,10 @@ ${rentalText}`;
               <button
                 key={item.key}
                 className={`admin-nav-btn ${merchantTab === item.key ? "active" : ""}`}
-                onClick={() => setMerchantTab(item.key)}
+                onClick={() => {
+                  setSelectedProjectInquiryId(null);
+                  setMerchantTab(item.key);
+                }}
               >
                 <Icon size={19} />
                 <span>{item.key}</span>
@@ -6585,6 +7141,16 @@ ${rentalText}`;
                 <MetricCard label="现场施工" value={`${statusCounts["执行中"] || 0}`} hint="正在服务中" />
                 <MetricCard label="完工待验" value={`${statusCounts["待商户归档"] || 0}`} hint="需老板确认归档" />
               </div>
+
+              {pendingProjectInquiryCount > 0 && (
+                <button className="project-inquiry-reminder" onClick={() => setMerchantTab("项目线索")}>
+                  <span>
+                    <strong>园林改造咨询：{pendingProjectInquiryCount} 条待跟进</strong>
+                    <em>客户已提交园林改造 / 造景需求，可进入项目线索池查看并转正式订单。</em>
+                  </span>
+                  <b>查看线索</b>
+                </button>
+              )}
 
               <div className="admin-card">
                 <h2 className="merchant-card-title"><GardenIcons.Todo size={18} />待办审核 <span>Todo</span></h2>
@@ -6749,6 +7315,73 @@ ${rentalText}`;
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {merchantTab === "项目线索" && (
+            <div className="admin-card admin-data-panel">
+              <div className="admin-section-head">
+                <div>
+                  <h2>项目线索池</h2>
+                  <p>接收客户小程序后续提交的园林改造、造景和项目工程咨询，先跟进再转正式订单。</p>
+                </div>
+                <div className="project-inquiry-summary">
+                  <strong>{pendingProjectInquiryCount}</strong>
+                  <span>待跟进</span>
+                </div>
+              </div>
+
+              <div className="empty-card" style={{ marginBottom: 14 }}>
+                <p>当前为本地 mock 线索池</p>
+                <span>已预留 source、type、photos、convertedOrderId 等字段，后续客户小程序提交表单后可按同一结构写入。</span>
+              </div>
+
+              <div className="admin-table project-inquiry-table">
+                <div className="admin-table-row admin-table-head">
+                  <span>客户姓名</span>
+                  <span>联系电话</span>
+                  <span>项目类型</span>
+                  <span>项目地址</span>
+                  <span>面积范围</span>
+                  <span>预算范围</span>
+                  <span>期望风格</span>
+                  <span>状态</span>
+                  <span>操作</span>
+                </div>
+
+                {displayProjectInquiries.map((inquiry) => (
+                  <div className="admin-table-row" key={inquiry.id}>
+                    <span>
+                      <strong>{inquiry.contactName}</strong>
+                      <em>{inquiry.createdAt || "暂无提交时间"}</em>
+                    </span>
+                    <span>{inquiry.phone || "-"}</span>
+                    <span>{inquiry.projectType || "园林改造"}</span>
+                    <span>
+                      <strong>{inquiry.address || "-"}</strong>
+                      <em>{inquiry.expectedTime ? `期望：${inquiry.expectedTime}` : "期望时间待确认"}</em>
+                    </span>
+                    <span>{inquiry.areaSize || "-"}</span>
+                    <span>{inquiry.budgetRange || "-"}</span>
+                    <span>{inquiry.stylePreference || "-"}</span>
+                    <span>
+                      <b className={`admin-status-chip ${inquiry.status === "待跟进" ? "is-plan" : inquiry.status === "已转订单" ? "is-done" : inquiry.status === "无效" ? "muted" : ""}`}>
+                        {inquiry.status}
+                      </b>
+                    </span>
+                    <span className="admin-table-actions">
+                      <button className="ghost-button" onClick={() => openProjectInquiryDetail(inquiry)}>
+                        查看
+                      </button>
+                      {inquiry.status !== "已转订单" && (
+                        <button className="primary-button" onClick={() => convertProjectInquiryToOrderDraft(inquiry)}>
+                          转订单
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -7130,6 +7763,270 @@ ${rentalText}`;
             </div>
           )}
 
+          {merchantTab === "小程序装修" && (
+            <div className="admin-card admin-data-panel mini-program-decor-panel">
+              <div className="admin-section-head">
+                <div>
+                  <h2>小程序装修</h2>
+                  <p>配置客户小程序首页主图与广告位；养护服务、租赁方案、花植选购三大入口保持固定。</p>
+                </div>
+                <div className="mini-program-decor-actions">
+                  <button className="ghost-button" onClick={addHomeBannerItem} disabled={homeBannerItems.length >= 5}>
+                    + 新增广告位
+                  </button>
+                  <button className="primary-button" onClick={saveMiniProgramHomeConfig}>
+                    保存配置
+                  </button>
+                </div>
+              </div>
+
+              <div className="mini-program-decor-layout">
+                <section className="mini-home-preview-card">
+                  <div className="mini-phone-frame">
+                    <div className="mini-phone-status">GardenOS 客户小程序</div>
+                    {homeHeroConfig.visible ? (
+                      <div className={`mini-home-hero ${homeHeroImageSrc ? "has-image" : ""}`}>
+                        {homeHeroImageSrc && <img src={homeHeroImageSrc} alt="首页主图预览" />}
+                        <div className="mini-home-hero-content">
+                          <span>{homeHeroConfig.subtitle || "GREEN SERVICE"}</span>
+                          <strong>{homeHeroConfig.title || "绿植租赁与园林服务"}</strong>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mini-home-hero is-hidden">
+                        <div className="mini-home-hero-content">
+                          <span>首页主图已隐藏</span>
+                          <strong>固定入口将直接显示在首页顶部</strong>
+                        </div>
+                      </div>
+                    )}
+                    <div className="mini-home-entry-grid">
+                      {MINI_PROGRAM_HOME_ENTRIES.map((entry) => (
+                        <div className="mini-home-entry" key={entry}>
+                          <i>{entry === "养护服务" ? "养" : entry === "租赁方案" ? "租" : "花"}</i>
+                          <strong>{entry}</strong>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mini-home-banner-window">
+                      {activeHomeBanner ? (
+                        <div className={`mini-home-banner-preview ${activeHomeBanner.layoutType}`}>
+                          {activeHomeBanner.images.map((image, imageIndex) => {
+                            const imageSrc = getHomeBannerImageSrc(image);
+                            return (
+                              <div className="mini-home-banner-image" key={`${activeHomeBanner.id}-${imageIndex}`}>
+                                {imageSrc ? (
+                                  <img src={imageSrc} alt={`${activeHomeBanner.title} ${imageIndex + 1}`} />
+                                ) : (
+                                  <span>{image.placeholder || activeHomeBanner.title}</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                          <b>{activeHomeBanner.title}</b>
+                        </div>
+                      ) : (
+                        <div className="mini-home-empty-banner">暂无展示中的首页广告位</div>
+                      )}
+                    </div>
+
+                    {visibleHomeBannerItems.length > 1 && (
+                      <div className="mini-home-carousel-controls">
+                        <button onClick={() => setActiveHomeBannerIndex((index) => (index - 1 + visibleHomeBannerItems.length) % visibleHomeBannerItems.length)}>上一张</button>
+                        <span>
+                          {visibleHomeBannerItems.map((item, index) => (
+                            <i key={item.id} className={index === activeHomeBannerIndex ? "active" : ""} />
+                          ))}
+                        </span>
+                        <button onClick={() => setActiveHomeBannerIndex((index) => (index + 1) % visibleHomeBannerItems.length)}>下一张</button>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <section className="mini-home-config-card">
+                  <article className="mini-home-hero-editor">
+                    <div className="mini-home-config-head">
+                      <div>
+                        <h3>首页主图</h3>
+                        <p>用于客户小程序首页顶部主视觉图，可展示门店、庭院、园林空间或品牌氛围。</p>
+                      </div>
+                      <label className="staff-toggle-row">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(homeHeroConfig.visible)}
+                          onChange={(event) => updateHomeHeroConfig({ visible: event.target.checked })}
+                        />
+                        <span>{homeHeroConfig.visible ? "展示" : "隐藏"}</span>
+                      </label>
+                    </div>
+
+                    <div className="mini-home-hero-editor-grid">
+                      <div className="sheet-block">
+                        <p className="sheet-label">首页主图</p>
+                        <ImageUploader
+                          value={homeHeroImageSrc}
+                          label="上传首页主图"
+                          helper="建议使用横向大图，适合展示门店、庭院、园林空间或品牌氛围。"
+                          onChange={updateHomeHeroImage}
+                        />
+                      </div>
+                      <div className="mini-home-form-grid">
+                        <div className="sheet-block">
+                          <p className="sheet-label">主标题（可选）</p>
+                          <input
+                            className="area-input"
+                            value={homeHeroConfig.title}
+                            onChange={(event) => updateHomeHeroConfig({ title: event.target.value })}
+                            placeholder="例如：青庭花涧 / GardenOS"
+                          />
+                        </div>
+                        <div className="sheet-block">
+                          <p className="sheet-label">副标题（可选）</p>
+                          <input
+                            className="area-input"
+                            value={homeHeroConfig.subtitle}
+                            onChange={(event) => updateHomeHeroConfig({ subtitle: event.target.value })}
+                            placeholder="例如：花植 · 茶咖 · 园林生活空间"
+                          />
+                        </div>
+                        <div className="sheet-block">
+                          <p className="sheet-label">点击跳转</p>
+                          <select
+                            className="area-input"
+                            value={homeHeroConfig.linkType}
+                            onChange={(event) => updateHomeHeroConfig({ linkType: event.target.value })}
+                          >
+                            {HOME_HERO_LINK_TYPES.map(([value, label]) => (
+                              <option key={value} value={value}>{label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="sheet-block">
+                          <p className="sheet-label">跳转目标</p>
+                          <input
+                            className="area-input"
+                            value={homeHeroConfig.linkTarget}
+                            onChange={(event) => updateHomeHeroConfig({ linkTarget: event.target.value })}
+                            placeholder="例如：garden_project / care_service"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+
+                  <div className="mini-home-config-head">
+                    <div>
+                      <h3>首页广告位配置</h3>
+                      <p>最多 5 组。左右滑动的是广告位组，三图拼接仍算一组广告位。</p>
+                    </div>
+                    <span>{homeBannerItems.length} / 5</span>
+                  </div>
+
+                  <div className="mini-home-banner-list">
+                    {sortedHomeBannerItems.map((item) => (
+                      <article className="mini-home-banner-editor" key={item.id}>
+                        <div className="mini-home-banner-editor-head">
+                          <div>
+                            <strong>{item.title || "未命名广告位"}</strong>
+                            <em>{HOME_BANNER_LAYOUT_TYPES.find(([value]) => value === item.layoutType)?.[1] || "单图横幅"}</em>
+                          </div>
+                          <label className="staff-toggle-row">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(item.visible)}
+                              onChange={(event) => updateHomeBannerItem(item.id, { visible: event.target.checked })}
+                            />
+                            <span>{item.visible ? "展示" : "隐藏"}</span>
+                          </label>
+                        </div>
+
+                        <div className="mini-home-form-grid">
+                          <div className="sheet-block">
+                            <p className="sheet-label">广告位名称</p>
+                            <input
+                              className="area-input"
+                              value={item.title}
+                              onChange={(event) => updateHomeBannerItem(item.id, { title: event.target.value })}
+                              placeholder="例如：园林改造咨询"
+                            />
+                          </div>
+                          <div className="sheet-block">
+                            <p className="sheet-label">广告位样式</p>
+                            <select
+                              className="area-input"
+                              value={item.layoutType}
+                              onChange={(event) => updateHomeBannerItem(item.id, { layoutType: event.target.value })}
+                            >
+                              {HOME_BANNER_LAYOUT_TYPES.map(([value, label]) => (
+                                <option key={value} value={value}>{label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="sheet-block">
+                            <p className="sheet-label">跳转类型</p>
+                            <select
+                              className="area-input"
+                              value={item.linkType}
+                              onChange={(event) => updateHomeBannerItem(item.id, { linkType: event.target.value })}
+                            >
+                              {HOME_BANNER_LINK_TYPES.map(([value, label]) => (
+                                <option key={value} value={value}>{label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="sheet-block">
+                            <p className="sheet-label">跳转目标</p>
+                            <input
+                              className="area-input"
+                              value={item.linkTarget}
+                              onChange={(event) => updateHomeBannerItem(item.id, { linkTarget: event.target.value })}
+                              placeholder="例如：garden_project / care_service / 分类 ID"
+                            />
+                          </div>
+                          <div className="sheet-block">
+                            <p className="sheet-label">展示排序</p>
+                            <input
+                              className="area-input"
+                              type="number"
+                              value={item.sortOrder}
+                              onChange={(event) => updateHomeBannerItem(item.id, { sortOrder: event.target.value })}
+                              placeholder="数字越小越靠前"
+                            />
+                          </div>
+                        </div>
+
+                        <div className={`mini-home-image-uploader-row ${item.layoutType}`}>
+                          {item.images.map((image, imageIndex) => (
+                            <div className="sheet-block" key={`${item.id}-image-${imageIndex}`}>
+                              <p className="sheet-label">{item.layoutType === "triple" ? `拼接图 ${imageIndex + 1}` : "横幅图片"}</p>
+                              <ImageUploader
+                                value={getHomeBannerImageSrc(image)}
+                                label="上传广告图"
+                                helper={item.layoutType === "triple" ? "建议竖图，三张组成同一个广告位。" : "建议横向场景图或活动图。"}
+                                onChange={(nextImage) => updateHomeBannerImage(item.id, imageIndex, nextImage)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="mini-home-banner-editor-foot">
+                          <span>
+                            {item.layoutType === "single" ? "单图横幅仅保留 1 张图。" : "三图拼接会在一个横向容器内展示 3 张竖图。"}
+                          </span>
+                          <button className="ghost-button danger" onClick={() => removeHomeBannerItem(item.id)}>
+                            删除广告位
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            </div>
+          )}
+
           {merchantTab === "客户库" && (
             <div className="admin-card admin-data-panel">
               <div className="admin-section-head">
@@ -7451,6 +8348,83 @@ ${rentalText}`;
                 <footer className="merchant-staff-drawer-foot">
                   <button className="ghost-button" onClick={() => setShowInviteStaffSheet(false)}>取消</button>
                   <button className="primary-button" onClick={sendStaffInvite}>发送邀请</button>
+                </footer>
+              </section>
+            </div>
+          )}
+
+          {selectedProjectInquiry && (
+            <div className="sheet-mask project-inquiry-mask" onClick={() => setSelectedProjectInquiryId(null)}>
+              <section className="project-inquiry-detail" onClick={(event) => event.stopPropagation()}>
+                <header className="project-inquiry-detail-head">
+                  <div>
+                    <p className="eyebrow">Garden Project Inquiry</p>
+                    <h2>{selectedProjectInquiry.projectType || "园林改造咨询"}</h2>
+                    <span>{selectedProjectInquiry.createdAt || "暂无提交时间"} · {selectedProjectInquiry.source === "mini_program" ? "客户小程序线索" : "本地线索"}</span>
+                  </div>
+                  <button className="close-button" onClick={() => setSelectedProjectInquiryId(null)} aria-label="关闭线索详情">×</button>
+                </header>
+
+                <div className="project-inquiry-detail-body">
+                  <section className="project-inquiry-section">
+                    <h3>客户与项目</h3>
+                    <div className="project-inquiry-detail-grid">
+                      <div><span>联系人</span><strong>{selectedProjectInquiry.contactName || "-"}</strong></div>
+                      <div><span>手机号</span><strong>{selectedProjectInquiry.phone || "-"}</strong></div>
+                      <div><span>项目地址</span><strong>{selectedProjectInquiry.address || "-"}</strong></div>
+                      <div><span>项目类型</span><strong>{selectedProjectInquiry.projectType || "园林改造"}</strong></div>
+                      <div><span>面积范围</span><strong>{selectedProjectInquiry.areaSize || "-"}</strong></div>
+                      <div><span>预算范围</span><strong>{selectedProjectInquiry.budgetRange || "-"}</strong></div>
+                      <div><span>期望风格</span><strong>{selectedProjectInquiry.stylePreference || "-"}</strong></div>
+                      <div><span>期望完成时间</span><strong>{selectedProjectInquiry.expectedTime || "-"}</strong></div>
+                      <div><span>当前状态</span><strong>{selectedProjectInquiry.status}</strong></div>
+                      <div><span>转化订单</span><strong>{selectedProjectInquiry.convertedOrderId || "尚未转订单"}</strong></div>
+                    </div>
+                  </section>
+
+                  <section className="project-inquiry-section">
+                    <h3>现状照片</h3>
+                    <div className="project-inquiry-photo-list">
+                      {safePhotos(selectedProjectInquiry.photos).length > 0 ? (
+                        safePhotos(selectedProjectInquiry.photos).map((photo, index) => (
+                          <div className="project-inquiry-photo" key={`${photo}-${index}`}>
+                            {isImageUrl(photo) ? <img src={photo} alt={`现状照片 ${index + 1}`} /> : <span>{photo}</span>}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="project-inquiry-photo muted"><span>待小程序上传</span></div>
+                      )}
+                    </div>
+                  </section>
+
+                  <section className="project-inquiry-section">
+                    <h3>客户备注</h3>
+                    <div className="project-inquiry-note">{selectedProjectInquiry.note || "客户暂未填写备注。"}</div>
+                  </section>
+
+                  <section className="project-inquiry-section">
+                    <h3>跟进备注</h3>
+                    <textarea
+                      className="area-input project-inquiry-textarea"
+                      value={projectInquiryFollowUpDraft}
+                      onChange={(event) => setProjectInquiryFollowUpDraft(event.target.value)}
+                      placeholder="记录已沟通内容、现场勘察安排、报价意向等。"
+                    />
+                  </section>
+                </div>
+
+                <footer className="project-inquiry-actions">
+                  <button className="ghost-button" onClick={() => updateProjectInquiry(selectedProjectInquiry.id, { status: "已联系" })}>标记已联系</button>
+                  <button className="ghost-button" onClick={saveProjectInquiryFollowUp}>保存跟进备注</button>
+                  <button className="ghost-button" onClick={() => updateProjectInquiry(selectedProjectInquiry.id, { status: "暂缓" })}>标记暂缓</button>
+                  <button className="ghost-button danger" onClick={() => updateProjectInquiry(selectedProjectInquiry.id, { status: "无效" })}>标记无效</button>
+                  <button
+                    className="primary-button"
+                    onClick={() => convertProjectInquiryToOrderDraft(selectedProjectInquiry)}
+                    disabled={selectedProjectInquiry.status === "已转订单"}
+                  >
+                    {selectedProjectInquiry.status === "已转订单" ? "已转正式订单" : "转为正式订单"}
+                  </button>
                 </footer>
               </section>
             </div>
@@ -8063,7 +9037,7 @@ ${rentalText}`;
                 </div>
                 <div className="sheet-block"><p className="sheet-label">项目面积</p><input className="area-input" value={newOrderForm.areaSize} onChange={(e) => setNewOrderForm((form) => ({ ...form, areaSize: e.target.value }))} placeholder="例如：260㎡" /></div>
                 <div className="sheet-block"><p className="sheet-label">期望进场时间</p><input className="area-input" value={newOrderForm.expectedDate} onChange={(e) => setNewOrderForm((form) => ({ ...form, expectedDate: e.target.value }))} placeholder="例如：2026-06-08" /></div>
-                <div className="sheet-block"><p className="sheet-label">预算 / 预估报价</p><input className="area-input" type="number" value={newOrderForm.budget} onChange={(e) => setNewOrderForm((form) => ({ ...form, budget: e.target.value }))} placeholder="例如：2880" /></div>
+                <div className="sheet-block"><p className="sheet-label">预算 / 预估报价</p><input className="area-input" value={newOrderForm.budget} onChange={(e) => setNewOrderForm((form) => ({ ...form, budget: e.target.value }))} placeholder="例如：2880 或 10-20 万" /></div>
                 <div className="sheet-block"><p className="sheet-label">预计植物数量 / 区域说明</p><input className="area-input" value={newOrderForm.plannedPlantCount} onChange={(e) => setNewOrderForm((form) => ({ ...form, plannedPlantCount: e.target.value }))} placeholder="例如：20 盆" /></div>
                 <div className="sheet-block"><p className="sheet-label">计划区域</p><input className="area-input" value={newOrderForm.areaNote} onChange={(e) => setNewOrderForm((form) => ({ ...form, areaNote: e.target.value }))} placeholder="例如：前台 / 会议室 / 门口" /></div>
                 <div className="sheet-block"><p className="sheet-label">需求描述</p><input className="area-input" value={newOrderForm.description} onChange={(e) => setNewOrderForm((form) => ({ ...form, description: e.target.value }))} placeholder="例如：前台和会议室需要绿植配置" /></div>
@@ -8295,7 +9269,7 @@ ${rentalText}`;
 
           <div className="sheet-block" style={compactBlockStyle}>
             <p className="sheet-label">预算 / 预估报价</p>
-            <input className={inputClass} inputMode="numeric" {...inputFocusProps} value={newOrderForm.budget} onChange={(e) => setNewOrderForm((form) => ({ ...form, budget: e.target.value }))} placeholder="例如：2880" />
+            <input className={inputClass} {...inputFocusProps} value={newOrderForm.budget} onChange={(e) => setNewOrderForm((form) => ({ ...form, budget: e.target.value }))} placeholder="例如：2880 或 10-20 万" />
           </div>
 
           <div className="sheet-block" style={compactBlockStyle}>
