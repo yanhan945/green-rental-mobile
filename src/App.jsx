@@ -1330,27 +1330,59 @@ function getInspirationTagText(item) {
   return Array.isArray(item?.tags) ? item.tags.join("，") : "";
 }
 
-function loadMiniProgramHomeConfigFromLocalStore() {
+function createEmptyMiniProgramHomeDraftConfig() {
+  return normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig);
+}
+
+function loadMiniProgramHomeStateFromLocalStore() {
   try {
     const raw = localStorage.getItem(MINI_PROGRAM_HOME_STORAGE_KEY);
-    if (!raw) return normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig);
+    if (!raw) {
+      return {
+        publishedConfig: normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig),
+        draftConfig: createEmptyMiniProgramHomeDraftConfig(),
+        publishedAt: "",
+        draftSavedAt: "",
+      };
+    }
+
     const parsed = JSON.parse(raw);
-    return normalizeMiniProgramHomeConfig(parsed?.miniProgramHomeConfig || parsed);
+    const publishedSource =
+      parsed?.publishedMiniProgramHomeConfig ||
+      parsed?.liveMiniProgramHomeConfig ||
+      parsed?.miniProgramHomeConfig ||
+      parsed;
+    const draftSource = parsed?.draftMiniProgramHomeConfig || createEmptyMiniProgramHomeDraftConfig();
+
+    return {
+      publishedConfig: normalizeMiniProgramHomeConfig(publishedSource),
+      draftConfig: normalizeMiniProgramHomeConfig(draftSource),
+      publishedAt: parsed?.publishedAt || parsed?.savedAt || "",
+      draftSavedAt: parsed?.draftSavedAt || "",
+    };
   } catch (error) {
-    console.error("读取小程序首页配置失败：", error);
-    return normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig);
+    console.error("读取小程序首页装修状态失败：", error);
+    return {
+      publishedConfig: normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig),
+      draftConfig: createEmptyMiniProgramHomeDraftConfig(),
+      publishedAt: "",
+      draftSavedAt: "",
+    };
   }
 }
 
-function persistMiniProgramHomeConfigToLocalStore(config) {
+function persistMiniProgramHomeStateToLocalStore(state) {
   safeSetLocalStorage(
     MINI_PROGRAM_HOME_STORAGE_KEY,
     JSON.stringify({
       source: "localStorage",
       savedAt: nowText(),
-      miniProgramHomeConfig: normalizeMiniProgramHomeConfig(config),
+      publishedAt: state?.publishedAt || "",
+      draftSavedAt: state?.draftSavedAt || "",
+      publishedMiniProgramHomeConfig: normalizeMiniProgramHomeConfig(state?.publishedConfig),
+      draftMiniProgramHomeConfig: normalizeMiniProgramHomeConfig(state?.draftConfig),
     }),
-    "小程序首页配置"
+    "小程序首页装修状态"
   );
 }
 
@@ -2632,7 +2664,7 @@ function App() {
   const [merchantProductCategories, setMerchantProductCategories] = useState(() => loadProductCategoriesFromLocalStore());
   const [projectInquiries, setProjectInquiries] = useState(() => loadProjectInquiriesFromLocalStore());
   const [miniProgramAppointments, setMiniProgramAppointments] = useState(() => loadMiniProgramAppointmentsFromLocalStore());
-  const [miniProgramHomeConfig, setMiniProgramHomeConfig] = useState(() => loadMiniProgramHomeConfigFromLocalStore());
+  const [miniProgramHomeState, setMiniProgramHomeState] = useState(() => loadMiniProgramHomeStateFromLocalStore());
   const [merchantServiceSettings, setMerchantServiceSettings] = useState(() => loadServiceSettingsFromLocalStore());
   const [merchantCustomers, setMerchantCustomers] = useState(() => loadCustomersFromLocalStore());
   const [staffDirectory, setStaffDirectory] = useState(() => loadStaffDirectoryFromLocalStore());
@@ -2684,7 +2716,7 @@ function App() {
   const [miniDecorTab, setMiniDecorTab] = useState("首页主图");
   const [activeHomeBannerIndex, setActiveHomeBannerIndex] = useState(0);
   const [selectedInspirationId, setSelectedInspirationId] = useState("");
-  const [showMiniProgramPreview, setShowMiniProgramPreview] = useState(false);
+  const [miniProgramDraftPreviewFocused, setMiniProgramDraftPreviewFocused] = useState(false);
   const [isCreateOrderInputFocused, setIsCreateOrderInputFocused] = useState(false);
 
   const [showDetailBlock, setShowDetailBlock] = useState(false);
@@ -2793,9 +2825,25 @@ function App() {
   const safeMerchantProductCategories = normalizeProductCategories(merchantProductCategories);
   const safeProjectInquiries = normalizeProjectInquiries(projectInquiries);
   const safeMiniProgramAppointments = normalizeMiniProgramAppointments(miniProgramAppointments);
+  const publishedMiniProgramHomeConfig = miniProgramHomeState?.publishedConfig || defaultMiniProgramHomeConfig;
+  const miniProgramHomeConfig = miniProgramHomeState?.draftConfig || createEmptyMiniProgramHomeDraftConfig();
   const safeMiniProgramHomeConfig = normalizeMiniProgramHomeConfig(miniProgramHomeConfig);
+  const safePublishedMiniProgramHomeConfig = normalizeMiniProgramHomeConfig(publishedMiniProgramHomeConfig);
   const safeMerchantServiceSettings = normalizeServiceSettings(merchantServiceSettings);
   const safeMerchantCustomers = Array.isArray(merchantCustomers) ? merchantCustomers : [];
+
+  function setMiniProgramHomeConfig(updater) {
+    setMiniProgramHomeState((prevState) => {
+      const currentDraft = normalizeMiniProgramHomeConfig(prevState?.draftConfig || createEmptyMiniProgramHomeDraftConfig());
+      const nextDraft = typeof updater === "function" ? updater(currentDraft) : updater;
+      return {
+        ...prevState,
+        draftConfig: normalizeMiniProgramHomeConfig(nextDraft),
+        draftSavedAt: nowText(),
+      };
+    });
+  }
+
   const currentOrder = safeOrders.find((order) => String(order.id) === String(currentOrderId)) || null;
   const currentPlan =
     currentOrder?.plan ||
@@ -3008,8 +3056,8 @@ function App() {
   }, [miniProgramAppointments]);
 
   useEffect(() => {
-    persistMiniProgramHomeConfigToLocalStore(miniProgramHomeConfig);
-  }, [miniProgramHomeConfig]);
+    persistMiniProgramHomeStateToLocalStore(miniProgramHomeState);
+  }, [miniProgramHomeState]);
 
   useEffect(() => {
     persistServiceSettingsToLocalStore(merchantServiceSettings);
@@ -4499,18 +4547,30 @@ function App() {
 
   function saveMiniProgramHomeConfig() {
     const normalized = normalizeMiniProgramHomeConfig(miniProgramHomeConfig);
-    setMiniProgramHomeConfig(normalized);
-    persistMiniProgramHomeConfigToLocalStore(normalized);
-    setSyncMessage("小程序首页装修配置已保存到当前浏览器。");
-    alert("小程序首页装修配置已保存到当前浏览器。");
-  }
-
-  function resetMiniProgramHomeConfig() {
-    setMiniProgramHomeConfig(normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig));
+    const publishedAt = nowText();
+    const nextState = {
+      publishedConfig: normalized,
+      draftConfig: createEmptyMiniProgramHomeDraftConfig(),
+      publishedAt,
+      draftSavedAt: "",
+    };
+    setMiniProgramHomeState(nextState);
+    persistMiniProgramHomeStateToLocalStore(nextState);
+    setMiniProgramDraftPreviewFocused(false);
     setMiniDecorTab("首页主图");
     setActiveHomeBannerIndex(0);
     setSelectedInspirationId("");
-    setSyncMessage("小程序装修已恢复为默认状态，保存后生效。");
+    setSyncMessage(`小程序装修已确认发布：${publishedAt}`);
+    alert("小程序装修已确认发布；晚间接入 API 后这里会发送到微信端。");
+  }
+
+  function resetMiniProgramHomeConfig() {
+    setMiniProgramHomeConfig(safePublishedMiniProgramHomeConfig);
+    setMiniProgramDraftPreviewFocused(false);
+    setMiniDecorTab("首页主图");
+    setActiveHomeBannerIndex(0);
+    setSelectedInspirationId("");
+    setSyncMessage("草稿已还原为当前微信展示版本，确认发布前不会影响微信端。");
   }
 
   function addAreaWithName(inputName) {
@@ -7607,14 +7667,19 @@ ${rentalText}`;
     const homeHeroConfig = getHomeHeroConfig(safeMiniProgramHomeConfig);
     const homeHeroImageSrc = getHomeHeroImageSrc(homeHeroConfig);
     const sortedHomeBannerItems = [...homeBannerItems].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-    const visibleHomeBannerItems = sortedHomeBannerItems.filter((item) => item.visible);
-    const activeHomeBanner = visibleHomeBannerItems[activeHomeBannerIndex] || visibleHomeBannerItems[0] || null;
     const activeBannerEditorItem = sortedHomeBannerItems[activeHomeBannerIndex] || sortedHomeBannerItems[0] || null;
     const inspirationItems = getMiniProgramInspirationItems(safeMiniProgramHomeConfig);
     const sortedInspirationItems = [...inspirationItems].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
     const selectedInspirationItem = selectedInspirationId
       ? sortedInspirationItems.find((item) => item.id === selectedInspirationId) || sortedInspirationItems[0] || null
       : sortedInspirationItems[0] || null;
+    const miniProgramPreviewView = miniDecorTab === "摆放灵感" ? "inspiration" : "home";
+    const miniProgramPrimaryConfig = miniProgramDraftPreviewFocused ? safeMiniProgramHomeConfig : safePublishedMiniProgramHomeConfig;
+    const miniProgramSecondaryConfig = miniProgramDraftPreviewFocused ? safePublishedMiniProgramHomeConfig : safeMiniProgramHomeConfig;
+    const miniProgramPrimaryLabel = miniProgramDraftPreviewFocused ? "草稿预览" : "微信当前版本";
+    const miniProgramSecondaryLabel = miniProgramDraftPreviewFocused ? "微信当前版本" : "草稿预览";
+    const miniProgramPrimaryHint = miniProgramDraftPreviewFocused ? "正在放大查看本次装修草稿" : "此刻微信端实际展示的页面";
+    const miniProgramSecondaryHint = miniProgramDraftPreviewFocused ? "点击切回线上版本" : "上传图片后会在这里即时变化";
     const inspirationProductOptions = safeMerchantProducts.filter((product) => product.productType === "sale" || product.productType === "rental");
     const activeStaffMembers = (Array.isArray(staffDirectory) ? staffDirectory : []).filter((member) => member.organizationId === currentMerchantUser?.organizationId);
     const assignableTeamMembers = activeStaffMembers.filter(canAssignStaff);
@@ -7697,9 +7762,18 @@ ${rentalText}`;
       );
     };
 
-    function MiniProgramPreviewSurface({ mode = "phone" }) {
-      const visibleBanners = visibleHomeBannerItems.length ? visibleHomeBannerItems : (activeHomeBanner ? [activeHomeBanner] : []);
-      const previewBanner = visibleBanners[activeHomeBannerIndex] || visibleBanners[0] || null;
+    function MiniProgramPreviewSurface({ mode = "phone", config = safeMiniProgramHomeConfig, bannerIndex = activeHomeBannerIndex, view = "home" }) {
+      const normalizedConfig = normalizeMiniProgramHomeConfig(config);
+      const previewHeroConfig = getHomeHeroConfig(normalizedConfig);
+      const previewHeroImageSrc = getHomeHeroImageSrc(previewHeroConfig);
+      const previewBannerItems = getHomeBannerItems(normalizedConfig).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+      const previewVisibleBanners = previewBannerItems.filter((item) => item.visible);
+      const visibleBanners = previewVisibleBanners.length ? previewVisibleBanners : previewBannerItems.slice(0, 1);
+      const previewBanner = visibleBanners[bannerIndex] || visibleBanners[0] || null;
+      const previewInspirationItems = getMiniProgramInspirationItems(normalizedConfig)
+        .filter((item) => item.status === "已上架")
+        .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
+        .slice(0, 4);
 
       return (
         <div className={`mini-program-live-preview ${mode}`}>
@@ -7713,52 +7787,90 @@ ${rentalText}`;
             <span>••• ◎</span>
           </div>
 
-          <section className={`mini-program-preview-hero ${homeHeroImageSrc ? "has-image" : "is-empty"}`}>
-            {homeHeroImageSrc ? <img src={homeHeroImageSrc} alt="首页主图预览" /> : <span>上传首页主图</span>}
-            {(homeHeroConfig.title || homeHeroConfig.subtitle) && (
-              <div>
-                {homeHeroConfig.title && <strong>{homeHeroConfig.title}</strong>}
-                {homeHeroConfig.subtitle && <em>{homeHeroConfig.subtitle}</em>}
+          {view === "inspiration" ? (
+            <main className="mini-program-preview-inspiration">
+              <section className={`mini-program-preview-inspiration-hero ${previewHeroImageSrc ? "has-image" : "is-empty"}`}>
+                {previewHeroImageSrc ? <img src={previewHeroImageSrc} alt="摆放灵感顶部图" /> : <span>发现植物之美</span>}
+                <div>
+                  <strong>发现植物之美</strong>
+                  <em>为每个空间找到合适的绿意</em>
+                </div>
+              </section>
+              <div className="mini-program-preview-filter-row">
+                {INSPIRATION_CATEGORIES.slice(0, 5).map((category) => (
+                  <span key={category} className={category === "全部" ? "active" : ""}>{category}</span>
+                ))}
               </div>
-            )}
-          </section>
-
-          <div className="mini-program-preview-entry-grid">
-            {MINI_PROGRAM_HOME_ENTRIES.map((entry) => (
-              <article key={entry}>
-                <strong>{entry}</strong>
-                <GardenIcons.Plant size={mode === "modal" ? 34 : 24} />
-              </article>
-            ))}
-          </div>
-
-          <div className="mini-program-preview-ad-wrap">
-            {previewBanner ? (
-              <article className={`mini-program-preview-ad ${previewBanner.layoutType}`}>
-                {previewBanner.images.map((image, imageIndex) => {
-                  const imageSrc = getHomeBannerImageSrc(image);
+              <div className="mini-program-preview-inspiration-grid">
+                {previewInspirationItems.map((item) => {
+                  const imageSrc = getInspirationImageSrc(item);
+                  const linkedProduct = inspirationProductOptions.find((product) => product.id === item.linkedProductId);
                   return (
-                    <div key={`${previewBanner.id}-large-preview-${imageIndex}`}>
-                      {imageSrc ? <img src={imageSrc} alt={`${previewBanner.title} ${imageIndex + 1}`} /> : <span>{image.placeholder || "广告图"}</span>}
-                    </div>
+                    <article key={item.id}>
+                      <div>
+                        {imageSrc ? <img src={imageSrc} alt={item.title} /> : <span>{linkedProduct?.image || "植"}</span>}
+                      </div>
+                      <strong>{item.title}</strong>
+                      <em>{item.tags.slice(0, 2).join(" · ") || item.category}</em>
+                    </article>
                   );
                 })}
-              </article>
-            ) : (
-              <article className="mini-program-preview-ad empty"><span>暂无广告位</span></article>
-            )}
-            <div className="mini-program-preview-dots">
-              {visibleBanners.map((item, index) => (
-                <i key={item.id} className={index === activeHomeBannerIndex ? "active" : ""} />
-              ))}
-            </div>
-          </div>
+              </div>
+            </main>
+          ) : (
+            <>
+              {previewHeroConfig.visible ? (
+                <section className={`mini-program-preview-hero ${previewHeroImageSrc ? "has-image" : "is-empty"}`}>
+                  {previewHeroImageSrc ? <img src={previewHeroImageSrc} alt="首页主图预览" /> : <span>上传首页主图</span>}
+                  {(previewHeroConfig.title || previewHeroConfig.subtitle) && (
+                    <div>
+                      {previewHeroConfig.title && <strong>{previewHeroConfig.title}</strong>}
+                      {previewHeroConfig.subtitle && <em>{previewHeroConfig.subtitle}</em>}
+                    </div>
+                  )}
+                </section>
+              ) : (
+                <section className="mini-program-preview-hero is-empty"><span>首页主图已隐藏</span></section>
+              )}
 
-          <div className="mini-program-preview-section-title">
-            <i>⌄</i>
-            <strong>空间与园林服务</strong>
-            <span>Garden Projects</span>
-          </div>
+              <div className="mini-program-preview-entry-grid">
+                {MINI_PROGRAM_HOME_ENTRIES.map((entry) => (
+                  <article key={entry}>
+                    <strong>{entry}</strong>
+                    <GardenIcons.Plant size={["modal", "large"].includes(mode) ? 34 : 24} />
+                  </article>
+                ))}
+              </div>
+
+              <div className="mini-program-preview-ad-wrap">
+                {previewBanner ? (
+                  <article className={`mini-program-preview-ad ${previewBanner.layoutType}`}>
+                    {previewBanner.images.map((image, imageIndex) => {
+                      const imageSrc = getHomeBannerImageSrc(image);
+                      return (
+                        <div key={`${previewBanner.id}-large-preview-${imageIndex}`}>
+                          {imageSrc ? <img src={imageSrc} alt={`${previewBanner.title} ${imageIndex + 1}`} /> : <span>{image.placeholder || "广告图"}</span>}
+                        </div>
+                      );
+                    })}
+                  </article>
+                ) : (
+                  <article className="mini-program-preview-ad empty"><span>暂无广告位</span></article>
+                )}
+                <div className="mini-program-preview-dots">
+                  {visibleBanners.map((item, index) => (
+                    <i key={item.id} className={index === bannerIndex ? "active" : ""} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="mini-program-preview-section-title">
+                <i>⌄</i>
+                <strong>空间与园林服务</strong>
+                <span>Garden Projects</span>
+              </div>
+            </>
+          )}
 
           <nav className="mini-program-preview-tabbar">
             {["首页", "案例", "服务", "订单", "我的"].map((item) => (
@@ -8824,131 +8936,57 @@ ${rentalText}`;
                 <div>
                   <p className="eyebrow">Mini Program Decoration</p>
                   <h2>小程序装修工作台</h2>
-                  <span>当前小程序：青庭花涧 · 最后保存：2025-05-23 23:46</span>
+                  <span>当前小程序：青庭花涧 · 最后发布：{miniProgramHomeState.publishedAt || "待发布"}</span>
                 </div>
                 <div className="mini-program-decor-actions">
-                  <button type="button" className="ghost-button" onClick={() => setShowMiniProgramPreview(true)}>
+                  <button type="button" className="ghost-button" onClick={() => setMiniProgramDraftPreviewFocused((focused) => !focused)}>
                     <GardenIcons.Image size={16} />
-                    <span>预览</span>
+                    <span>{miniProgramDraftPreviewFocused ? "查看当前版本" : "预览草稿"}</span>
                   </button>
                   <button type="button" className="ghost-button" onClick={resetMiniProgramHomeConfig}>
                     <GardenIcons.Refresh size={16} />
-                    <span>恢复默认</span>
+                    <span>还原当前版本</span>
                   </button>
                   <button type="button" className="primary-button" onClick={saveMiniProgramHomeConfig}>
                     <GardenIcons.Cloud size={16} />
-                    <span>保存装修</span>
+                    <span>确认发布</span>
                   </button>
                 </div>
               </div>
 
               <div className="mini-program-decor-layout">
                 <section className="mini-decor-preview-column">
-                  <div className={`mini-phone-shell ${miniDecorTab === "摆放灵感" ? "inspiration-mode" : ""}`}>
-                    <div className="mini-phone-device">
-                      <div className="mini-phone-top">
-                        <span>23:46</span>
-                        <i />
-                        <b>青庭花涧</b>
-                        <em>••• ◎</em>
+                  <div className={`mini-version-stack ${miniProgramDraftPreviewFocused ? "draft-focused" : "live-focused"}`}>
+                    <article className="mini-version-preview primary">
+                      <div className="mini-version-label">
+                        <strong>{miniProgramPrimaryLabel}</strong>
+                        <span>{miniProgramPrimaryHint}</span>
                       </div>
+                      <MiniProgramPreviewSurface
+                        mode="large"
+                        config={miniProgramPrimaryConfig}
+                        bannerIndex={activeHomeBannerIndex}
+                        view={miniProgramPreviewView}
+                      />
+                    </article>
 
-                      {miniDecorTab === "摆放灵感" ? (
-                        <div className="mini-phone-inspiration-screen">
-                          <section className="mini-inspiration-hero">
-                            {homeHeroImageSrc ? <img src={homeHeroImageSrc} alt="摆放灵感顶部图" /> : <span>发现植物之美</span>}
-                            <div>
-                              <strong>发现植物之美</strong>
-                              <em>为每个空间找到合适的绿意</em>
-                            </div>
-                          </section>
-                          <div className="mini-inspiration-filter">
-                            {INSPIRATION_CATEGORIES.slice(0, 5).map((category) => (
-                              <span key={category} className={category === "全部" ? "active" : ""}>{category}</span>
-                            ))}
-                          </div>
-                          <div className="mini-inspiration-card-grid">
-                            {sortedInspirationItems.filter((item) => item.status === "已上架").slice(0, 4).map((item) => {
-                              const imageSrc = getInspirationImageSrc(item);
-                              const linkedProduct = inspirationProductOptions.find((product) => product.id === item.linkedProductId);
-                              return (
-                                <article key={item.id}>
-                                  <div>
-                                    {imageSrc ? <img src={imageSrc} alt={item.title} /> : <span>{linkedProduct?.image || "植"}</span>}
-                                  </div>
-                                  <strong>{item.title}</strong>
-                                  <em>{item.tags.slice(0, 2).join(" · ") || item.category}</em>
-                                </article>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mini-phone-home-screen">
-                          {homeHeroConfig.visible ? (
-                            <section className={`mini-phone-hero ${homeHeroImageSrc ? "has-image" : "is-empty"}`}>
-                              {homeHeroImageSrc ? <img src={homeHeroImageSrc} alt="首页主图预览" /> : <span>上传首页主图</span>}
-                              {(homeHeroConfig.title || homeHeroConfig.subtitle) && (
-                                <div>
-                                  {homeHeroConfig.title && <strong>{homeHeroConfig.title}</strong>}
-                                  {homeHeroConfig.subtitle && <em>{homeHeroConfig.subtitle}</em>}
-                                </div>
-                              )}
-                            </section>
-                          ) : (
-                            <section className="mini-phone-hero is-empty"><span>首页主图已隐藏</span></section>
-                          )}
-
-                          <div className="mini-phone-entry-grid">
-                            {MINI_PROGRAM_HOME_ENTRIES.map((entry) => (
-                              <article key={entry}>
-                                <GardenIcons.Plant size={28} />
-                                <strong>{entry}</strong>
-                              </article>
-                            ))}
-                          </div>
-
-                          <div className="mini-phone-ad-window">
-                            {activeHomeBanner ? (
-                              <article className={`mini-phone-ad-card ${activeHomeBanner.layoutType}`}>
-                                {activeHomeBanner.images.map((image, imageIndex) => {
-                                  const imageSrc = getHomeBannerImageSrc(image);
-                                  return (
-                                    <div key={`${activeHomeBanner.id}-preview-${imageIndex}`}>
-                                      {imageSrc ? <img src={imageSrc} alt={`${activeHomeBanner.title} ${imageIndex + 1}`} /> : <span>{image.placeholder || "广告图"}</span>}
-                                    </div>
-                                  );
-                                })}
-                              </article>
-                            ) : (
-                              <article className="mini-phone-ad-card empty"><span>暂无广告位</span></article>
-                            )}
-                            <div className="mini-phone-dots">
-                              {(visibleHomeBannerItems.length ? visibleHomeBannerItems : [activeHomeBanner]).filter(Boolean).map((item, index) => (
-                                <i key={item.id} className={index === activeHomeBannerIndex ? "active" : ""} />
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="mini-phone-section-title">
-                            <i>⌄</i>
-                            <strong>空间与园林服务</strong>
-                            <span>Garden Projects</span>
-                          </div>
-                        </div>
-                      )}
-
-                      <nav className="mini-phone-tabbar">
-                        {["首页", "案例", "服务", "订单", "我的"].map((item) => (
-                          <span key={item} className={item === "首页" ? "active" : ""}>
-                            <GardenIcons.Plant size={17} />
-                            <b>{item}</b>
-                          </span>
-                        ))}
-                      </nav>
-                    </div>
+                    <button
+                      type="button"
+                      className="mini-version-preview secondary"
+                      onClick={() => setMiniProgramDraftPreviewFocused((focused) => !focused)}
+                    >
+                      <div className="mini-version-label">
+                        <strong>{miniProgramSecondaryLabel}</strong>
+                        <span>{miniProgramSecondaryHint}</span>
+                      </div>
+                      <MiniProgramPreviewSurface
+                        mode="compact"
+                        config={miniProgramSecondaryConfig}
+                        bannerIndex={activeHomeBannerIndex}
+                        view={miniProgramPreviewView}
+                      />
+                    </button>
                   </div>
-
                 </section>
 
                 <section className="mini-decor-editor">
@@ -9290,7 +9328,7 @@ ${rentalText}`;
                             >
                               {selectedInspirationItem.status === "已上架" ? "下架" : "上架"}
                             </button>
-                            <button className="primary-button" onClick={saveMiniProgramHomeConfig}>保存</button>
+                            <button className="primary-button" onClick={saveMiniProgramHomeConfig}>确认发布</button>
                           </div>
                         </aside>
                       )}
@@ -9299,21 +9337,6 @@ ${rentalText}`;
                 </section>
               </div>
 
-              {showMiniProgramPreview && (
-                <div className="mini-program-preview-mask" role="dialog" aria-modal="true" aria-label="小程序预览">
-                  <section className="mini-program-preview-dialog">
-                    <button type="button" className="mini-program-preview-close" aria-label="关闭预览" onClick={() => setShowMiniProgramPreview(false)}>
-                      <GardenIcons.Close size={18} />
-                    </button>
-                    <div className="mini-program-preview-dialog-head">
-                      <p className="eyebrow">Mini Program Preview</p>
-                      <h3>小程序首页预览</h3>
-                      <span>根据当前上传的首页主图和广告位即时生成。</span>
-                    </div>
-                    <MiniProgramPreviewSurface mode="modal" />
-                  </section>
-                </div>
-              )}
             </div>
           )}
 
