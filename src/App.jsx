@@ -4,9 +4,11 @@ import { AuthPage } from "./components/auth/AuthPage";
 import { GardenIcons } from "./GardenIcons";
 import { StaffMobile } from "./components/staff/StaffMobile";
 import { supabase } from "./lib/supabaseClient";
-import defaultHomeHeroImage from "./assets/hero.png";
-import miniProgramHomeReference from "./assets/visual/mini-program-home-reference.png";
-import sidebarAestheticSpaceCard from "./assets/visual/sidebar-aesthetic-space-card.png";
+import sidebarAestheticSpaceCard from "./assets/visual/sidebar-aesthetic-space-card-cropped.png";
+import miniProgramDefaultHero from "./assets/visual/mini-program-default-hero.png";
+import miniProgramDefaultAdGarden from "./assets/visual/mini-program-default-ad-garden.png";
+import miniProgramDefaultAdDesign from "./assets/visual/mini-program-default-ad-design.png";
+import miniProgramDefaultAdCare from "./assets/visual/mini-program-default-ad-care.png";
 import "./App.css";
 
 const SUPABASE_URL = "https://kvdxgyymlfnnurdigtkj.supabase.co";
@@ -22,6 +24,7 @@ const CUSTOMER_STORAGE_KEY = "green-rental-customers-v31";
 const PROJECT_INQUIRY_STORAGE_KEY = "green-rental-project-inquiries-v1";
 const MINI_PROGRAM_APPOINTMENT_STORAGE_KEY = "green-rental-mini-program-appointments-v1";
 const MINI_PROGRAM_HOME_STORAGE_KEY = "green-rental-mini-program-home-v1";
+const MINI_PROGRAM_HOME_STATE_VERSION = 2;
 const SERVICE_SETTINGS_STORAGE_KEY = "green-rental-service-settings-v1";
 const STAFF_DIRECTORY_STORAGE_KEY = "green-rental-staff-directory-v1";
 const STAFF_AVATAR_STORAGE_KEY = "green-rental-staff-avatar-v1";
@@ -35,7 +38,7 @@ const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "待执行", 
 const MERCHANT_STATUS_TABS = ["全部", ...ORDER_STATUS];
 const STAFF_TABS = ["待接单", "做方案", "执行中", "已完成"];
 const STAFF_APP_TABS = ["首页", "任务", "上报", "我的"];
-const MERCHANT_TABS = ["工作台", "订单管理", "团队成员", "执行监测", "商品与服务", "客户库", "项目线索", "小程序装修", "设置"];
+const MERCHANT_TABS = ["工作台", "订单管理", "团队成员", "执行监测", "商品与服务", "客户中心", "项目线索", "小程序装修", "设置"];
 const APP_PAGES = ["orders", "plan", "completeUpload", "archiveDetail", "serviceRecord"];
 
 function getAppShellMode() {
@@ -71,6 +74,7 @@ const SERVICE_TYPE_OPTIONS = [
 ];
 const PROJECT_INQUIRY_STATUS = ["待跟进", "已联系", "已转订单", "暂缓", "无效"];
 const MINI_PROGRAM_APPOINTMENT_STATUS = ["待确认", "已联系", "已转订单", "暂缓", "已取消"];
+const CUSTOMER_CENTER_VIEWS = ["全部客户", "微信会员", "线索客户", "已成交", "待合并"];
 const HOME_BANNER_LAYOUT_TYPES = [
   ["single", "单图横幅"],
   ["triple", "三图拼接"],
@@ -349,7 +353,7 @@ const defaultMiniProgramHomeConfig = {
       type: "hero",
       title: "首页主图",
       hero: {
-        imageUrl: "",
+        imageUrl: miniProgramDefaultHero,
         localPreviewUrl: "",
         title: "",
         subtitle: "",
@@ -364,34 +368,22 @@ const defaultMiniProgramHomeConfig = {
       title: "首页广告位",
       items: [
         {
-          id: "banner-garden-project",
-          title: "园林改造咨询",
-          layoutType: "single",
+          id: "banner-garden-life",
+          title: "空间与园林服务",
+          layoutType: "triple",
           images: [
             {
-              imageUrl: defaultHomeHeroImage,
+              imageUrl: miniProgramDefaultAdGarden,
               localPreviewUrl: "",
               placeholder: "园林场景",
             },
-          ],
-          linkType: "internal",
-          linkTarget: "garden_project",
-          visible: true,
-          sortOrder: 10,
-        },
-        {
-          id: "banner-space-inspiration",
-          title: "空间灵感",
-          layoutType: "triple",
-          images: [
-            { imageUrl: "", localPreviewUrl: "", placeholder: "花植空间" },
-            { imageUrl: "", localPreviewUrl: "", placeholder: "庭院空间" },
-            { imageUrl: "", localPreviewUrl: "", placeholder: "茶咖空间" },
+            { imageUrl: miniProgramDefaultAdDesign, localPreviewUrl: "", placeholder: "Design Planting Care" },
+            { imageUrl: miniProgramDefaultAdCare, localPreviewUrl: "", placeholder: "花植养护" },
           ],
           linkType: "none",
           linkTarget: "",
           visible: true,
-          sortOrder: 20,
+          sortOrder: 10,
         },
       ],
     },
@@ -632,6 +624,10 @@ function shouldHideCustomerPhoneForStaff(member = {}, order = {}) {
   if (["manager", "admin", "owner"].includes(role)) return false;
   if (!canStaffViewCustomerPhone(member)) return true;
   return Boolean(order?.assignedStaffType && order.assignedStaffType !== "internal");
+}
+
+function isPartnerExecutionStaff(member = {}, order = {}) {
+  return getStaffEmployeeType(member) === "partner" || order?.assignedStaffType === "partner";
 }
 
 function getStaffAvatar(member = {}) {
@@ -1052,9 +1048,16 @@ function normalizeProjectInquiries(data) {
     phone: item?.phone || "",
     address: item?.address || "",
     projectType: item?.projectType || "园林改造咨询",
+    contactTime: item?.contactTime || item?.availableTime || item?.preferredContactTime || "工作日 10:00-18:00 / 微信联系优先",
     areaSize: item?.areaSize || "待确认",
     budgetRange: item?.budgetRange || "待确认",
     stylePreference: item?.stylePreference || "待确认",
+    serviceNeeds: Array.isArray(item?.serviceNeeds)
+      ? item.serviceNeeds
+      : String(item?.serviceNeeds || item?.needs || "先咨询沟通")
+          .split(/[,，、]/)
+          .map((tag) => tag.trim())
+          .filter(Boolean),
     expectedTime: item?.expectedTime || "待确认",
     photos: Array.isArray(item?.photos) ? item.photos : [],
     note: item?.note || "",
@@ -1199,9 +1202,11 @@ function normalizeHomeBannerItem(item, index = 0) {
 
 function normalizeHomeHeroConfig(hero = {}) {
   const defaults = defaultMiniProgramHomeConfig.homeModules.find((module) => module.type === "hero")?.hero || {};
+  const hasImageUrl = Object.prototype.hasOwnProperty.call(hero || {}, "imageUrl");
+  const hasLocalPreviewUrl = Object.prototype.hasOwnProperty.call(hero || {}, "localPreviewUrl");
   return {
-    imageUrl: hero?.imageUrl || defaults.imageUrl || "",
-    localPreviewUrl: hero?.localPreviewUrl || defaults.localPreviewUrl || "",
+    imageUrl: hasImageUrl ? hero?.imageUrl || "" : defaults.imageUrl || "",
+    localPreviewUrl: hasLocalPreviewUrl ? hero?.localPreviewUrl || "" : defaults.localPreviewUrl || "",
     title: hero?.title ?? defaults.title ?? "",
     subtitle: hero?.subtitle ?? defaults.subtitle ?? "",
     visible: hero?.visible ?? defaults.visible ?? true,
@@ -1320,27 +1325,96 @@ function getInspirationTagText(item) {
   return Array.isArray(item?.tags) ? item.tags.join("，") : "";
 }
 
-function loadMiniProgramHomeConfigFromLocalStore() {
+function createEmptyMiniProgramHomeDraftConfig() {
+  const base = normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig);
+  const homeModules = base.homeModules.map((module) => {
+    if (module.type === "hero") {
+      return {
+        ...module,
+        hero: normalizeHomeHeroConfig({
+          ...module.hero,
+          imageUrl: "",
+          localPreviewUrl: "",
+          title: "",
+          subtitle: "",
+        }),
+      };
+    }
+
+    if (module.type === "banner") {
+      return {
+        ...module,
+        items: module.items.map((item, index) => normalizeHomeBannerItem({
+          ...item,
+          images: Array.from({ length: getHomeBannerImageCount(item.layoutType) }, (_, imageIndex) => ({
+            imageUrl: "",
+            localPreviewUrl: "",
+            placeholder: item.images?.[imageIndex]?.placeholder || `广告图 ${imageIndex + 1}`,
+          })),
+          visible: index === 0 ? true : item.visible,
+        }, index)),
+      };
+    }
+
+    return module;
+  });
+
+  return normalizeMiniProgramHomeConfig({ ...base, homeModules });
+}
+
+function loadMiniProgramHomeStateFromLocalStore() {
   try {
     const raw = localStorage.getItem(MINI_PROGRAM_HOME_STORAGE_KEY);
-    if (!raw) return normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig);
+    if (!raw) {
+      return {
+        publishedConfig: normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig),
+        draftConfig: createEmptyMiniProgramHomeDraftConfig(),
+        publishedAt: "",
+        draftSavedAt: "",
+      };
+    }
+
     const parsed = JSON.parse(raw);
-    return normalizeMiniProgramHomeConfig(parsed?.miniProgramHomeConfig || parsed);
+    const hasVersionedPublishedState =
+      parsed?.homeDecorStateVersion === MINI_PROGRAM_HOME_STATE_VERSION &&
+      parsed?.publishedMiniProgramHomeConfig;
+    const publishedSource = hasVersionedPublishedState
+      ? parsed.publishedMiniProgramHomeConfig
+      : defaultMiniProgramHomeConfig;
+    const draftSource = hasVersionedPublishedState
+      ? parsed?.draftMiniProgramHomeConfig || createEmptyMiniProgramHomeDraftConfig()
+      : createEmptyMiniProgramHomeDraftConfig();
+
+    return {
+      publishedConfig: normalizeMiniProgramHomeConfig(publishedSource),
+      draftConfig: normalizeMiniProgramHomeConfig(draftSource),
+      publishedAt: hasVersionedPublishedState ? parsed?.publishedAt || "" : "",
+      draftSavedAt: hasVersionedPublishedState ? parsed?.draftSavedAt || "" : "",
+    };
   } catch (error) {
-    console.error("读取小程序首页配置失败：", error);
-    return normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig);
+    console.error("读取小程序首页装修状态失败：", error);
+    return {
+      publishedConfig: normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig),
+      draftConfig: createEmptyMiniProgramHomeDraftConfig(),
+      publishedAt: "",
+      draftSavedAt: "",
+    };
   }
 }
 
-function persistMiniProgramHomeConfigToLocalStore(config) {
+function persistMiniProgramHomeStateToLocalStore(state) {
   safeSetLocalStorage(
     MINI_PROGRAM_HOME_STORAGE_KEY,
     JSON.stringify({
       source: "localStorage",
+      homeDecorStateVersion: MINI_PROGRAM_HOME_STATE_VERSION,
       savedAt: nowText(),
-      miniProgramHomeConfig: normalizeMiniProgramHomeConfig(config),
+      publishedAt: state?.publishedAt || "",
+      draftSavedAt: state?.draftSavedAt || "",
+      publishedMiniProgramHomeConfig: normalizeMiniProgramHomeConfig(state?.publishedConfig),
+      draftMiniProgramHomeConfig: normalizeMiniProgramHomeConfig(state?.draftConfig),
     }),
-    "小程序首页配置"
+    "小程序首页装修状态"
   );
 }
 
@@ -2016,6 +2090,19 @@ function normalizeCustomers(data) {
       areaSize: customer.areaSize || "",
       note: customer.note || "",
       tagsText: customer.tagsText || "办公室,长期租赁",
+      sourceTags: Array.isArray(customer.sourceTags)
+        ? customer.sourceTags
+        : String(customer.sourceTags || customer.source || "")
+            .split(/[,，、]/)
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+      leadSource: customer.leadSource || customer.source || "",
+      miniProgramProfile: customer.miniProgramProfile && typeof customer.miniProgramProfile === "object"
+        ? customer.miniProgramProfile
+        : null,
+      duplicateHint: customer.duplicateHint || "",
+      orderCount: Number(customer.orderCount || 0),
+      lastSource: customer.lastSource || customer.source || "",
       createdAt: customer.createdAt || nowText(),
       updatedAt: customer.updatedAt || nowText(),
     }));
@@ -2051,6 +2138,11 @@ function mergeCustomers(currentCustomers, orders) {
     if (!order?.customerName) return;
     const stableKey = order.customerId || `auto-${order.phone || order.customerName}-${order.address || ""}`;
     const existed = map.get(stableKey);
+    const sourceTags = new Set([
+      ...(Array.isArray(existed?.sourceTags) ? existed.sourceTags : []),
+      order.source || "订单沉淀",
+    ].filter(Boolean));
+    const orderCount = Number(existed?.orderCount || 0) + 1;
     map.set(stableKey, {
       id: stableKey,
       name: order.customerName,
@@ -2060,12 +2152,59 @@ function mergeCustomers(currentCustomers, orders) {
       areaSize: order.areaSize || existed?.areaSize || "",
       note: existed?.note || "",
       tagsText: Array.isArray(order.tags) ? order.tags.join(",") : existed?.tagsText || "办公室,长期租赁",
+      sourceTags: Array.from(sourceTags),
+      leadSource: existed?.leadSource || order.source || "订单沉淀",
+      lastSource: order.source || existed?.lastSource || "订单沉淀",
+      miniProgramProfile: existed?.miniProgramProfile || null,
+      duplicateHint: existed?.duplicateHint || "",
+      orderCount,
       createdAt: existed?.createdAt || order.dispatchTime || nowText(),
       updatedAt: nowText(),
     });
   });
 
   return Array.from(map.values());
+}
+
+function hasMiniProgramIdentity(customer = {}) {
+  return Boolean(
+    customer?.miniProgramProfile?.openId ||
+    customer?.miniProgramProfile?.unionId ||
+    customer?.miniProgramProfile?.nickName ||
+    (Array.isArray(customer?.sourceTags) && customer.sourceTags.some((tag) => /小程序|微信|mini/i.test(tag)))
+  );
+}
+
+function getCustomerSourceTags(customer = {}) {
+  const tags = new Set(Array.isArray(customer.sourceTags) ? customer.sourceTags.filter(Boolean) : []);
+  if (customer.leadSource) tags.add(customer.leadSource);
+  if (customer.lastSource) tags.add(customer.lastSource);
+  if (hasMiniProgramIdentity(customer)) tags.add("微信会员");
+  if (!tags.size) tags.add("本地客户");
+  return Array.from(tags).slice(0, 4);
+}
+
+function isLeadCustomer(customer = {}) {
+  const text = getCustomerSourceTags(customer).join(" ") + " " + (customer.tagsText || "");
+  return /预约|线索|咨询|客户预约|小程序|招商|互联网|表单/.test(text);
+}
+
+function isClosedCustomer(customer = {}) {
+  return Number(customer.orderCount || 0) > 0;
+}
+
+function getCustomerMergeHint(customer = {}, allCustomers = []) {
+  if (customer.duplicateHint) return customer.duplicateHint;
+  const phone = String(customer.phone || "").trim();
+  const name = String(customer.name || "").trim();
+  const address = String(customer.address || "").trim();
+  const possible = allCustomers.find((item) => {
+    if (!item || item.id === customer.id) return false;
+    const samePhone = phone && item.phone && String(item.phone).trim() === phone;
+    const sameNameAddress = name && address && item.name === name && item.address === address;
+    return samePhone || sameNameAddress;
+  });
+  return possible ? `疑似与「${possible.name}」重复` : "";
 }
 
 async function fetchOrdersFromCloud() {
@@ -2557,7 +2696,7 @@ function App() {
   const [merchantProductCategories, setMerchantProductCategories] = useState(() => loadProductCategoriesFromLocalStore());
   const [projectInquiries, setProjectInquiries] = useState(() => loadProjectInquiriesFromLocalStore());
   const [miniProgramAppointments, setMiniProgramAppointments] = useState(() => loadMiniProgramAppointmentsFromLocalStore());
-  const [miniProgramHomeConfig, setMiniProgramHomeConfig] = useState(() => loadMiniProgramHomeConfigFromLocalStore());
+  const [miniProgramHomeState, setMiniProgramHomeState] = useState(() => loadMiniProgramHomeStateFromLocalStore());
   const [merchantServiceSettings, setMerchantServiceSettings] = useState(() => loadServiceSettingsFromLocalStore());
   const [merchantCustomers, setMerchantCustomers] = useState(() => loadCustomersFromLocalStore());
   const [staffDirectory, setStaffDirectory] = useState(() => loadStaffDirectoryFromLocalStore());
@@ -2570,6 +2709,7 @@ function App() {
   const [projectInquiryFollowUpDraft, setProjectInquiryFollowUpDraft] = useState("");
   const [selectedMiniProgramAppointmentId, setSelectedMiniProgramAppointmentId] = useState(null);
   const [miniProgramAppointmentNoteDraft, setMiniProgramAppointmentNoteDraft] = useState("");
+  const [projectInquiryPhotoPreview, setProjectInquiryPhotoPreview] = useState(null);
   const [merchantViewingOrder, setMerchantViewingOrder] = useState(null);
   const [editingStaffId, setEditingStaffId] = useState(null);
   const [editingStaffForm, setEditingStaffForm] = useState(null);
@@ -2604,9 +2744,11 @@ function App() {
   const [productSearchText, setProductSearchText] = useState("");
   const [productCategoryFilter, setProductCategoryFilter] = useState("全部");
   const [customerSearchText, setCustomerSearchText] = useState("");
+  const [customerCenterView, setCustomerCenterView] = useState("全部客户");
   const [miniDecorTab, setMiniDecorTab] = useState("首页主图");
   const [activeHomeBannerIndex, setActiveHomeBannerIndex] = useState(0);
   const [selectedInspirationId, setSelectedInspirationId] = useState("");
+  const [miniProgramDraftPreviewFocused, setMiniProgramDraftPreviewFocused] = useState(false);
   const [isCreateOrderInputFocused, setIsCreateOrderInputFocused] = useState(false);
 
   const [showDetailBlock, setShowDetailBlock] = useState(false);
@@ -2638,6 +2780,7 @@ function App() {
     areaNote: "",
     merchantNote: "",
     retailNeedsMaintenance: false,
+    saleItems: [],
     maintenancePackage: "标准养护",
     maintenanceCycle: "6 个月",
     maintenanceFrequency: "每月 2 次",
@@ -2714,9 +2857,25 @@ function App() {
   const safeMerchantProductCategories = normalizeProductCategories(merchantProductCategories);
   const safeProjectInquiries = normalizeProjectInquiries(projectInquiries);
   const safeMiniProgramAppointments = normalizeMiniProgramAppointments(miniProgramAppointments);
+  const publishedMiniProgramHomeConfig = miniProgramHomeState?.publishedConfig || defaultMiniProgramHomeConfig;
+  const miniProgramHomeConfig = miniProgramHomeState?.draftConfig || createEmptyMiniProgramHomeDraftConfig();
   const safeMiniProgramHomeConfig = normalizeMiniProgramHomeConfig(miniProgramHomeConfig);
+  const safePublishedMiniProgramHomeConfig = normalizeMiniProgramHomeConfig(publishedMiniProgramHomeConfig);
   const safeMerchantServiceSettings = normalizeServiceSettings(merchantServiceSettings);
   const safeMerchantCustomers = Array.isArray(merchantCustomers) ? merchantCustomers : [];
+
+  function setMiniProgramHomeConfig(updater) {
+    setMiniProgramHomeState((prevState) => {
+      const currentDraft = normalizeMiniProgramHomeConfig(prevState?.draftConfig || createEmptyMiniProgramHomeDraftConfig());
+      const nextDraft = typeof updater === "function" ? updater(currentDraft) : updater;
+      return {
+        ...prevState,
+        draftConfig: normalizeMiniProgramHomeConfig(nextDraft),
+        draftSavedAt: nowText(),
+      };
+    });
+  }
+
   const currentOrder = safeOrders.find((order) => String(order.id) === String(currentOrderId)) || null;
   const currentPlan =
     currentOrder?.plan ||
@@ -2859,14 +3018,31 @@ function App() {
 
   const filteredCustomers = useMemo(() => {
     const keyword = customerSearchText.trim();
-    if (!keyword) return allCustomers;
-    return allCustomers.filter((customer) =>
-      [customer.name, customer.contactName, customer.phone, customer.address, customer.note, customer.tagsText]
+    return allCustomers.filter((customer) => {
+      const mergeHint = getCustomerMergeHint(customer, allCustomers);
+      const matchesView =
+        customerCenterView === "全部客户" ||
+        (customerCenterView === "微信会员" && hasMiniProgramIdentity(customer)) ||
+        (customerCenterView === "线索客户" && isLeadCustomer(customer)) ||
+        (customerCenterView === "已成交" && isClosedCustomer(customer)) ||
+        (customerCenterView === "待合并" && Boolean(mergeHint));
+
+      if (!matchesView) return false;
+      if (!keyword) return true;
+      return [customer.name, customer.contactName, customer.phone, customer.address, customer.note, customer.tagsText, ...getCustomerSourceTags(customer), mergeHint]
         .filter(Boolean)
         .join(" ")
-        .includes(keyword)
-    );
-  }, [allCustomers, customerSearchText]);
+        .includes(keyword);
+    });
+  }, [allCustomers, customerSearchText, customerCenterView]);
+
+  const customerCenterCounts = useMemo(() => ({
+    "全部客户": allCustomers.length,
+    "微信会员": allCustomers.filter(hasMiniProgramIdentity).length,
+    "线索客户": allCustomers.filter(isLeadCustomer).length,
+    "已成交": allCustomers.filter(isClosedCustomer).length,
+    "待合并": allCustomers.filter((customer) => Boolean(getCustomerMergeHint(customer, allCustomers))).length,
+  }), [allCustomers]);
 
   const customerPlanId = new URLSearchParams(window.location.search).get("planId");
   const customerViewOrder = safeOrders.find((order) => order.plan?.id === customerPlanId) || null;
@@ -2912,8 +3088,8 @@ function App() {
   }, [miniProgramAppointments]);
 
   useEffect(() => {
-    persistMiniProgramHomeConfigToLocalStore(miniProgramHomeConfig);
-  }, [miniProgramHomeConfig]);
+    persistMiniProgramHomeStateToLocalStore(miniProgramHomeState);
+  }, [miniProgramHomeState]);
 
   useEffect(() => {
     persistServiceSettingsToLocalStore(merchantServiceSettings);
@@ -3954,17 +4130,19 @@ function App() {
 
   function acceptOrderAndCreatePlan() {
     if (!selectedOrder) return;
+    const partnerExecutionOnly = isPartnerExecutionStaff(currentStaff, selectedOrder);
 
     updateOrder(
       selectedOrder.id,
       (order) => {
         const shouldClaimPublicOrder = !order.assignedStaffId || ["public", "all"].includes(String(order.assignedStaffId));
+        const isPartnerOrder = isPartnerExecutionStaff(currentStaff, order);
         const next = {
           ...order,
-          status: "配置中",
-          planStatus: "配置中",
-          merchantConfirmStatus: "未提交",
-          executionStatus: "已联系",
+          status: isPartnerOrder ? "待执行" : "配置中",
+          planStatus: isPartnerOrder ? "商户已预配" : "配置中",
+          merchantConfirmStatus: isPartnerOrder ? "已确认" : "未提交",
+          executionStatus: isPartnerOrder ? "待执行" : "已联系",
           assignedStaffId: shouldClaimPublicOrder ? currentStaff?.id || "" : order.assignedStaffId,
           assignedStaffName: shouldClaimPublicOrder ? currentStaff?.name || order.assignedStaffName || "" : order.assignedStaffName,
           assignedStaffEmail: shouldClaimPublicOrder ? currentStaff?.email || order.assignedStaffEmail || "" : order.assignedStaffEmail,
@@ -3975,16 +4153,16 @@ function App() {
           plan: order.plan || createEmptyPlan(order, planType),
         };
 
-        return addTimeline(next, "员工确认接单并创建方案");
+        return addTimeline(next, isPartnerOrder ? "外派执行方确认接单，进入待执行" : "员工确认接单并创建方案");
       },
-      "接单已同步"
+      partnerExecutionOnly ? "外派接单已同步" : "接单已同步"
     );
 
     setCurrentOrderId(selectedOrder.id);
     setCurrentPage("plan");
     setSelectedOrder(null);
     setPlanType("租赁方案");
-    setActiveStaffTab("做方案");
+    setActiveStaffTab(partnerExecutionOnly ? "执行中" : "做方案");
   }
 
   function openPlanForOrder(order) {
@@ -4052,6 +4230,46 @@ function App() {
     setShowCreateOrderSheet(true);
   }
 
+  function openMiniProgramRentalIntentChannel() {
+    const firstStaff = assignableStaffMembers[0] || activeStaffMembers.find(canAssignStaff) || getDefaultAssignedStaff();
+
+    setNewOrderForm((form) => ({
+      ...form,
+      customerName: "",
+      contactName: "",
+      phone: "",
+      areaSize: "",
+      expectedDate: "",
+      address: "",
+      description: "客户小程序租赁意向待接入。晚间接入 API 后，将由客户提交的面积、场景、预算和期望时间自动填充到这里。",
+      tagsText: "小程序租赁意向,租赁,待确认",
+      source: "客户预约",
+      serviceType: "租赁",
+      leaseMonths: "12",
+      paymentMethod: "月付",
+      needDeposit: true,
+      budget: "",
+      plannedPlantCount: "",
+      areaNote: "",
+      merchantNote: "小程序租赁意向通道已预留，当前先由商户电话确认后派单。",
+      retailNeedsMaintenance: false,
+      saleItems: [],
+      assignedStaffId: firstStaff?.id || "",
+      communicationQrUrl: "",
+      sourceInquiryId: "",
+      sourceAppointmentId: "",
+    }));
+    setMerchantTab("订单管理");
+    setIsCreateOrderInputFocused(false);
+    setShowCreateOrderSheet(true);
+  }
+
+  function openMiniProgramMemberChannel() {
+    setMerchantTab("客户中心");
+    setCustomerCenterView("微信会员");
+    setCustomerSearchText("");
+  }
+
   function updateProjectInquiry(inquiryId, patch) {
     setProjectInquiries((prev) =>
       normalizeProjectInquiries(prev).map((item) =>
@@ -4076,11 +4294,16 @@ function App() {
 
   function buildProjectInquiryDescription(inquiry) {
     return [
+      `联系人：${inquiry.contactName || "待确认"}`,
+      `联系电话：${inquiry.phone || "待确认"}`,
+      `方便联系时间：${inquiry.contactTime || "待确认"}`,
       `项目类型：${inquiry.projectType || "园林改造咨询"}`,
       `面积范围：${inquiry.areaSize || "待确认"}`,
       `预算范围：${inquiry.budgetRange || "待确认"}`,
       `期望风格：${inquiry.stylePreference || "待确认"}`,
       `期望完成时间：${inquiry.expectedTime || "待确认"}`,
+      Array.isArray(inquiry.serviceNeeds) && inquiry.serviceNeeds.length ? `服务需求：${inquiry.serviceNeeds.join("、")}` : "",
+      safePhotos(inquiry.photos).length ? `现场照片：${safePhotos(inquiry.photos).length} 张，详见项目线索详情。` : "现场照片：客户暂未上传",
       inquiry.note ? `客户备注：${inquiry.note}` : "",
     ].filter(Boolean).join("\n");
   }
@@ -4185,6 +4408,7 @@ function App() {
       areaNote: appointment.serviceArea || appointment.packageName || "养护服务",
       merchantNote,
       retailNeedsMaintenance: false,
+      saleItems: [],
       maintenancePackage: selectedMaintenancePackage.name,
       maintenanceCycle: selectedMaintenancePackage.cycle || "按预约确认",
       maintenanceFrequency: selectedMaintenancePackage.frequency || "按预约确认",
@@ -4355,10 +4579,30 @@ function App() {
 
   function saveMiniProgramHomeConfig() {
     const normalized = normalizeMiniProgramHomeConfig(miniProgramHomeConfig);
-    setMiniProgramHomeConfig(normalized);
-    persistMiniProgramHomeConfigToLocalStore(normalized);
-    setSyncMessage("小程序首页装修配置已保存到当前浏览器。");
-    alert("小程序首页装修配置已保存到当前浏览器。");
+    const publishedAt = nowText();
+    const nextState = {
+      publishedConfig: normalized,
+      draftConfig: createEmptyMiniProgramHomeDraftConfig(),
+      publishedAt,
+      draftSavedAt: "",
+    };
+    setMiniProgramHomeState(nextState);
+    persistMiniProgramHomeStateToLocalStore(nextState);
+    setMiniProgramDraftPreviewFocused(false);
+    setMiniDecorTab("首页主图");
+    setActiveHomeBannerIndex(0);
+    setSelectedInspirationId("");
+    setSyncMessage(`小程序装修已确认发布：${publishedAt}`);
+    alert("小程序装修已确认发布；晚间接入 API 后这里会发送到微信端。");
+  }
+
+  function resetMiniProgramHomeConfig() {
+    setMiniProgramHomeConfig(safePublishedMiniProgramHomeConfig);
+    setMiniProgramDraftPreviewFocused(false);
+    setMiniDecorTab("首页主图");
+    setActiveHomeBannerIndex(0);
+    setSelectedInspirationId("");
+    setSyncMessage("草稿已还原为当前微信展示版本，确认发布前不会影响微信端。");
   }
 
   function addAreaWithName(inputName) {
@@ -4831,6 +5075,16 @@ function App() {
     const selectedMaintenancePackage =
       safeMerchantMaintenancePackages.find((item) => item.name === (newOrderForm.maintenancePackage || "标准养护")) ||
       getMaintenancePackage(newOrderForm.maintenancePackage || "标准养护");
+    const saleDraftItems = Array.isArray(newOrderForm.saleItems)
+      ? newOrderForm.saleItems
+          .filter((item) => Number(item.quantity || 0) > 0)
+          .map((item) => ({
+            ...item,
+            quantity: Number(item.quantity || 1),
+            pricePerDay: Number(item.pricePerDay || item.unitPrice || item.salePrice || 0),
+            unitPrice: Number(item.unitPrice || item.pricePerDay || item.salePrice || 0),
+          }))
+      : [];
     const planDraft = {
       ...createEmptyPlan({ id: orderId }, planType),
       leaseMonths: Number(newOrderForm.leaseMonths || 12),
@@ -4851,9 +5105,11 @@ function App() {
         newOrderForm.areaNote.trim()
       ),
       merchantDraftNote: newOrderForm.merchantNote || "",
-      areas: newOrderForm.areaNote.trim()
-        ? [{ id: `area-${orderId}`, name: newOrderForm.areaNote.trim(), items: [] }]
-        : [],
+      areas: serviceType === "售卖" && saleDraftItems.length
+        ? [{ id: `area-${orderId}-sale`, name: newOrderForm.areaNote.trim() || "商品清单", items: saleDraftItems }]
+        : newOrderForm.areaNote.trim()
+          ? [{ id: `area-${orderId}`, name: newOrderForm.areaNote.trim(), items: [] }]
+          : [],
     };
 
     const newOrder = ensureOrderDefaults({
@@ -4940,6 +5196,7 @@ function App() {
       areaNote: "",
       merchantNote: "",
       retailNeedsMaintenance: false,
+      saleItems: [],
       maintenancePackage: "标准养护",
       maintenanceCycle: "6 个月",
       maintenanceFrequency: "每月 2 次",
@@ -5252,6 +5509,12 @@ function App() {
       areaSize: newCustomerForm.areaSize.trim(),
       note: newCustomerForm.note.trim(),
       tagsText: newCustomerForm.tagsText.trim() || "办公室,长期租赁",
+      sourceTags: Array.isArray(newCustomerForm.sourceTags) && newCustomerForm.sourceTags.length ? newCustomerForm.sourceTags : ["商户手工录入"],
+      leadSource: newCustomerForm.leadSource || "商户手工录入",
+      lastSource: newCustomerForm.lastSource || "商户手工录入",
+      miniProgramProfile: newCustomerForm.miniProgramProfile || null,
+      duplicateHint: newCustomerForm.duplicateHint || "",
+      orderCount: Number(newCustomerForm.orderCount || 0),
       createdAt: newCustomerForm.createdAt || nowText(),
       updatedAt: nowText(),
     };
@@ -5266,7 +5529,7 @@ function App() {
 
     resetNewCustomerForm();
     setShowCreateCustomerSheet(false);
-    setMerchantTab("客户库");
+    setMerchantTab("客户中心");
   }
 
   function openEditCustomer(customer) {
@@ -5279,6 +5542,12 @@ function App() {
       areaSize: customer.areaSize || "",
       note: customer.note || "",
       tagsText: customer.tagsText || "办公室,长期租赁",
+      sourceTags: Array.isArray(customer.sourceTags) ? customer.sourceTags : [],
+      leadSource: customer.leadSource || "",
+      lastSource: customer.lastSource || "",
+      miniProgramProfile: customer.miniProgramProfile || null,
+      duplicateHint: customer.duplicateHint || "",
+      orderCount: Number(customer.orderCount || 0),
       createdAt: customer.createdAt || nowText(),
     });
     setShowCreateCustomerSheet(true);
@@ -6291,6 +6560,7 @@ ${rentalText}`;
     const isRetailPlan = safeCurrentPlanType === "售卖订单";
     const isMaintenancePlan = safeCurrentPlanType === "养护服务";
     const isRentalMaterialPlan = ["租赁方案", "临时摆场"].includes(safeCurrentPlanType);
+    const partnerExecutionOnly = isPartnerExecutionStaff(currentStaff, currentOrder);
     const currentExecutionStage = getOrderExecutionStage(currentOrder);
     const currentContactText = `${currentOrder.contactName || "-"}${currentOrder.phone ? `｜${currentOrder.phone}` : ""}`;
     const hasUsefulPrefillText = (value) => {
@@ -6428,6 +6698,26 @@ ${rentalText}`;
           </div>
         </section>
 
+        {partnerExecutionOnly && (
+          <section style={cardStyle} className="partner-execution-card">
+            <strong style={{ color: "#182536" }}>外派执行模式</strong>
+            <p style={{ margin: "8px 0 12px", color: "#6b7788" }}>该任务由商户端预配方案，外部执行方只查看清单、联系客户并完成配送 / 上门执行。</p>
+            {selectedRows.length === 0 ? (
+              <div className="empty-card"><p>暂无商户预配清单</p><span>晚间接入数据或商户补充商品后，这里会显示执行清单。</span></div>
+            ) : (
+              <div className="partner-execution-list">
+                {selectedRows.map((item) => (
+                  <div key={`${item.areaId}-${item.productId}`}>
+                    <span>{item.name}</span>
+                    <strong>{item.quantity} 件</strong>
+                    <em>¥{money(Number(item.pricePerDay || item.unitPrice || 0))}</em>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         {currentExecutionStage === "待执行" && (
           <section style={cardStyle}>
             <strong style={{ color: "#182536" }}>商户已确认方案</strong>
@@ -6455,7 +6745,7 @@ ${rentalText}`;
           </section>
         )}
 
-        {isRentalMaterialPlan && (
+        {isRentalMaterialPlan && !partnerExecutionOnly && (
         <section style={cardStyle}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid #e7edf4", marginBottom: 12 }}>
             <button style={tabStyle(true)}>植物</button>
@@ -6519,7 +6809,7 @@ ${rentalText}`;
         </section>
         )}
 
-        {isRetailPlan && (
+        {isRetailPlan && !partnerExecutionOnly && (
           <section style={cardStyle}>
             <div className="section-title-row">
               <div>
@@ -6598,7 +6888,7 @@ ${rentalText}`;
           </section>
         )}
 
-        {isMaintenancePlan && (
+        {isMaintenancePlan && !partnerExecutionOnly && (
           <section style={cardStyle} className="maintenance-plan-card">
             <div className="section-title-row">
               <div>
@@ -6704,7 +6994,7 @@ ${rentalText}`;
           </section>
         )}
 
-        {!isMaintenancePlan && (
+        {!isMaintenancePlan && !partnerExecutionOnly && (
         <section style={{
           background: "#fff",
           border: "1px solid #e4eaf2",
@@ -6912,16 +7202,17 @@ ${rentalText}`;
             style={{ 
               border: 0, 
               borderRadius: 10, 
-              background: "#405a38", 
+              background: partnerExecutionOnly ? "#d7ded0" : "#405a38", 
               color: "#fff", 
               fontWeight: 900, 
               padding: "13px 10px", 
               fontSize: 15, 
               boxShadow: "0 8px 18px rgba(47,111,179,.22)" 
             }}
+            disabled={partnerExecutionOnly}
             onClick={() => setShowSubmitSheet(true)}
           >
-            提交方案
+            {partnerExecutionOnly ? "方案已锁定" : "提交方案"}
           </button>
         </nav>
       
@@ -7386,7 +7677,7 @@ ${rentalText}`;
       { key: "团队成员", Icon: GardenIcons.Team },
       { key: "执行监测", Icon: GardenIcons.Monitor },
       { key: "商品与服务", Icon: GardenIcons.Products },
-      { key: "客户库", Icon: GardenIcons.Customers },
+      { key: "客户中心", Icon: GardenIcons.Customers },
       { key: "项目线索", Icon: GardenIcons.ProjectLeads },
       { key: "小程序装修", Icon: GardenIcons.Image },
       { key: "设置", Icon: GardenIcons.Settings },
@@ -7408,14 +7699,19 @@ ${rentalText}`;
     const homeHeroConfig = getHomeHeroConfig(safeMiniProgramHomeConfig);
     const homeHeroImageSrc = getHomeHeroImageSrc(homeHeroConfig);
     const sortedHomeBannerItems = [...homeBannerItems].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-    const visibleHomeBannerItems = sortedHomeBannerItems.filter((item) => item.visible);
-    const activeHomeBanner = visibleHomeBannerItems[activeHomeBannerIndex] || visibleHomeBannerItems[0] || null;
     const activeBannerEditorItem = sortedHomeBannerItems[activeHomeBannerIndex] || sortedHomeBannerItems[0] || null;
     const inspirationItems = getMiniProgramInspirationItems(safeMiniProgramHomeConfig);
     const sortedInspirationItems = [...inspirationItems].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
     const selectedInspirationItem = selectedInspirationId
       ? sortedInspirationItems.find((item) => item.id === selectedInspirationId) || sortedInspirationItems[0] || null
       : sortedInspirationItems[0] || null;
+    const miniProgramPreviewView = miniDecorTab === "摆放灵感" ? "inspiration" : "home";
+    const miniProgramPrimaryConfig = miniProgramDraftPreviewFocused ? safeMiniProgramHomeConfig : safePublishedMiniProgramHomeConfig;
+    const miniProgramSecondaryConfig = miniProgramDraftPreviewFocused ? safePublishedMiniProgramHomeConfig : safeMiniProgramHomeConfig;
+    const miniProgramPrimaryLabel = miniProgramDraftPreviewFocused ? "草稿预览" : "微信当前版本";
+    const miniProgramSecondaryLabel = miniProgramDraftPreviewFocused ? "微信当前版本" : "草稿预览";
+    const miniProgramPrimaryHint = miniProgramDraftPreviewFocused ? "正在放大查看本次装修草稿" : "此刻微信端实际展示的页面";
+    const miniProgramSecondaryHint = miniProgramDraftPreviewFocused ? "点击切回线上版本" : "上传图片后会在这里即时变化";
     const inspirationProductOptions = safeMerchantProducts.filter((product) => product.productType === "sale" || product.productType === "rental");
     const activeStaffMembers = (Array.isArray(staffDirectory) ? staffDirectory : []).filter((member) => member.organizationId === currentMerchantUser?.organizationId);
     const assignableTeamMembers = activeStaffMembers.filter(canAssignStaff);
@@ -7497,6 +7793,128 @@ ${rentalText}`;
         "养护套餐已同步"
       );
     };
+
+    function MiniProgramPreviewSurface({ mode = "phone", config = safeMiniProgramHomeConfig, bannerIndex = activeHomeBannerIndex, view = "home" }) {
+      const normalizedConfig = normalizeMiniProgramHomeConfig(config);
+      const previewHeroConfig = getHomeHeroConfig(normalizedConfig);
+      const previewHeroImageSrc = getHomeHeroImageSrc(previewHeroConfig);
+      const previewBannerItems = getHomeBannerItems(normalizedConfig).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+      const previewVisibleBanners = previewBannerItems.filter((item) => item.visible);
+      const visibleBanners = previewVisibleBanners.length ? previewVisibleBanners : previewBannerItems.slice(0, 1);
+      const previewBanner = visibleBanners[bannerIndex] || visibleBanners[0] || null;
+      const previewInspirationItems = getMiniProgramInspirationItems(normalizedConfig)
+        .filter((item) => item.status === "已上架")
+        .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
+        .slice(0, 4);
+
+      return (
+        <div className={`mini-program-live-preview ${mode}`}>
+          <div className="mini-program-preview-status">
+            <span>23:46</span>
+            <i />
+            <em>▮▮▮ Wi-Fi ▰</em>
+          </div>
+          <div className="mini-program-preview-nav">
+            <b>青庭花涧</b>
+            <span>••• ◎</span>
+          </div>
+
+          {view === "inspiration" ? (
+            <main className="mini-program-preview-inspiration">
+              <section className={`mini-program-preview-inspiration-hero ${previewHeroImageSrc ? "has-image" : "is-empty"}`}>
+                {previewHeroImageSrc ? <img src={previewHeroImageSrc} alt="摆放灵感顶部图" /> : <span>发现植物之美</span>}
+                <div>
+                  <strong>发现植物之美</strong>
+                  <em>为每个空间找到合适的绿意</em>
+                </div>
+              </section>
+              <div className="mini-program-preview-filter-row">
+                {INSPIRATION_CATEGORIES.slice(0, 5).map((category) => (
+                  <span key={category} className={category === "全部" ? "active" : ""}>{category}</span>
+                ))}
+              </div>
+              <div className="mini-program-preview-inspiration-grid">
+                {previewInspirationItems.map((item) => {
+                  const imageSrc = getInspirationImageSrc(item);
+                  const linkedProduct = inspirationProductOptions.find((product) => product.id === item.linkedProductId);
+                  return (
+                    <article key={item.id}>
+                      <div>
+                        {imageSrc ? <img src={imageSrc} alt={item.title} /> : <span>{linkedProduct?.image || "植"}</span>}
+                      </div>
+                      <strong>{item.title}</strong>
+                      <em>{item.tags.slice(0, 2).join(" · ") || item.category}</em>
+                    </article>
+                  );
+                })}
+              </div>
+            </main>
+          ) : (
+            <>
+              {previewHeroConfig.visible ? (
+                <section className={`mini-program-preview-hero ${previewHeroImageSrc ? "has-image" : "is-empty"}`}>
+                  {previewHeroImageSrc ? <img src={previewHeroImageSrc} alt="首页主图预览" /> : <span>上传首页主图</span>}
+                  {(previewHeroConfig.title || previewHeroConfig.subtitle) && (
+                    <div>
+                      {previewHeroConfig.title && <strong>{previewHeroConfig.title}</strong>}
+                      {previewHeroConfig.subtitle && <em>{previewHeroConfig.subtitle}</em>}
+                    </div>
+                  )}
+                </section>
+              ) : (
+                <section className="mini-program-preview-hero is-empty"><span>首页主图已隐藏</span></section>
+              )}
+
+              <div className="mini-program-preview-entry-grid">
+                {MINI_PROGRAM_HOME_ENTRIES.map((entry) => (
+                  <article key={entry}>
+                    <strong>{entry}</strong>
+                    <GardenIcons.Plant size={["modal", "large"].includes(mode) ? 34 : 24} />
+                  </article>
+                ))}
+              </div>
+
+              <div className="mini-program-preview-ad-wrap">
+                {previewBanner ? (
+                  <article className={`mini-program-preview-ad ${previewBanner.layoutType}`}>
+                    {previewBanner.images.map((image, imageIndex) => {
+                      const imageSrc = getHomeBannerImageSrc(image);
+                      return (
+                        <div key={`${previewBanner.id}-large-preview-${imageIndex}`}>
+                          {imageSrc ? <img src={imageSrc} alt={`${previewBanner.title} ${imageIndex + 1}`} /> : <span>{image.placeholder || "广告图"}</span>}
+                        </div>
+                      );
+                    })}
+                  </article>
+                ) : (
+                  <article className="mini-program-preview-ad empty"><span>暂无广告位</span></article>
+                )}
+                <div className="mini-program-preview-dots">
+                  {visibleBanners.map((item, index) => (
+                    <i key={item.id} className={index === bannerIndex ? "active" : ""} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="mini-program-preview-section-title">
+                <i>⌄</i>
+                <strong>空间与园林服务</strong>
+                <span>Garden Projects</span>
+              </div>
+            </>
+          )}
+
+          <nav className="mini-program-preview-tabbar">
+            {["首页", "案例", "服务", "订单", "我的"].map((item) => (
+              <span key={item} className={item === "首页" ? "active" : ""}>
+                <GardenIcons.Plant size={mode === "modal" ? 23 : 17} />
+                <b>{item}</b>
+              </span>
+            ))}
+          </nav>
+        </div>
+      );
+    }
     
     const activeReviewOrder = merchantViewingOrder || selectedOrderDetail;
 
@@ -7870,6 +8288,30 @@ ${rentalText}`;
                 </button>
               )}
 
+              <div className="merchant-channel-grid">
+                <button className="merchant-channel-card" type="button" onClick={openMiniProgramRentalIntentChannel}>
+                  <span>
+                    <strong>小程序租赁意向通道</strong>
+                    <em>适合客户先填面积、预算、场景和期望进场时间；商户确认后转租赁派单。</em>
+                  </span>
+                  <b>预建租赁单</b>
+                </button>
+                <button className="merchant-channel-card" type="button" onClick={() => setMerchantTab("项目线索")}>
+                  <span>
+                    <strong>园林咨询通道</strong>
+                    <em>入口已在项目线索池，晚间接入后小程序园林表单会落在这里。</em>
+                  </span>
+                  <b>看线索池</b>
+                </button>
+                <button className="merchant-channel-card" type="button" onClick={openMiniProgramMemberChannel}>
+                  <span>
+                    <strong>小程序会员资料通道</strong>
+                    <em>后续接微信昵称、手机号和地址簿；先在客户中心的微信会员视图查看。</em>
+                  </span>
+                  <b>去客户中心</b>
+                </button>
+              </div>
+
               <div className="admin-card">
                 <h2 className="merchant-card-title"><GardenIcons.Todo size={18} />待办审核 <span>Todo</span></h2>
                 {todoOrders.length === 0 ? (
@@ -8082,18 +8524,15 @@ ${rentalText}`;
 
               <div className="empty-card" style={{ marginBottom: 14 }}>
                 <p>当前为本地 mock 线索池</p>
-                <span>已预留 source、type、photos、convertedOrderId 等字段，后续客户小程序提交表单后可按同一结构写入。</span>
+                <span>小程序园林改造咨询提交后进入这里；工作台会弹出待跟进提醒，点开后按 A/B/C/D 表格查看联系方式、项目情况、预算风格和现场照片。</span>
               </div>
 
               <div className="admin-table project-inquiry-table">
                 <div className="admin-table-row admin-table-head">
-                  <span>客户姓名</span>
-                  <span>联系电话</span>
-                  <span>项目类型</span>
-                  <span>项目地址</span>
-                  <span>面积范围</span>
-                  <span>预算范围</span>
-                  <span>期望风格</span>
+                  <span>A 联系方式</span>
+                  <span>B 项目情况</span>
+                  <span>C 预算与风格</span>
+                  <span>D 现场资料</span>
                   <span>状态</span>
                   <span>操作</span>
                 </div>
@@ -8101,18 +8540,21 @@ ${rentalText}`;
                 {displayProjectInquiries.map((inquiry) => (
                   <div className="admin-table-row" key={inquiry.id}>
                     <span>
-                      <strong>{inquiry.contactName}</strong>
-                      <em>{inquiry.createdAt || "暂无提交时间"}</em>
+                      <strong>{inquiry.contactName || "待确认客户"}</strong>
+                      <em>{inquiry.phone || "暂无电话"} · {inquiry.contactTime || "方便时间待确认"}</em>
                     </span>
-                    <span>{inquiry.phone || "-"}</span>
-                    <span>{inquiry.projectType || "园林改造"}</span>
                     <span>
-                      <strong>{inquiry.address || "-"}</strong>
-                      <em>{inquiry.expectedTime ? `期望：${inquiry.expectedTime}` : "期望时间待确认"}</em>
+                      <strong>{inquiry.projectType || "园林改造"}</strong>
+                      <em>{inquiry.address || "地址待确认"} · {inquiry.areaSize || "面积待确认"}</em>
                     </span>
-                    <span>{inquiry.areaSize || "-"}</span>
-                    <span>{inquiry.budgetRange || "-"}</span>
-                    <span>{inquiry.stylePreference || "-"}</span>
+                    <span>
+                      <strong>{inquiry.budgetRange || "-"}</strong>
+                      <em>{inquiry.stylePreference || "风格待确认"}</em>
+                    </span>
+                    <span>
+                      <strong>{safePhotos(inquiry.photos).length} 张照片</strong>
+                      <em>{inquiry.note || "暂无补充说明"}</em>
+                    </span>
                     <span>
                       <b className={`admin-status-chip ${inquiry.status === "待跟进" ? "is-plan" : inquiry.status === "已转订单" ? "is-done" : inquiry.status === "无效" ? "muted" : ""}`}>
                         {inquiry.status}
@@ -8526,137 +8968,56 @@ ${rentalText}`;
                 <div>
                   <p className="eyebrow">Mini Program Decoration</p>
                   <h2>小程序装修工作台</h2>
-                  <span>当前小程序：青庭花涧 · 最后保存：2025-05-23 23:46</span>
+                  <span>当前小程序：青庭花涧 · 最后发布：{miniProgramHomeState.publishedAt || "待发布"}</span>
                 </div>
                 <div className="mini-program-decor-actions">
-                  <button className="ghost-button" onClick={saveMiniProgramHomeConfig}>
-                    <GardenIcons.Check size={16} />
-                    <span>预览效果</span>
+                  <button type="button" className="ghost-button" onClick={() => setMiniProgramDraftPreviewFocused((focused) => !focused)}>
+                    <GardenIcons.Image size={16} />
+                    <span>{miniProgramDraftPreviewFocused ? "查看当前版本" : "预览草稿"}</span>
                   </button>
-                  <button className="ghost-button" onClick={() => setMiniProgramHomeConfig(normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig))}>
+                  <button type="button" className="ghost-button" onClick={resetMiniProgramHomeConfig}>
                     <GardenIcons.Refresh size={16} />
-                    <span>恢复默认</span>
+                    <span>还原当前版本</span>
                   </button>
-                  <button className="primary-button" onClick={saveMiniProgramHomeConfig}>
+                  <button type="button" className="primary-button" onClick={saveMiniProgramHomeConfig}>
                     <GardenIcons.Cloud size={16} />
-                    <span>保存装修</span>
+                    <span>确认发布</span>
                   </button>
                 </div>
               </div>
 
               <div className="mini-program-decor-layout">
                 <section className="mini-decor-preview-column">
-                  <div className={`mini-phone-shell ${miniDecorTab === "摆放灵感" ? "inspiration-mode" : ""}`}>
-                    <div className="mini-phone-device">
-                      <div className="mini-phone-top">
-                        <span>23:46</span>
-                        <i />
-                        <b>青庭花涧</b>
-                        <em>••• ◎</em>
+                  <div className={`mini-version-stack ${miniProgramDraftPreviewFocused ? "draft-focused" : "live-focused"}`}>
+                    <article className="mini-version-preview primary">
+                      <div className="mini-version-label">
+                        <strong>{miniProgramPrimaryLabel}</strong>
+                        <span>{miniProgramPrimaryHint}</span>
                       </div>
+                      <MiniProgramPreviewSurface
+                        mode="large"
+                        config={miniProgramPrimaryConfig}
+                        bannerIndex={activeHomeBannerIndex}
+                        view={miniProgramPreviewView}
+                      />
+                    </article>
 
-                      {miniDecorTab === "摆放灵感" ? (
-                        <div className="mini-phone-inspiration-screen">
-                          <section className="mini-inspiration-hero">
-                            {homeHeroImageSrc ? <img src={homeHeroImageSrc} alt="摆放灵感顶部图" /> : <span>发现植物之美</span>}
-                            <div>
-                              <strong>发现植物之美</strong>
-                              <em>为每个空间找到合适的绿意</em>
-                            </div>
-                          </section>
-                          <div className="mini-inspiration-filter">
-                            {INSPIRATION_CATEGORIES.slice(0, 5).map((category) => (
-                              <span key={category} className={category === "全部" ? "active" : ""}>{category}</span>
-                            ))}
-                          </div>
-                          <div className="mini-inspiration-card-grid">
-                            {sortedInspirationItems.filter((item) => item.status === "已上架").slice(0, 4).map((item) => {
-                              const imageSrc = getInspirationImageSrc(item);
-                              const linkedProduct = inspirationProductOptions.find((product) => product.id === item.linkedProductId);
-                              return (
-                                <article key={item.id}>
-                                  <div>
-                                    {imageSrc ? <img src={imageSrc} alt={item.title} /> : <span>{linkedProduct?.image || "植"}</span>}
-                                  </div>
-                                  <strong>{item.title}</strong>
-                                  <em>{item.tags.slice(0, 2).join(" · ") || item.category}</em>
-                                </article>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mini-phone-home-screen">
-                          {homeHeroConfig.visible ? (
-                            <section className={`mini-phone-hero ${homeHeroImageSrc ? "has-image" : "is-empty"}`}>
-                              {homeHeroImageSrc ? <img src={homeHeroImageSrc} alt="首页主图预览" /> : <span>上传首页主图</span>}
-                              {(homeHeroConfig.title || homeHeroConfig.subtitle) && (
-                                <div>
-                                  {homeHeroConfig.title && <strong>{homeHeroConfig.title}</strong>}
-                                  {homeHeroConfig.subtitle && <em>{homeHeroConfig.subtitle}</em>}
-                                </div>
-                              )}
-                            </section>
-                          ) : (
-                            <section className="mini-phone-hero is-empty"><span>首页主图已隐藏</span></section>
-                          )}
-
-                          <div className="mini-phone-entry-grid">
-                            {MINI_PROGRAM_HOME_ENTRIES.map((entry) => (
-                              <article key={entry}>
-                                <GardenIcons.Plant size={28} />
-                                <strong>{entry}</strong>
-                              </article>
-                            ))}
-                          </div>
-
-                          <div className="mini-phone-ad-window">
-                            {activeHomeBanner ? (
-                              <article className={`mini-phone-ad-card ${activeHomeBanner.layoutType}`}>
-                                {activeHomeBanner.images.map((image, imageIndex) => {
-                                  const imageSrc = getHomeBannerImageSrc(image);
-                                  return (
-                                    <div key={`${activeHomeBanner.id}-preview-${imageIndex}`}>
-                                      {imageSrc ? <img src={imageSrc} alt={`${activeHomeBanner.title} ${imageIndex + 1}`} /> : <span>{image.placeholder || "广告图"}</span>}
-                                    </div>
-                                  );
-                                })}
-                              </article>
-                            ) : (
-                              <article className="mini-phone-ad-card empty"><span>暂无广告位</span></article>
-                            )}
-                            <div className="mini-phone-dots">
-                              {(visibleHomeBannerItems.length ? visibleHomeBannerItems : [activeHomeBanner]).filter(Boolean).map((item, index) => (
-                                <i key={item.id} className={index === activeHomeBannerIndex ? "active" : ""} />
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="mini-phone-section-title">
-                            <i>⌄</i>
-                            <strong>空间与园林服务</strong>
-                            <span>Garden Projects</span>
-                          </div>
-                        </div>
-                      )}
-
-                      <nav className="mini-phone-tabbar">
-                        {["首页", "案例", "服务", "订单", "我的"].map((item) => (
-                          <span key={item} className={item === "首页" ? "active" : ""}>
-                            <GardenIcons.Plant size={17} />
-                            <b>{item}</b>
-                          </span>
-                        ))}
-                      </nav>
-                    </div>
-                  </div>
-
-                  <div className="mini-reference-card">
-                    <img src={miniProgramHomeReference} alt="小程序首页参考效果" />
-                    <div>
-                      <strong>参考效果</strong>
-                      <span>按这张手机首页的比例和留白校准预览。</span>
-                    </div>
+                    <button
+                      type="button"
+                      className="mini-version-preview secondary"
+                      onClick={() => setMiniProgramDraftPreviewFocused((focused) => !focused)}
+                    >
+                      <div className="mini-version-label">
+                        <strong>{miniProgramSecondaryLabel}</strong>
+                        <span>{miniProgramSecondaryHint}</span>
+                      </div>
+                      <MiniProgramPreviewSurface
+                        mode="compact"
+                        config={miniProgramSecondaryConfig}
+                        bannerIndex={activeHomeBannerIndex}
+                        view={miniProgramPreviewView}
+                      />
+                    </button>
                   </div>
                 </section>
 
@@ -8999,7 +9360,7 @@ ${rentalText}`;
                             >
                               {selectedInspirationItem.status === "已上架" ? "下架" : "上架"}
                             </button>
-                            <button className="primary-button" onClick={saveMiniProgramHomeConfig}>保存</button>
+                            <button className="primary-button" onClick={saveMiniProgramHomeConfig}>确认发布</button>
                           </div>
                         </aside>
                       )}
@@ -9007,15 +9368,16 @@ ${rentalText}`;
                   )}
                 </section>
               </div>
+
             </div>
           )}
 
-          {merchantTab === "客户库" && (
+          {merchantTab === "客户中心" && (
             <div className="admin-card admin-data-panel">
               <div className="admin-section-head">
                 <div>
-                  <h2>客户库</h2>
-                  <p>沉淀历史客户资料，可快速创建新派单。</p>
+                  <h2>客户中心</h2>
+                  <p>统一沉淀客户主档，用视图区分微信会员、线索客户和已成交客户。</p>
                 </div>
                 <button
                   className="primary-button"
@@ -9032,8 +9394,27 @@ ${rentalText}`;
                 <input
                   value={customerSearchText}
                   onChange={(e) => setCustomerSearchText(e.target.value)}
-                  placeholder="搜索客户、联系人、电话、地址、备注"
+                  placeholder="搜索客户、联系人、电话、地址、来源、微信昵称"
                 />
+              </div>
+
+              <div className="customer-center-tabs">
+                {CUSTOMER_CENTER_VIEWS.map((view) => (
+                  <button
+                    key={view}
+                    className={customerCenterView === view ? "active" : ""}
+                    onClick={() => setCustomerCenterView(view)}
+                    type="button"
+                  >
+                    <span>{view}</span>
+                    <b>{customerCenterCounts[view] || 0}</b>
+                  </button>
+                ))}
+              </div>
+
+              <div className="empty-card mini-member-channel-note">
+                <p>客户主档合并规则已预留</p>
+                <span>微信会员、互联网线索、招商表单和商户手工客户先进入同一客户主档；通过来源标签区分，通过手机号 / 姓名地址进入待合并视图。</span>
               </div>
 
               {filteredCustomers.length === 0 ? (
@@ -9045,35 +9426,67 @@ ${rentalText}`;
                 <div className="admin-table customer-admin-table">
                   <div className="admin-table-row admin-table-head">
                     <span>客户名称</span>
-                    <span>联系人</span>
-                    <span>地址</span>
-                    <span>面积</span>
-                    <span>标签</span>
+                    <span>联系人 / 手机</span>
+                    <span>来源身份</span>
+                    <span>微信资料</span>
+                    <span>地址 / 面积</span>
+                    <span>合并状态</span>
                     <span>操作</span>
                   </div>
 
                   {filteredCustomers.map((customer) => (
-                    <div className="admin-table-row" key={customer.id}>
-                      <span>
-                        <strong>{customer.name}</strong>
-                        <em>{customer.note || "暂无备注"}</em>
-                      </span>
-                      <span>
-                        <strong>{customer.contactName || "-"}</strong>
-                        <em>{customer.phone || "暂无电话"}</em>
-                      </span>
-                      <span>{customer.address || "-"}</span>
-                      <span>{customer.areaSize || "-"}</span>
-                      <span>{customer.tagsText || "-"}</span>
-                      <span className="admin-table-actions">
-                        <button className="ghost-button" onClick={() => openEditCustomer(customer)}>
-                          编辑
-                        </button>
-                        <button className="primary-button" onClick={() => fillOrderFromCustomer(customer)}>
-                          派单
-                        </button>
-                      </span>
-                    </div>
+                    (() => {
+                      const sourceTags = getCustomerSourceTags(customer);
+                      const mergeHint = getCustomerMergeHint(customer, allCustomers);
+                      const miniProfile = customer.miniProgramProfile || {};
+                      return (
+                        <div className="admin-table-row" key={customer.id}>
+                          <span>
+                            <strong>{customer.name}</strong>
+                            <em>{customer.note || customer.tagsText || "暂无备注"}</em>
+                          </span>
+                          <span>
+                            <strong>{customer.contactName || "-"}</strong>
+                            <em>{customer.phone || "暂无电话"}</em>
+                          </span>
+                          <span className="customer-source-tags">
+                            {sourceTags.map((tag) => <b key={tag}>{tag}</b>)}
+                          </span>
+                          <span>
+                            {hasMiniProgramIdentity(customer) ? (
+                              <>
+                                <strong>{miniProfile.nickName || "微信会员"}</strong>
+                                <em>{miniProfile.phone || customer.phone || "手机号待授权"}</em>
+                              </>
+                            ) : (
+                              <>
+                                <strong>未绑定微信</strong>
+                                <em>等待小程序登录后自动挂接</em>
+                              </>
+                            )}
+                          </span>
+                          <span>
+                            <strong>{customer.address || "-"}</strong>
+                            <em>{customer.areaSize || "-"} · {Number(customer.orderCount || 0)} 笔订单</em>
+                          </span>
+                          <span>
+                            {mergeHint ? (
+                              <b className="admin-status-chip is-plan">{mergeHint}</b>
+                            ) : (
+                              <b className="admin-status-chip muted">主档正常</b>
+                            )}
+                          </span>
+                          <span className="admin-table-actions">
+                            <button className="ghost-button" onClick={() => openEditCustomer(customer)}>
+                              编辑
+                            </button>
+                            <button className="primary-button" onClick={() => fillOrderFromCustomer(customer)}>
+                              派单
+                            </button>
+                          </span>
+                        </div>
+                      );
+                    })()
                   ))}
                 </div>
               )}
@@ -9414,40 +9827,57 @@ ${rentalText}`;
                 </header>
 
                 <div className="project-inquiry-detail-body">
-                  <section className="project-inquiry-section">
-                    <h3>客户与项目</h3>
+                  <section className="project-inquiry-section mini-garden-form-section">
+                    <h3><span>A.</span> 联系方式</h3>
                     <div className="project-inquiry-detail-grid">
                       <div><span>联系人</span><strong>{selectedProjectInquiry.contactName || "-"}</strong></div>
-                      <div><span>手机号</span><strong>{selectedProjectInquiry.phone || "-"}</strong></div>
-                      <div><span>项目地址</span><strong>{selectedProjectInquiry.address || "-"}</strong></div>
+                      <div><span>联系电话</span><strong>{selectedProjectInquiry.phone || "-"}</strong></div>
+                      <div className="wide"><span>方便联系时间</span><strong>{selectedProjectInquiry.contactTime || "待确认"}</strong></div>
+                    </div>
+                  </section>
+
+                  <section className="project-inquiry-section mini-garden-form-section">
+                    <h3><span>B.</span> 项目情况</h3>
+                    <div className="mini-garden-chip-row">
+                      {(Array.isArray(selectedProjectInquiry.serviceNeeds) && selectedProjectInquiry.serviceNeeds.length
+                        ? selectedProjectInquiry.serviceNeeds
+                        : ["先咨询沟通"]
+                      ).map((item) => <b key={item}>{item}</b>)}
+                    </div>
+                    <div className="project-inquiry-detail-grid">
                       <div><span>项目类型</span><strong>{selectedProjectInquiry.projectType || "园林改造"}</strong></div>
+                      <div><span>项目地址</span><strong>{selectedProjectInquiry.address || "-"}</strong></div>
                       <div><span>面积范围</span><strong>{selectedProjectInquiry.areaSize || "-"}</strong></div>
+                      <div><span>期望完成时间</span><strong>{selectedProjectInquiry.expectedTime || "-"}</strong></div>
+                    </div>
+                  </section>
+
+                  <section className="project-inquiry-section mini-garden-form-section">
+                    <h3><span>C.</span> 预算与风格</h3>
+                    <div className="project-inquiry-detail-grid">
                       <div><span>预算范围</span><strong>{selectedProjectInquiry.budgetRange || "-"}</strong></div>
                       <div><span>期望风格</span><strong>{selectedProjectInquiry.stylePreference || "-"}</strong></div>
-                      <div><span>期望完成时间</span><strong>{selectedProjectInquiry.expectedTime || "-"}</strong></div>
                       <div><span>当前状态</span><strong>{selectedProjectInquiry.status}</strong></div>
                       <div><span>转化订单</span><strong>{selectedProjectInquiry.convertedOrderId || "尚未转订单"}</strong></div>
                     </div>
                   </section>
 
-                  <section className="project-inquiry-section">
-                    <h3>现状照片</h3>
-                    <div className="project-inquiry-photo-list">
-                      {safePhotos(selectedProjectInquiry.photos).length > 0 ? (
-                        safePhotos(selectedProjectInquiry.photos).map((photo, index) => (
-                          <div className="project-inquiry-photo" key={`${photo}-${index}`}>
-                            {isImageUrl(photo) ? <img src={photo} alt={`现状照片 ${index + 1}`} /> : <span>{photo}</span>}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="project-inquiry-photo muted"><span>待小程序上传</span></div>
-                      )}
+                  <section className="project-inquiry-section mini-garden-form-section">
+                    <h3><span>D.</span> 现场资料</h3>
+                    <div className="project-inquiry-photo-list mini-garden-photo-list">
+                      {Array.from({ length: 3 }, (_, index) => safePhotos(selectedProjectInquiry.photos)[index] || "").map((photo, index) => (
+                        <button
+                          type="button"
+                          className={`project-inquiry-photo ${photo ? "" : "muted"}`}
+                          key={`garden-photo-${selectedProjectInquiry.id}-${index}`}
+                          onClick={() => photo && setProjectInquiryPhotoPreview({ src: photo, title: `${selectedProjectInquiry.contactName || "客户"}现场照片 ${index + 1}` })}
+                          disabled={!photo}
+                        >
+                          {photo ? (isImageUrl(photo) ? <img src={photo} alt={`现场照片 ${index + 1}`} /> : <span>{photo}</span>) : <span>待上传</span>}
+                        </button>
+                      ))}
                     </div>
-                  </section>
-
-                  <section className="project-inquiry-section">
-                    <h3>客户备注</h3>
-                    <div className="project-inquiry-note">{selectedProjectInquiry.note || "客户暂未填写备注。"}</div>
+                    <div className="project-inquiry-note">{selectedProjectInquiry.note || "客户暂未填写补充说明。"}</div>
                   </section>
 
                   <section className="project-inquiry-section">
@@ -9474,6 +9904,20 @@ ${rentalText}`;
                     {selectedProjectInquiry.status === "已转订单" ? "已转正式订单" : "转为正式订单"}
                   </button>
                 </footer>
+              </section>
+            </div>
+          )}
+
+          {projectInquiryPhotoPreview && (
+            <div className="sheet-mask project-photo-preview-mask" onClick={() => setProjectInquiryPhotoPreview(null)}>
+              <section className="project-photo-preview-dialog" onClick={(event) => event.stopPropagation()}>
+                <button className="close-button" onClick={() => setProjectInquiryPhotoPreview(null)} aria-label="关闭照片预览">×</button>
+                <h3>{projectInquiryPhotoPreview.title || "现场照片"}</h3>
+                <div className="project-photo-preview-frame">
+                  {isImageUrl(projectInquiryPhotoPreview.src)
+                    ? <img src={projectInquiryPhotoPreview.src} alt={projectInquiryPhotoPreview.title || "现场照片"} />
+                    : <span>{projectInquiryPhotoPreview.src}</span>}
+                </div>
               </section>
             </div>
           )}
@@ -10022,6 +10466,35 @@ ${rentalText}`;
     const resolveCreateOrderMaintenancePackage = (name) =>
       createOrderMaintenancePackages.find((item) => item.name === name) ||
       getMaintenancePackage(name || "标准养护");
+    const createOrderSaleProducts = safeMerchantProducts
+      .filter((product) => product.productType === "sale" && product.status !== "停用" && product.status !== "未上架")
+      .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+    const createOrderSaleItems = Array.isArray(newOrderForm.saleItems) ? newOrderForm.saleItems : [];
+    const createOrderSaleTotal = createOrderSaleItems.reduce(
+      (sum, item) => sum + Number(item.pricePerDay || item.unitPrice || item.salePrice || 0) * Number(item.quantity || 0),
+      0
+    );
+    const updateCreateOrderSaleQuantity = (product, rawQuantity) => {
+      const quantity = Math.max(0, Number(rawQuantity || 0));
+      const planItem = createPlanItemFromProduct(product, "售卖订单", quantity || 1);
+      setNewOrderForm((form) => {
+        const currentItems = Array.isArray(form.saleItems) ? form.saleItems : [];
+        const exists = currentItems.some((item) => String(item.productId) === String(product.id));
+        const nextItems = quantity <= 0
+          ? currentItems.filter((item) => String(item.productId) !== String(product.id))
+          : exists
+            ? currentItems.map((item) =>
+                String(item.productId) === String(product.id)
+                  ? { ...item, ...planItem, quantity }
+                  : item
+              )
+            : [...currentItems, { ...planItem, quantity }];
+        const plantCountText = nextItems.length
+          ? `${nextItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)} 件 / ${nextItems.length} 款`
+          : form.plannedPlantCount;
+        return { ...form, saleItems: nextItems, plannedPlantCount: plantCountText };
+      });
+    };
 
     if (activeRole === "merchant") {
       const overlayStyle = {
@@ -10170,11 +10643,59 @@ ${rentalText}`;
                 </div>
               )}
               {newOrderForm.serviceType === "售卖" && (
-                <div className="sheet-block">
-                  <p className="sheet-label">售后养护意向</p>
-                  <div className="option-grid payment-grid">
-                    <button className={newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: true }))}>需要</button>
-                    <button className={!newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: false }))}>当前不需要</button>
+                <div className="merchant-sale-draft">
+                  <div className="section-title-row">
+                    <div>
+                      <p className="eyebrow">Sale Draft</p>
+                      <h2>商户预配售卖清单</h2>
+                    </div>
+                    <strong>¥{money(createOrderSaleTotal)}</strong>
+                  </div>
+                  <div className="empty-card sale-draft-note">
+                    <p>适合外派执行方直接配送 / 安装</p>
+                    <span>商户先把商品、数量和价格配好；员工端接单后会看到方案草稿，晚间接数据后可继续按同一结构同步给小程序。</span>
+                  </div>
+                  {createOrderSaleProducts.length === 0 ? (
+                    <div className="empty-card"><p>暂无可选售卖商品</p><span>先到商品与服务里新增售卖植物，并设置为上架。</span></div>
+                  ) : (
+                    <div className="merchant-sale-draft-grid">
+                      {createOrderSaleProducts.slice(0, 8).map((product) => {
+                        const selected = createOrderSaleItems.find((item) => String(item.productId) === String(product.id));
+                        const quantity = Number(selected?.quantity || 0);
+                        const image = getProductImage(product);
+                        const unitPrice = getProductPlanUnitPrice(product, "售卖订单");
+                        return (
+                          <article className={quantity > 0 ? "merchant-sale-draft-item selected" : "merchant-sale-draft-item"} key={product.id}>
+                            <span className="merchant-sale-draft-thumb">
+                              {isImageUrl(image) ? <img src={image} alt={product.name} /> : image}
+                            </span>
+                            <span className="merchant-sale-draft-copy">
+                              <strong>{product.displayName || product.name}</strong>
+                              <em>¥{money(unitPrice)} / {getPriceUnitDisplay(product.priceUnit)}</em>
+                            </span>
+                            <span className="merchant-sale-draft-stepper">
+                              <button type="button" disabled={quantity <= 0} onClick={() => updateCreateOrderSaleQuantity(product, quantity - 1)}>−</button>
+                              <input
+                                type="number"
+                                min="0"
+                                inputMode="numeric"
+                                value={quantity}
+                                onChange={(event) => updateCreateOrderSaleQuantity(product, event.target.value)}
+                                aria-label={`${product.name}数量`}
+                              />
+                              <button type="button" onClick={() => updateCreateOrderSaleQuantity(product, quantity + 1)}>+</button>
+                            </span>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="sheet-block">
+                    <p className="sheet-label">售后养护意向</p>
+                    <div className="option-grid payment-grid">
+                      <button className={newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: true }))}>需要</button>
+                      <button className={!newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: false }))}>当前不需要</button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -10431,7 +10952,28 @@ ${rentalText}`;
 
           {newOrderForm.serviceType === "售卖" && (
             <div className="sheet-block" style={compactBlockStyle}>
-              <p className="sheet-label">售后养护意向</p>
+              <p className="sheet-label">商户预配售卖清单</p>
+              <div className="empty-card sale-draft-note"><p>当前合计 ¥{money(createOrderSaleTotal)}</p><span>选好商品后，员工端会按方案草稿读取。</span></div>
+              <div className="merchant-sale-draft-grid compact">
+                {createOrderSaleProducts.slice(0, 6).map((product) => {
+                  const selected = createOrderSaleItems.find((item) => String(item.productId) === String(product.id));
+                  const quantity = Number(selected?.quantity || 0);
+                  return (
+                    <article className={quantity > 0 ? "merchant-sale-draft-item selected" : "merchant-sale-draft-item"} key={product.id}>
+                      <span className="merchant-sale-draft-copy">
+                        <strong>{product.displayName || product.name}</strong>
+                        <em>¥{money(getProductPlanUnitPrice(product, "售卖订单"))}</em>
+                      </span>
+                      <span className="merchant-sale-draft-stepper">
+                        <button type="button" disabled={quantity <= 0} onClick={() => updateCreateOrderSaleQuantity(product, quantity - 1)}>−</button>
+                        <input type="number" min="0" inputMode="numeric" value={quantity} onChange={(event) => updateCreateOrderSaleQuantity(product, event.target.value)} />
+                        <button type="button" onClick={() => updateCreateOrderSaleQuantity(product, quantity + 1)}>+</button>
+                      </span>
+                    </article>
+                  );
+                })}
+              </div>
+              <p className="sheet-label" style={{ marginTop: 10 }}>售后养护意向</p>
               <div className="option-grid">
                 <button className={newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: true }))}>需要</button>
                 <button className={!newOrderForm.retailNeedsMaintenance ? "selected" : ""} onClick={() => setNewOrderForm((form) => ({ ...form, retailNeedsMaintenance: false }))}>当前不需要</button>

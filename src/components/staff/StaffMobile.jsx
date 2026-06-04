@@ -63,6 +63,7 @@ export function StaffMobile({
   const safeFilteredStaffOrders = Array.isArray(filteredStaffOrders) ? filteredStaffOrders : [];
   const executableOrders = safeStaffOrders.filter((order) => classifyOrderStatus(order.status) === "执行中" && getOrderExecutionStage(order) === "现场执行中");
   const avatarNotice = staffAvatarError || staffAvatarStatus;
+  const partnerExecutionOnly = currentStaff?.employeeType === "partner" || selectedOrder?.assignedStaffType === "partner";
   const hasUsefulPrefillText = (value) => {
     const text = String(value || "").trim();
     return Boolean(text && !["暂无内容", "待确认"].includes(text));
@@ -354,6 +355,7 @@ export function StaffMobile({
               <p>{selectedOrderHasMerchantPrefill ? "商户已预填方案信息" : "暂无预填方案"}</p>
               <span>{selectedOrderHasMerchantPrefill ? "确认接单后可在方案页按现场情况微调。" : "确认接单后可根据现场情况创建方案。"}</span>
             </div>
+            {!partnerExecutionOnly && (
             <div className="sheet-block">
               <p className="sheet-label">选择方案类型</p>
               <div className="plan-type-grid">
@@ -369,6 +371,13 @@ export function StaffMobile({
                 {planType === "园林改造" && "适用于园林改造、造景和项目工程咨询转单，当前先进入待勘察 / 待方案。"}
               </div>
             </div>
+            )}
+            {partnerExecutionOnly && (
+              <div className="empty-card staff-confirm-prefill-note">
+                <p>外派执行模式</p>
+                <span>该订单由商户端预配，确认后只查看清单并执行配送 / 上门任务。</span>
+              </div>
+            )}
 
             <div className="sheet-block">
               <p className="sheet-label">客户信息</p>
@@ -388,7 +397,7 @@ export function StaffMobile({
 
             <div className="staff-confirm-sheet-footer">
               <button className="submit-sheet-button" onClick={acceptOrderAndCreatePlan}>
-                {selectedOrder.plan ? "确认接单并查看方案草稿" : `确认接单并创建${planType}`}
+                {partnerExecutionOnly ? "确认接单并查看执行清单" : selectedOrder.plan ? "确认接单并查看方案草稿" : `确认接单并创建${planType}`}
               </button>
             </div>
           </section>
