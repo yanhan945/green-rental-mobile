@@ -9105,14 +9105,11 @@ button:disabled,
 
 .merchant-sidebar-art-card img {
   display: block;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 141%;
-  max-width: none;
-  height: auto;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
   margin: 0;
-  transform: translate(-13.6%, -23.5%);
+  object-fit: contain;
   filter: drop-shadow(0 16px 24px rgba(58, 47, 30, 0.1));
 }
 
