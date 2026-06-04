@@ -4,7 +4,11 @@ import { AuthPage } from "./components/auth/AuthPage";
 import { GardenIcons } from "./GardenIcons";
 import { StaffMobile } from "./components/staff/StaffMobile";
 import { supabase } from "./lib/supabaseClient";
-import sidebarAestheticSpaceCard from "./assets/visual/sidebar-aesthetic-space-card.png";
+import sidebarAestheticSpaceCard from "./assets/visual/sidebar-aesthetic-space-card-cropped.png";
+import miniProgramDefaultHero from "./assets/visual/mini-program-default-hero.png";
+import miniProgramDefaultAdGarden from "./assets/visual/mini-program-default-ad-garden.png";
+import miniProgramDefaultAdDesign from "./assets/visual/mini-program-default-ad-design.png";
+import miniProgramDefaultAdCare from "./assets/visual/mini-program-default-ad-care.png";
 import "./App.css";
 
 const SUPABASE_URL = "https://kvdxgyymlfnnurdigtkj.supabase.co";
@@ -20,6 +24,7 @@ const CUSTOMER_STORAGE_KEY = "green-rental-customers-v31";
 const PROJECT_INQUIRY_STORAGE_KEY = "green-rental-project-inquiries-v1";
 const MINI_PROGRAM_APPOINTMENT_STORAGE_KEY = "green-rental-mini-program-appointments-v1";
 const MINI_PROGRAM_HOME_STORAGE_KEY = "green-rental-mini-program-home-v1";
+const MINI_PROGRAM_HOME_STATE_VERSION = 2;
 const SERVICE_SETTINGS_STORAGE_KEY = "green-rental-service-settings-v1";
 const STAFF_DIRECTORY_STORAGE_KEY = "green-rental-staff-directory-v1";
 const STAFF_AVATAR_STORAGE_KEY = "green-rental-staff-avatar-v1";
@@ -348,7 +353,7 @@ const defaultMiniProgramHomeConfig = {
       type: "hero",
       title: "首页主图",
       hero: {
-        imageUrl: "",
+        imageUrl: miniProgramDefaultHero,
         localPreviewUrl: "",
         title: "",
         subtitle: "",
@@ -363,34 +368,22 @@ const defaultMiniProgramHomeConfig = {
       title: "首页广告位",
       items: [
         {
-          id: "banner-garden-project",
-          title: "园林改造咨询",
-          layoutType: "single",
+          id: "banner-garden-life",
+          title: "空间与园林服务",
+          layoutType: "triple",
           images: [
             {
-              imageUrl: "",
+              imageUrl: miniProgramDefaultAdGarden,
               localPreviewUrl: "",
               placeholder: "园林场景",
             },
-          ],
-          linkType: "internal",
-          linkTarget: "garden_project",
-          visible: true,
-          sortOrder: 10,
-        },
-        {
-          id: "banner-space-inspiration",
-          title: "空间灵感",
-          layoutType: "triple",
-          images: [
-            { imageUrl: "", localPreviewUrl: "", placeholder: "花植空间" },
-            { imageUrl: "", localPreviewUrl: "", placeholder: "庭院空间" },
-            { imageUrl: "", localPreviewUrl: "", placeholder: "茶咖空间" },
+            { imageUrl: miniProgramDefaultAdDesign, localPreviewUrl: "", placeholder: "Design Planting Care" },
+            { imageUrl: miniProgramDefaultAdCare, localPreviewUrl: "", placeholder: "花植养护" },
           ],
           linkType: "none",
           linkTarget: "",
           visible: true,
-          sortOrder: 20,
+          sortOrder: 10,
         },
       ],
     },
@@ -1209,9 +1202,11 @@ function normalizeHomeBannerItem(item, index = 0) {
 
 function normalizeHomeHeroConfig(hero = {}) {
   const defaults = defaultMiniProgramHomeConfig.homeModules.find((module) => module.type === "hero")?.hero || {};
+  const hasImageUrl = Object.prototype.hasOwnProperty.call(hero || {}, "imageUrl");
+  const hasLocalPreviewUrl = Object.prototype.hasOwnProperty.call(hero || {}, "localPreviewUrl");
   return {
-    imageUrl: hero?.imageUrl || defaults.imageUrl || "",
-    localPreviewUrl: hero?.localPreviewUrl || defaults.localPreviewUrl || "",
+    imageUrl: hasImageUrl ? hero?.imageUrl || "" : defaults.imageUrl || "",
+    localPreviewUrl: hasLocalPreviewUrl ? hero?.localPreviewUrl || "" : defaults.localPreviewUrl || "",
     title: hero?.title ?? defaults.title ?? "",
     subtitle: hero?.subtitle ?? defaults.subtitle ?? "",
     visible: hero?.visible ?? defaults.visible ?? true,
@@ -1331,7 +1326,40 @@ function getInspirationTagText(item) {
 }
 
 function createEmptyMiniProgramHomeDraftConfig() {
-  return normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig);
+  const base = normalizeMiniProgramHomeConfig(defaultMiniProgramHomeConfig);
+  const homeModules = base.homeModules.map((module) => {
+    if (module.type === "hero") {
+      return {
+        ...module,
+        hero: normalizeHomeHeroConfig({
+          ...module.hero,
+          imageUrl: "",
+          localPreviewUrl: "",
+          title: "",
+          subtitle: "",
+        }),
+      };
+    }
+
+    if (module.type === "banner") {
+      return {
+        ...module,
+        items: module.items.map((item, index) => normalizeHomeBannerItem({
+          ...item,
+          images: Array.from({ length: getHomeBannerImageCount(item.layoutType) }, (_, imageIndex) => ({
+            imageUrl: "",
+            localPreviewUrl: "",
+            placeholder: item.images?.[imageIndex]?.placeholder || `广告图 ${imageIndex + 1}`,
+          })),
+          visible: index === 0 ? true : item.visible,
+        }, index)),
+      };
+    }
+
+    return module;
+  });
+
+  return normalizeMiniProgramHomeConfig({ ...base, homeModules });
 }
 
 function loadMiniProgramHomeStateFromLocalStore() {
@@ -1347,18 +1375,21 @@ function loadMiniProgramHomeStateFromLocalStore() {
     }
 
     const parsed = JSON.parse(raw);
-    const publishedSource =
-      parsed?.publishedMiniProgramHomeConfig ||
-      parsed?.liveMiniProgramHomeConfig ||
-      parsed?.miniProgramHomeConfig ||
-      parsed;
-    const draftSource = parsed?.draftMiniProgramHomeConfig || createEmptyMiniProgramHomeDraftConfig();
+    const hasVersionedPublishedState =
+      parsed?.homeDecorStateVersion === MINI_PROGRAM_HOME_STATE_VERSION &&
+      parsed?.publishedMiniProgramHomeConfig;
+    const publishedSource = hasVersionedPublishedState
+      ? parsed.publishedMiniProgramHomeConfig
+      : defaultMiniProgramHomeConfig;
+    const draftSource = hasVersionedPublishedState
+      ? parsed?.draftMiniProgramHomeConfig || createEmptyMiniProgramHomeDraftConfig()
+      : createEmptyMiniProgramHomeDraftConfig();
 
     return {
       publishedConfig: normalizeMiniProgramHomeConfig(publishedSource),
       draftConfig: normalizeMiniProgramHomeConfig(draftSource),
-      publishedAt: parsed?.publishedAt || parsed?.savedAt || "",
-      draftSavedAt: parsed?.draftSavedAt || "",
+      publishedAt: hasVersionedPublishedState ? parsed?.publishedAt || "" : "",
+      draftSavedAt: hasVersionedPublishedState ? parsed?.draftSavedAt || "" : "",
     };
   } catch (error) {
     console.error("读取小程序首页装修状态失败：", error);
@@ -1376,6 +1407,7 @@ function persistMiniProgramHomeStateToLocalStore(state) {
     MINI_PROGRAM_HOME_STORAGE_KEY,
     JSON.stringify({
       source: "localStorage",
+      homeDecorStateVersion: MINI_PROGRAM_HOME_STATE_VERSION,
       savedAt: nowText(),
       publishedAt: state?.publishedAt || "",
       draftSavedAt: state?.draftSavedAt || "",
