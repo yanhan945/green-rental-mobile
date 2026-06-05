@@ -8,7 +8,7 @@ import {
   getGardenConsultationCloudEnv,
   listGardenConsultations,
   updateGardenConsultationStatus,
-} from "./lib/gardenConsultationsCloud";
+} from "./services/consultationService";
 import sidebarAestheticSpaceCard from "./assets/visual/sidebar-aesthetic-space-card-cropped.png";
 import miniProgramDefaultHero from "./assets/visual/mini-program-default-hero.png";
 import miniProgramDefaultAdGarden from "./assets/visual/mini-program-default-ad-garden.png";
@@ -26,7 +26,6 @@ const PRODUCT_STORAGE_KEY = "green-rental-products-v29";
 const SERVICE_CONFIG_STORAGE_KEY = "green-rental-service-config-v1";
 const PRODUCT_CATEGORY_STORAGE_KEY = "green-rental-product-categories-v1";
 const CUSTOMER_STORAGE_KEY = "green-rental-customers-v31";
-const PROJECT_INQUIRY_STORAGE_KEY = "green-rental-project-inquiries-v1";
 const MINI_PROGRAM_APPOINTMENT_STORAGE_KEY = "green-rental-mini-program-appointments-v1";
 const MINI_PROGRAM_HOME_STORAGE_KEY = "green-rental-mini-program-home-v1";
 const MINI_PROGRAM_HOME_STATE_VERSION = 2;
@@ -1138,30 +1137,6 @@ function normalizeProjectInquiries(data, options = {}) {
     convertedOrderId: item?.convertedOrderId || "",
     updatedAt: normalizeCloudDateText(item?.updatedAt),
   }));
-}
-
-function loadProjectInquiriesFromLocalStore() {
-  try {
-    const raw = localStorage.getItem(PROJECT_INQUIRY_STORAGE_KEY);
-    if (!raw) return normalizeProjectInquiries(defaultProjectInquiries);
-    const parsed = JSON.parse(raw);
-    return normalizeProjectInquiries(parsed?.projectInquiries);
-  } catch (error) {
-    console.error("读取项目线索失败：", error);
-    return normalizeProjectInquiries(defaultProjectInquiries);
-  }
-}
-
-function persistProjectInquiriesToLocalStore(projectInquiries) {
-  safeSetLocalStorage(
-    PROJECT_INQUIRY_STORAGE_KEY,
-    JSON.stringify({
-      source: "localStorage",
-      savedAt: nowText(),
-      projectInquiries: normalizeProjectInquiries(projectInquiries),
-    }),
-    "项目线索"
-  );
 }
 
 function normalizeMiniProgramAppointments(data) {
@@ -2765,8 +2740,7 @@ function App() {
   const [merchantProducts, setMerchantProducts] = useState(() => loadProductsFromLocalStore());
   const [merchantMaintenancePackages, setMerchantMaintenancePackages] = useState(() => loadMaintenancePackagesFromLocalStore());
   const [merchantProductCategories, setMerchantProductCategories] = useState(() => loadProductCategoriesFromLocalStore());
-  const [projectInquiries, setProjectInquiries] = useState(() => loadProjectInquiriesFromLocalStore());
-  const [projectInquiriesCloudLoaded, setProjectInquiriesCloudLoaded] = useState(false);
+  const [projectInquiries, setProjectInquiries] = useState([]);
   const [projectInquiriesCloudStatus, setProjectInquiriesCloudStatus] = useState("待连接");
   const [projectInquiriesCloudError, setProjectInquiriesCloudError] = useState("");
   const [updatingProjectInquiryIds, setUpdatingProjectInquiryIds] = useState([]);
@@ -2930,7 +2904,7 @@ function App() {
   const safeMerchantProducts = Array.isArray(merchantProducts) ? merchantProducts : [];
   const safeMerchantMaintenancePackages = normalizeMaintenancePackages(merchantMaintenancePackages);
   const safeMerchantProductCategories = normalizeProductCategories(merchantProductCategories);
-  const safeProjectInquiries = normalizeProjectInquiries(projectInquiries, { useDefaults: !projectInquiriesCloudLoaded });
+  const safeProjectInquiries = normalizeProjectInquiries(projectInquiries, { useDefaults: false });
   const safeMiniProgramAppointments = normalizeMiniProgramAppointments(miniProgramAppointments);
   const publishedMiniProgramHomeConfig = miniProgramHomeState?.publishedConfig || defaultMiniProgramHomeConfig;
   const miniProgramHomeConfig = miniProgramHomeState?.draftConfig || createEmptyMiniProgramHomeDraftConfig();
@@ -3032,17 +3006,6 @@ function App() {
       actionLabel: order.status === "待商户归档" ? "去验收" : "去审核",
       targetTab: "工作台",
     }));
-    const projectItems = normalizeProjectInquiries(projectInquiries)
-      .filter((item) => item.status === "待跟进")
-      .map((item) => ({
-        kind: "project",
-        id: item.id,
-        key: `project:${item.id}:${item.status}:${item.updatedAt || item.createdAt || ""}`,
-        title: `新项目咨询：${item.contactName || item.projectType || "待跟进线索"}`,
-        body: "客户提交了园林改造 / 造景咨询，可进入项目线索池处理。",
-        actionLabel: "查看线索",
-        targetTab: "项目线索",
-      }));
     const appointmentItems = normalizeMiniProgramAppointments(miniProgramAppointments)
       .filter((item) => item.status === "待确认")
       .map((item) => ({
@@ -3055,8 +3018,8 @@ function App() {
         targetTab: "订单管理",
       }));
 
-    return [...orderItems, ...projectItems, ...appointmentItems].sort((a, b) => a.key.localeCompare(b.key));
-  }, [pendingMerchantConfirmOrders, pendingArchiveOrders, projectInquiries, miniProgramAppointments]);
+    return [...orderItems, ...appointmentItems].sort((a, b) => a.key.localeCompare(b.key));
+  }, [pendingMerchantConfirmOrders, pendingArchiveOrders, miniProgramAppointments]);
 
   const merchantTodoSignature = useMemo(() => {
     return merchantRealtimeReminderItems.map((item) => item.key).join("|");
@@ -3153,10 +3116,6 @@ function App() {
   useEffect(() => {
     persistProductCategoriesToLocalStore(merchantProductCategories);
   }, [merchantProductCategories]);
-
-  useEffect(() => {
-    persistProjectInquiriesToLocalStore(projectInquiries);
-  }, [projectInquiries]);
 
   useEffect(() => {
     persistMiniProgramAppointmentsToLocalStore(miniProgramAppointments);
@@ -4361,12 +4320,10 @@ function App() {
       const result = await listGardenConsultations({ page: 1, pageSize: 20 });
       const records = extractGardenConsultationList(result);
       setProjectInquiries(normalizeProjectInquiries(records, { useDefaults: false }));
-      setProjectInquiriesCloudLoaded(true);
       setProjectInquiriesCloudStatus(`已连接 cloud1 · ${records.length} 条`);
       setSyncMessage(`园林咨询已从 cloud1 同步：${nowText()}`);
     } catch (error) {
       console.error(error);
-      setProjectInquiriesCloudLoaded(true);
       setProjectInquiriesCloudStatus("读取失败");
       setProjectInquiriesCloudError(error?.message || "读取 cloud1 园林咨询失败，请检查匿名登录、云函数权限或环境 ID。");
     }
