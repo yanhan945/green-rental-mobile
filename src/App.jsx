@@ -4,6 +4,11 @@ import { AuthPage } from "./components/auth/AuthPage";
 import { GardenIcons } from "./GardenIcons";
 import { StaffMobile } from "./components/staff/StaffMobile";
 import { supabase } from "./lib/supabaseClient";
+import {
+  getGardenConsultationCloudEnv,
+  listGardenConsultations,
+  updateGardenConsultationStatus,
+} from "./lib/gardenConsultationsCloud";
 import sidebarAestheticSpaceCard from "./assets/visual/sidebar-aesthetic-space-card-cropped.png";
 import miniProgramDefaultHero from "./assets/visual/mini-program-default-hero.png";
 import miniProgramDefaultAdGarden from "./assets/visual/mini-program-default-ad-garden.png";
@@ -72,7 +77,16 @@ const SERVICE_TYPE_OPTIONS = [
   ["摆场", "临时摆场"],
   ["园林", "园林改造"],
 ];
-const PROJECT_INQUIRY_STATUS = ["待跟进", "已联系", "已转订单", "暂缓", "无效"];
+const PROJECT_INQUIRY_STATUS = ["待处理", "待跟进", "已联系", "已转化", "已转订单", "已关闭", "暂缓", "无效"];
+const GARDEN_CONSULTATION_STATUS_MAP = {
+  pending: "待处理",
+  contacted: "已联系",
+  converted: "已转化",
+  closed: "已关闭",
+};
+const GARDEN_CONSULTATION_STATUS_VALUE_MAP = Object.fromEntries(
+  Object.entries(GARDEN_CONSULTATION_STATUS_MAP).map(([value, label]) => [label, value])
+);
 const MINI_PROGRAM_APPOINTMENT_STATUS = ["待确认", "已联系", "已转订单", "暂缓", "已取消"];
 const CUSTOMER_CENTER_VIEWS = ["全部客户", "微信会员", "线索客户", "已成交", "待合并"];
 const HOME_BANNER_LAYOUT_TYPES = [
@@ -1038,34 +1052,91 @@ function getCategoryDisplayName(category = {}) {
   return category.nameZh || category.nameEn || "未命名分类";
 }
 
-function normalizeProjectInquiries(data) {
-  const list = Array.isArray(data) && data.length ? data : defaultProjectInquiries;
+function normalizeGardenConsultationStatus(status) {
+  if (GARDEN_CONSULTATION_STATUS_MAP[status]) return GARDEN_CONSULTATION_STATUS_MAP[status];
+  if (PROJECT_INQUIRY_STATUS.includes(status)) return status;
+  return "待处理";
+}
+
+function getGardenConsultationStatusValue(status) {
+  if (GARDEN_CONSULTATION_STATUS_MAP[status]) return status;
+  return GARDEN_CONSULTATION_STATUS_VALUE_MAP[status] || "pending";
+}
+
+function normalizeStringList(value) {
+  if (Array.isArray(value)) return value.map((item) => String(item || "").trim()).filter(Boolean);
+  return String(value || "")
+    .split(/[,，、]/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function normalizeGardenConsultationPhotos(item = {}) {
+  return [
+    ...(Array.isArray(item.imageUrls) ? item.imageUrls : []),
+    ...(Array.isArray(item.imageURLs) ? item.imageURLs : []),
+    ...(Array.isArray(item.tempImageUrls) ? item.tempImageUrls : []),
+    ...(Array.isArray(item.tempImageURLs) ? item.tempImageURLs : []),
+    ...(Array.isArray(item.photos) ? item.photos : []),
+    ...(Array.isArray(item.imageFileIDs) ? item.imageFileIDs : []),
+  ].filter(Boolean);
+}
+
+function normalizeCloudDateText(value) {
+  if (!value) return "";
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (value instanceof Date) return value.toLocaleString("zh-CN", { hour12: false });
+  if (typeof value === "object") {
+    const rawDate = value.$date || value.date || value.value || value.time || value.timestamp || value.seconds;
+    if (rawDate) {
+      const date = new Date(String(rawDate).length === 10 ? Number(rawDate) * 1000 : rawDate);
+      if (!Number.isNaN(date.getTime())) return date.toLocaleString("zh-CN", { hour12: false });
+      return String(rawDate);
+    }
+  }
+  return String(value);
+}
+
+function extractGardenConsultationList(result) {
+  if (Array.isArray(result)) return result;
+  if (Array.isArray(result?.data)) return result.data;
+  if (Array.isArray(result?.list)) return result.list;
+  if (Array.isArray(result?.records)) return result.records;
+  if (Array.isArray(result?.items)) return result.items;
+  if (Array.isArray(result?.result)) return result.result;
+  return [];
+}
+
+function normalizeProjectInquiries(data, options = {}) {
+  const { useDefaults = true } = options;
+  const list = Array.isArray(data) && data.length ? data : (useDefaults ? defaultProjectInquiries : []);
   return list.map((item, index) => ({
-    id: item?.id || `inq-${Date.now()}-${index}`,
-    source: item?.source || "mini_program",
+    id: item?.id || item?._id || `inq-${Date.now()}-${index}`,
+    cloudId: item?._id || item?.cloudId || item?.id || "",
+    source: item?.source || (item?._id ? "cloud1_garden_consultation" : "mini_program"),
     type: item?.type || "garden_project",
     contactName: item?.contactName || item?.name || "待确认客户",
     phone: item?.phone || "",
-    address: item?.address || "",
-    projectType: item?.projectType || "园林改造咨询",
+    address: item?.address || item?.projectAddress || "",
+    projectType: normalizeStringList(item?.projectTypes).join("、") || item?.projectType || "园林改造咨询",
+    projectTypes: normalizeStringList(item?.projectTypes || item?.projectType),
     contactTime: item?.contactTime || item?.availableTime || item?.preferredContactTime || "工作日 10:00-18:00 / 微信联系优先",
-    areaSize: item?.areaSize || "待确认",
+    areaSize: item?.areaSize || item?.areaRange || "待确认",
+    areaRange: item?.areaRange || item?.areaSize || "",
     budgetRange: item?.budgetRange || "待确认",
     stylePreference: item?.stylePreference || "待确认",
-    serviceNeeds: Array.isArray(item?.serviceNeeds)
-      ? item.serviceNeeds
-      : String(item?.serviceNeeds || item?.needs || "先咨询沟通")
-          .split(/[,，、]/)
-          .map((tag) => tag.trim())
-          .filter(Boolean),
+    serviceNeeds: normalizeStringList(item?.serviceNeeds || item?.needs || "先咨询沟通"),
     expectedTime: item?.expectedTime || "待确认",
-    photos: Array.isArray(item?.photos) ? item.photos : [],
-    note: item?.note || "",
-    status: PROJECT_INQUIRY_STATUS.includes(item?.status) ? item.status : "待跟进",
+    photos: normalizeGardenConsultationPhotos(item),
+    imageFileIDs: Array.isArray(item?.imageFileIDs) ? item.imageFileIDs : [],
+    note: item?.note || item?.description || "",
+    description: item?.description || item?.note || "",
+    cloudStatus: getGardenConsultationStatusValue(item?.cloudStatus || item?.status),
+    status: normalizeGardenConsultationStatus(item?.status),
     followUpNote: item?.followUpNote || "",
-    createdAt: item?.createdAt || nowText(),
+    createdAt: normalizeCloudDateText(item?.createdAt) || nowText(),
     convertedOrderId: item?.convertedOrderId || "",
-    updatedAt: item?.updatedAt || "",
+    updatedAt: normalizeCloudDateText(item?.updatedAt),
   }));
 }
 
@@ -2695,6 +2766,10 @@ function App() {
   const [merchantMaintenancePackages, setMerchantMaintenancePackages] = useState(() => loadMaintenancePackagesFromLocalStore());
   const [merchantProductCategories, setMerchantProductCategories] = useState(() => loadProductCategoriesFromLocalStore());
   const [projectInquiries, setProjectInquiries] = useState(() => loadProjectInquiriesFromLocalStore());
+  const [projectInquiriesCloudLoaded, setProjectInquiriesCloudLoaded] = useState(false);
+  const [projectInquiriesCloudStatus, setProjectInquiriesCloudStatus] = useState("待连接");
+  const [projectInquiriesCloudError, setProjectInquiriesCloudError] = useState("");
+  const [updatingProjectInquiryIds, setUpdatingProjectInquiryIds] = useState([]);
   const [miniProgramAppointments, setMiniProgramAppointments] = useState(() => loadMiniProgramAppointmentsFromLocalStore());
   const [miniProgramHomeState, setMiniProgramHomeState] = useState(() => loadMiniProgramHomeStateFromLocalStore());
   const [merchantServiceSettings, setMerchantServiceSettings] = useState(() => loadServiceSettingsFromLocalStore());
@@ -2855,7 +2930,7 @@ function App() {
   const safeMerchantProducts = Array.isArray(merchantProducts) ? merchantProducts : [];
   const safeMerchantMaintenancePackages = normalizeMaintenancePackages(merchantMaintenancePackages);
   const safeMerchantProductCategories = normalizeProductCategories(merchantProductCategories);
-  const safeProjectInquiries = normalizeProjectInquiries(projectInquiries);
+  const safeProjectInquiries = normalizeProjectInquiries(projectInquiries, { useDefaults: !projectInquiriesCloudLoaded });
   const safeMiniProgramAppointments = normalizeMiniProgramAppointments(miniProgramAppointments);
   const publishedMiniProgramHomeConfig = miniProgramHomeState?.publishedConfig || defaultMiniProgramHomeConfig;
   const miniProgramHomeConfig = miniProgramHomeState?.draftConfig || createEmptyMiniProgramHomeDraftConfig();
@@ -3142,6 +3217,11 @@ function App() {
       setMiniDecorTab("首页主图");
     }
   }, [miniDecorTab]);
+
+  useEffect(() => {
+    if (activeRole !== "merchant" || merchantTab !== "项目线索") return;
+    loadGardenConsultationsFromCloud();
+  }, [activeRole, merchantTab]);
 
   useEffect(() => {
     const inspirationItems = getMiniProgramInspirationItems(miniProgramHomeConfig);
@@ -4270,12 +4350,61 @@ function App() {
     setCustomerSearchText("");
   }
 
+  function getProjectInquiryRecordId(inquiry) {
+    return inquiry?.cloudId || inquiry?._id || inquiry?.id || "";
+  }
+
+  async function loadGardenConsultationsFromCloud() {
+    setProjectInquiriesCloudStatus("读取中");
+    setProjectInquiriesCloudError("");
+    try {
+      const result = await listGardenConsultations({ page: 1, pageSize: 20 });
+      const records = extractGardenConsultationList(result);
+      setProjectInquiries(normalizeProjectInquiries(records, { useDefaults: false }));
+      setProjectInquiriesCloudLoaded(true);
+      setProjectInquiriesCloudStatus(`已连接 cloud1 · ${records.length} 条`);
+      setSyncMessage(`园林咨询已从 cloud1 同步：${nowText()}`);
+    } catch (error) {
+      console.error(error);
+      setProjectInquiriesCloudLoaded(true);
+      setProjectInquiriesCloudStatus("读取失败");
+      setProjectInquiriesCloudError(error?.message || "读取 cloud1 园林咨询失败，请检查匿名登录、云函数权限或环境 ID。");
+    }
+  }
+
   function updateProjectInquiry(inquiryId, patch) {
     setProjectInquiries((prev) =>
-      normalizeProjectInquiries(prev).map((item) =>
+      normalizeProjectInquiries(prev, { useDefaults: false }).map((item) =>
         item.id === inquiryId ? { ...item, ...patch, updatedAt: nowText() } : item
       )
     );
+  }
+
+  async function updateProjectInquiryCloudStatus(inquiry, nextCloudStatus) {
+    const recordId = getProjectInquiryRecordId(inquiry);
+    if (!recordId) {
+      updateProjectInquiry(inquiry.id, {
+        cloudStatus: nextCloudStatus,
+        status: GARDEN_CONSULTATION_STATUS_MAP[nextCloudStatus] || inquiry.status,
+      });
+      return;
+    }
+
+    setUpdatingProjectInquiryIds((ids) => Array.from(new Set([...ids, inquiry.id])));
+    setProjectInquiriesCloudError("");
+    try {
+      await updateGardenConsultationStatus(recordId, nextCloudStatus);
+      updateProjectInquiry(inquiry.id, {
+        cloudStatus: nextCloudStatus,
+        status: GARDEN_CONSULTATION_STATUS_MAP[nextCloudStatus] || inquiry.status,
+      });
+      setProjectInquiriesCloudStatus(`状态已同步 · ${nowText()}`);
+    } catch (error) {
+      console.error(error);
+      setProjectInquiriesCloudError(error?.message || "更新园林咨询状态失败。");
+    } finally {
+      setUpdatingProjectInquiryIds((ids) => ids.filter((id) => id !== inquiry.id));
+    }
   }
 
   function openProjectInquiryDetail(inquiry) {
@@ -4335,7 +4464,7 @@ function App() {
       communicationQrUrl: "",
       sourceInquiryId: inquiry.id,
     }));
-    updateProjectInquiry(inquiry.id, { status: inquiry.status === "待跟进" ? "已联系" : inquiry.status });
+    updateProjectInquiryCloudStatus(inquiry, "converted");
     setSelectedProjectInquiryId(null);
     setMerchantTab("订单管理");
     setIsCreateOrderInputFocused(false);
@@ -7685,7 +7814,7 @@ ${rentalText}`;
     const todoOrders = [...(Array.isArray(pendingMerchantConfirmOrders) ? pendingMerchantConfirmOrders : []), ...(Array.isArray(pendingArchiveOrders) ? pendingArchiveOrders : [])];
     const displayOrders = Array.isArray(merchantOrders) ? merchantOrders : [];
     const displayProjectInquiries = safeProjectInquiries;
-    const pendingProjectInquiryCount = displayProjectInquiries.filter((item) => item.status === "待跟进").length;
+    const pendingProjectInquiryCount = displayProjectInquiries.filter((item) => ["待处理", "待跟进"].includes(item.status)).length;
     const selectedProjectInquiry = selectedProjectInquiryId
       ? displayProjectInquiries.find((item) => item.id === selectedProjectInquiryId) || null
       : null;
@@ -7695,6 +7824,7 @@ ${rentalText}`;
     const selectedMiniProgramAppointment = selectedMiniProgramAppointmentId
       ? displayMiniProgramAppointments.find((item) => item.id === selectedMiniProgramAppointmentId) || null
       : null;
+    const gardenConsultationCloudEnv = getGardenConsultationCloudEnv();
     const homeBannerItems = getHomeBannerItems(safeMiniProgramHomeConfig);
     const homeHeroConfig = getHomeHeroConfig(safeMiniProgramHomeConfig);
     const homeHeroImageSrc = getHomeHeroImageSrc(homeHeroConfig);
@@ -8513,18 +8643,24 @@ ${rentalText}`;
             <div className="admin-card admin-data-panel">
               <div className="admin-section-head">
                 <div>
-                  <h2>项目线索池</h2>
-                  <p>接收客户小程序后续提交的园林改造、造景和项目工程咨询，先跟进再转正式订单。</p>
+                  <h2>园林咨询管理</h2>
+                  <p>读取 cloud1 的 garden_consultations，处理客户提交的园林改造、造景和项目工程咨询。</p>
                 </div>
-                <div className="project-inquiry-summary">
+                <div className="project-inquiry-summary cloud">
                   <strong>{pendingProjectInquiryCount}</strong>
-                  <span>待跟进</span>
+                  <span>待处理</span>
+                  <button type="button" className="ghost-button" onClick={loadGardenConsultationsFromCloud} disabled={projectInquiriesCloudStatus === "读取中"}>
+                    {projectInquiriesCloudStatus === "读取中" ? "读取中" : "刷新 cloud1"}
+                  </button>
                 </div>
               </div>
 
-              <div className="empty-card" style={{ marginBottom: 14 }}>
-                <p>当前为本地 mock 线索池</p>
-                <span>小程序园林改造咨询提交后进入这里；工作台会弹出待跟进提醒，点开后按 A/B/C/D 表格查看联系方式、项目情况、预算风格和现场照片。</span>
+              <div className={`empty-card project-inquiry-cloud-card ${projectInquiriesCloudError ? "error" : ""}`} style={{ marginBottom: 14 }}>
+                <p>{projectInquiriesCloudStatus}</p>
+                <span>
+                  环境：{gardenConsultationCloudEnv.env} · 区域：{gardenConsultationCloudEnv.region}
+                  {projectInquiriesCloudError ? ` · ${projectInquiriesCloudError}` : " · 页面进入时会调用 listGardenConsultations。"}
+                </span>
               </div>
 
               <div className="admin-table project-inquiry-table">
@@ -8537,41 +8673,61 @@ ${rentalText}`;
                   <span>操作</span>
                 </div>
 
-                {displayProjectInquiries.map((inquiry) => (
-                  <div className="admin-table-row" key={inquiry.id}>
-                    <span>
-                      <strong>{inquiry.contactName || "待确认客户"}</strong>
-                      <em>{inquiry.phone || "暂无电话"} · {inquiry.contactTime || "方便时间待确认"}</em>
-                    </span>
-                    <span>
-                      <strong>{inquiry.projectType || "园林改造"}</strong>
-                      <em>{inquiry.address || "地址待确认"} · {inquiry.areaSize || "面积待确认"}</em>
-                    </span>
-                    <span>
-                      <strong>{inquiry.budgetRange || "-"}</strong>
-                      <em>{inquiry.stylePreference || "风格待确认"}</em>
-                    </span>
-                    <span>
-                      <strong>{safePhotos(inquiry.photos).length} 张照片</strong>
-                      <em>{inquiry.note || "暂无补充说明"}</em>
-                    </span>
-                    <span>
-                      <b className={`admin-status-chip ${inquiry.status === "待跟进" ? "is-plan" : inquiry.status === "已转订单" ? "is-done" : inquiry.status === "无效" ? "muted" : ""}`}>
-                        {inquiry.status}
-                      </b>
-                    </span>
-                    <span className="admin-table-actions">
-                      <button className="ghost-button" onClick={() => openProjectInquiryDetail(inquiry)}>
-                        查看
-                      </button>
-                      {inquiry.status !== "已转订单" && (
-                        <button className="primary-button" onClick={() => convertProjectInquiryToOrderDraft(inquiry)}>
-                          转订单
-                        </button>
-                      )}
-                    </span>
-                  </div>
-                ))}
+                {projectInquiriesCloudStatus === "读取中" && displayProjectInquiries.length === 0 ? (
+                  <div className="admin-table-row"><span>正在读取 cloud1 园林咨询...</span></div>
+                ) : displayProjectInquiries.length === 0 ? (
+                  <div className="admin-table-row"><span>暂无园林咨询记录</span></div>
+                ) : (
+                  displayProjectInquiries.map((inquiry) => {
+                    const isUpdating = updatingProjectInquiryIds.includes(inquiry.id);
+                    return (
+                      <div className="admin-table-row" key={inquiry.id}>
+                        <span>
+                          <strong>{inquiry.contactName || "待确认客户"}</strong>
+                          <em>{inquiry.phone || "暂无电话"} · {inquiry.contactTime || "方便时间待确认"}</em>
+                          <em>{inquiry.createdAt || "暂无提交时间"}</em>
+                        </span>
+                        <span>
+                          <strong>{inquiry.projectType || "园林改造"}</strong>
+                          <em>{inquiry.address || "地址待确认"} · {inquiry.areaSize || "面积待确认"}</em>
+                          <em>{Array.isArray(inquiry.serviceNeeds) && inquiry.serviceNeeds.length ? inquiry.serviceNeeds.join("、") : "服务诉求待确认"}</em>
+                        </span>
+                        <span>
+                          <strong>{inquiry.budgetRange || "-"}</strong>
+                          <em>{inquiry.stylePreference || "风格待确认"}</em>
+                        </span>
+                        <span>
+                          <strong>{safePhotos(inquiry.photos).length} 张照片</strong>
+                          <em>{inquiry.description || inquiry.note || "暂无补充说明"}</em>
+                        </span>
+                        <span>
+                          <b className={`admin-status-chip ${["待处理", "待跟进"].includes(inquiry.status) ? "is-plan" : ["已转化", "已转订单"].includes(inquiry.status) ? "is-done" : inquiry.status === "已关闭" ? "muted" : ""}`}>
+                            {isUpdating ? "同步中" : inquiry.status}
+                          </b>
+                        </span>
+                        <span className="admin-table-actions project-inquiry-row-actions">
+                          <button className="ghost-button" onClick={() => openProjectInquiryDetail(inquiry)}>
+                            查看
+                          </button>
+                          <button className="ghost-button" onClick={() => updateProjectInquiryCloudStatus(inquiry, "contacted")} disabled={isUpdating || inquiry.cloudStatus === "contacted"}>
+                            标记已联系
+                          </button>
+                          <button className="ghost-button" onClick={() => updateProjectInquiryCloudStatus(inquiry, "converted")} disabled={isUpdating || inquiry.cloudStatus === "converted"}>
+                            标记已转化
+                          </button>
+                          <button className="ghost-button danger" onClick={() => updateProjectInquiryCloudStatus(inquiry, "closed")} disabled={isUpdating || inquiry.cloudStatus === "closed"}>
+                            关闭线索
+                          </button>
+                          {inquiry.cloudStatus !== "converted" && (
+                            <button className="primary-button" onClick={() => convertProjectInquiryToOrderDraft(inquiry)}>
+                              转订单
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           )}
@@ -9821,7 +9977,7 @@ ${rentalText}`;
                   <div>
                     <p className="eyebrow">Garden Project Inquiry</p>
                     <h2>{selectedProjectInquiry.projectType || "园林改造咨询"}</h2>
-                    <span>{selectedProjectInquiry.createdAt || "暂无提交时间"} · {selectedProjectInquiry.source === "mini_program" ? "客户小程序线索" : "本地线索"}</span>
+                    <span>{selectedProjectInquiry.createdAt || "暂无提交时间"} · {selectedProjectInquiry.source === "cloud1_garden_consultation" ? "cloud1 园林咨询" : "客户小程序线索"}</span>
                   </div>
                   <button className="close-button" onClick={() => setSelectedProjectInquiryId(null)} aria-label="关闭线索详情">×</button>
                 </header>
@@ -9858,14 +10014,14 @@ ${rentalText}`;
                       <div><span>预算范围</span><strong>{selectedProjectInquiry.budgetRange || "-"}</strong></div>
                       <div><span>期望风格</span><strong>{selectedProjectInquiry.stylePreference || "-"}</strong></div>
                       <div><span>当前状态</span><strong>{selectedProjectInquiry.status}</strong></div>
-                      <div><span>转化订单</span><strong>{selectedProjectInquiry.convertedOrderId || "尚未转订单"}</strong></div>
+                      <div><span>云端记录</span><strong>{getProjectInquiryRecordId(selectedProjectInquiry) || "本地线索"}</strong></div>
                     </div>
                   </section>
 
                   <section className="project-inquiry-section mini-garden-form-section">
                     <h3><span>D.</span> 现场资料</h3>
                     <div className="project-inquiry-photo-list mini-garden-photo-list">
-                      {Array.from({ length: 3 }, (_, index) => safePhotos(selectedProjectInquiry.photos)[index] || "").map((photo, index) => (
+                      {Array.from({ length: Math.max(3, safePhotos(selectedProjectInquiry.photos).length) }, (_, index) => safePhotos(selectedProjectInquiry.photos)[index] || "").map((photo, index) => (
                         <button
                           type="button"
                           className={`project-inquiry-photo ${photo ? "" : "muted"}`}
@@ -9892,16 +10048,16 @@ ${rentalText}`;
                 </div>
 
                 <footer className="project-inquiry-actions">
-                  <button className="ghost-button" onClick={() => updateProjectInquiry(selectedProjectInquiry.id, { status: "已联系" })}>标记已联系</button>
+                  <button className="ghost-button" onClick={() => updateProjectInquiryCloudStatus(selectedProjectInquiry, "contacted")} disabled={updatingProjectInquiryIds.includes(selectedProjectInquiry.id)}>标记已联系</button>
                   <button className="ghost-button" onClick={saveProjectInquiryFollowUp}>保存跟进备注</button>
-                  <button className="ghost-button" onClick={() => updateProjectInquiry(selectedProjectInquiry.id, { status: "暂缓" })}>标记暂缓</button>
-                  <button className="ghost-button danger" onClick={() => updateProjectInquiry(selectedProjectInquiry.id, { status: "无效" })}>标记无效</button>
+                  <button className="ghost-button" onClick={() => updateProjectInquiryCloudStatus(selectedProjectInquiry, "converted")} disabled={updatingProjectInquiryIds.includes(selectedProjectInquiry.id)}>标记已转化</button>
+                  <button className="ghost-button danger" onClick={() => updateProjectInquiryCloudStatus(selectedProjectInquiry, "closed")} disabled={updatingProjectInquiryIds.includes(selectedProjectInquiry.id)}>关闭线索</button>
                   <button
                     className="primary-button"
                     onClick={() => convertProjectInquiryToOrderDraft(selectedProjectInquiry)}
-                    disabled={selectedProjectInquiry.status === "已转订单"}
+                    disabled={selectedProjectInquiry.cloudStatus === "converted"}
                   >
-                    {selectedProjectInquiry.status === "已转订单" ? "已转正式订单" : "转为正式订单"}
+                    {selectedProjectInquiry.cloudStatus === "converted" ? "已转化" : "转为正式订单"}
                   </button>
                 </footer>
               </section>
