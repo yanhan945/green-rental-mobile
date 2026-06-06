@@ -20,7 +20,7 @@ function getFriendlyAuthError(message = "") {
 
 export function AuthPage({ session, onSignedOut }) {
   const [mode, setMode] = useState("login");
-  const [email, setEmail] = useState("zhangsan@example.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

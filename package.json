@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "deploy:cloudbase": "npm run build && tcb hosting deploy ./dist -e cloud1-d0g1j85ue0333b913",
     "lint": "eslint .",
     "preview": "vite preview"
   },
