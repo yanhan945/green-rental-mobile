@@ -6,12 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "deploy:cloudbase": "npm run build && tcb hosting deploy ./dist -e cloud1-d0g1j85ue0333b913",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@cloudbase/js-sdk": "^3.3.13",
-    "@supabase/supabase-js": "^2.84.0",
+    "@supabase/supabase-js": "^2.107.0",
     "lucide-react": "^0.468.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
