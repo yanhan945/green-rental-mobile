@@ -2259,14 +2259,16 @@ button.danger,
 }
 
 .project-inquiry-mask {
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 24px;
+  padding: 24px 24px 24px;
+  background: rgba(24, 28, 22, 0.18) !important;
+  backdrop-filter: none !important;
 }
 
 .project-inquiry-detail {
-  width: min(980px, calc(100vw - 48px));
-  max-height: min(760px, calc(100vh - 48px));
+  width: min(920px, calc(100vw - 48px));
+  max-height: min(710px, calc(100dvh - 48px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2281,7 +2283,8 @@ button.danger,
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 22px 24px 16px;
+  flex: 0 0 auto;
+  padding: 18px 22px 14px;
   border-bottom: 1px solid rgba(123, 108, 78, 0.12);
 }
 
@@ -2301,8 +2304,10 @@ button.danger,
 .project-inquiry-detail-body {
   display: grid;
   gap: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  padding: 18px 24px;
+  padding: 16px 22px;
   scrollbar-width: thin;
   scrollbar-color: rgba(64, 90, 56, 0.28) transparent;
 }
@@ -2378,7 +2383,7 @@ button.danger,
   overflow: hidden;
   border: 1px dashed rgba(132, 149, 121, 0.34);
   border-radius: 16px;
-  background: rgba(237, 241, 231, 0.72);
+  background: rgba(255, 252, 246, 0.92);
   color: var(--garden-olive);
   font-size: 12px;
   font-weight: 850;
@@ -2396,7 +2401,7 @@ button.project-inquiry-photo:disabled {
 .project-inquiry-photo img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .project-inquiry-photo.muted {
@@ -2418,11 +2423,12 @@ button.project-inquiry-photo:disabled {
 }
 
 .project-inquiry-actions {
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
-  padding: 16px 24px 22px;
+  padding: 14px 22px 18px;
   border-top: 1px solid rgba(123, 108, 78, 0.12);
   background: rgba(255, 250, 242, 0.88);
 }
@@ -2475,7 +2481,7 @@ button.project-inquiry-photo:disabled {
 
 .mini-garden-photo-list .project-inquiry-photo {
   width: 100%;
-  height: 124px;
+  height: 148px;
   border-radius: 12px;
   border-style: dashed;
 }
@@ -2528,6 +2534,31 @@ button.project-inquiry-photo:disabled {
   width: 100%;
   max-height: calc(100vh - 170px);
   object-fit: contain;
+}
+
+.sheet-mask.project-inquiry-mask {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 110 !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding: 18px 24px 24px !important;
+  background: rgba(255, 252, 246, 0.14) !important;
+  backdrop-filter: none !important;
+}
+
+.sheet-mask.project-photo-preview-mask {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 130 !important;
+  background: rgba(18, 20, 16, 0.28) !important;
+  backdrop-filter: none !important;
+}
+
+.mini-garden-photo-list .project-inquiry-photo img,
+.project-inquiry-photo img {
+  object-fit: contain !important;
+  background: rgba(255, 252, 246, 0.94);
 }
 
 .mini-program-decor-actions {
@@ -3011,7 +3042,7 @@ button.project-inquiry-photo:disabled {
 
   .project-inquiry-detail {
     width: calc(100vw - 28px);
-    max-height: calc(100vh - 28px);
+    max-height: calc(100dvh - 56px);
   }
 
   .project-inquiry-detail-grid {
@@ -10100,9 +10131,9 @@ button:disabled,
 }
 
 .mini-program-workbench .mini-program-decor-layout {
-  grid-template-columns: minmax(380px, 450px) minmax(0, 1fr) !important;
+  grid-template-columns: minmax(320px, 390px) minmax(0, 1fr) !important;
   gap: 0 !important;
-  min-height: 720px;
+  min-height: 620px;
 }
 
 .mini-decor-preview-column {
@@ -10110,7 +10141,7 @@ button:disabled,
   align-content: start;
   justify-items: center;
   gap: 16px;
-  padding: 20px;
+  padding: 16px;
   border-right: 1px solid rgba(116, 102, 74, 0.1);
   background: linear-gradient(180deg, rgba(252, 250, 246, 0.96), rgba(244, 239, 229, 0.72));
 }
@@ -10176,8 +10207,9 @@ button.mini-version-preview:hover {
 }
 
 .mini-phone-device {
-  width: min(318px, 100%);
-  height: 650px;
+  width: min(286px, 100%);
+  height: min(584px, calc(100dvh - 230px));
+  min-height: 500px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -10522,8 +10554,8 @@ button.mini-version-preview:hover {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  width: min(390px, 100%);
-  height: 760px;
+  width: min(340px, 100%);
+  height: min(660px, calc(100dvh - 160px));
   border: 9px solid #171817;
   border-radius: 46px;
   background: #fffefa;
@@ -10533,13 +10565,13 @@ button.mini-version-preview:hover {
 }
 
 .mini-program-live-preview.large {
-  width: min(390px, 100%);
-  height: 760px;
+  width: min(340px, 100%);
+  height: min(660px, calc(100dvh - 160px));
 }
 
 .mini-program-live-preview.phone {
-  width: min(318px, 100%);
-  height: 650px;
+  width: min(286px, 100%);
+  height: min(584px, calc(100dvh - 180px));
   border-width: 8px;
   border-radius: 42px;
 }
