@@ -1,25 +1,39 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ImageUploader } from "./components/common/ImageUploader";
 import { AuthPage } from "./components/auth/AuthPage";
 import { GardenIcons } from "./GardenIcons";
 import { StaffMobile } from "./components/staff/StaffMobile";
-import { supabase } from "./lib/supabaseClient";
 import {
-  getGardenConsultationCloudEnv,
+  SUPABASE_ANON_KEY,
+  SUPABASE_CONFIG_ERROR,
+  SUPABASE_URL,
+  supabase,
+} from "./lib/supabaseClient";
+import {
+  clearTemporaryAuthSession,
+  getTemporaryAuthSession,
+  saveTemporaryAuthSession,
+} from "./lib/temporaryAuth";
+import {
+  batchUpsertOrders as cloudBatchUpsertOrders,
+  getGardenConsultationDetail,
+  getProductLibrary as cloudGetProductLibrary,
   listGardenConsultations,
+  listOrders as cloudListOrders,
+  listStaffProfiles as cloudListStaffProfiles,
   updateGardenConsultationStatus,
-} from "./services/consultationService";
+  updateProductLibrary as cloudUpdateProductLibrary,
+  updateStaffProfile as cloudUpdateStaffProfile,
+  upsertOrder as cloudUpsertOrder,
+  getCloudDataConfig,
+} from "./services/cloudDataService";
 import sidebarAestheticSpaceCard from "./assets/visual/sidebar-aesthetic-space-card-cropped.png";
 import miniProgramDefaultHero from "./assets/visual/mini-program-default-hero.png";
 import miniProgramDefaultAdGarden from "./assets/visual/mini-program-default-ad-garden.png";
 import miniProgramDefaultAdDesign from "./assets/visual/mini-program-default-ad-design.png";
 import miniProgramDefaultAdCare from "./assets/visual/mini-program-default-ad-care.png";
 import "./App.css";
-
-const SUPABASE_URL = "https://kvdxgyymlfnnurdigtkj.supabase.co";
-const SUPABASE_KEY = "sb_publishable_FFoHUmn4RwaOkvx2XK7QHg__O7iWYdJ";
-const SUPABASE_ANON_KEY = SUPABASE_KEY;
-const ORDERS_API = `${SUPABASE_URL}/rest/v1/orders`;
 
 const STORAGE_KEY = "green-rental-mobile-v24";
 const PRODUCT_STORAGE_KEY = "green-rental-products-v29";
@@ -34,9 +48,61 @@ const STAFF_DIRECTORY_STORAGE_KEY = "green-rental-staff-directory-v1";
 const STAFF_AVATAR_STORAGE_KEY = "green-rental-staff-avatar-v1";
 const STAFF_AVATAR_CACHE_STORAGE_KEY = "green-rental-staff-avatar-cache-v1";
 const CURRENT_STAFF_STORAGE_KEY = "green-rental-current-staff-v1";
-const STAFF_AVATAR_BUCKET = "staff-avatars";
-const STAFF_PROFILE_API = `${SUPABASE_URL}/rest/v1/staff_profiles`;
-const PRODUCT_CLOUD_ID = 999999001;
+const CLOUD_ORDER_PAGE_SIZE = 50;
+const STAFF_PROFILE_PAGE_SIZE = 50;
+const CLOUD_READ_CACHE_MS = 5 * 60 * 1000;
+const STAFF_AVATAR_BUCKET = import.meta.env.VITE_SUPABASE_STAFF_AVATAR_BUCKET || "staff-avatars";
+
+let staffAvatarProfilesCache = {
+  fetchedAt: 0,
+  profiles: [],
+};
+let productLibraryCache = {
+  fetchedAt: 0,
+  data: null,
+};
+
+function getSupabaseResultCount(data) {
+  if (Array.isArray(data)) return data.length;
+  return data ? 1 : 0;
+}
+
+function logSupabaseQuery(table, action, startedAt, count, extra = {}) {
+  if (!import.meta.env.DEV) return;
+  const duration = Math.max(0, Math.round(performance.now() - startedAt));
+  console.info("[supabase-query]", {
+    table,
+    action,
+    ms: duration,
+    count,
+    ...extra,
+  });
+}
+
+function logCloud1FallbackDisabled(scope, error) {
+  console.warn(`cloud1 读取失败，暂未启用 Supabase fallback：${scope}`, error);
+}
+
+function ensureSupabaseRestConfigured() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error(SUPABASE_CONFIG_ERROR);
+  }
+}
+
+async function fetchSupabaseJson(table, action, url, options = {}) {
+  ensureSupabaseRestConfigured();
+  const startedAt = performance.now();
+  const response = await fetch(url, options);
+
+  if (!response.ok) {
+    logSupabaseQuery(table, action, startedAt, 0, { ok: false, status: response.status });
+    return { response, data: null };
+  }
+
+  const data = await response.json().catch(() => null);
+  logSupabaseQuery(table, action, startedAt, getSupabaseResultCount(data), { ok: true, status: response.status });
+  return { response, data };
+}
 
 const ORDER_STATUS = ["待接单", "配置中", "待商户确认", "待执行", "执行中", "待商户归档", "已完成"];
 const MERCHANT_STATUS_TABS = ["全部", ...ORDER_STATUS];
@@ -47,8 +113,10 @@ const APP_PAGES = ["orders", "plan", "completeUpload", "archiveDetail", "service
 
 function getAppShellMode() {
   const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
-  if (pathname === "/admin") return "admin";
-  if (pathname === "/staff") return "staff";
+  const hashPath = window.location.hash.replace(/^#/, "").replace(/\/+$/, "") || "";
+  const route = hashPath || pathname;
+  if (route === "/admin" || route === "admin") return "admin";
+  if (route === "/staff" || route === "staff") return "staff";
   return "legacy";
 }
 
@@ -666,6 +734,32 @@ function normalizeStaffDirectory(data) {
   return list.map(normalizeStaffMember);
 }
 
+function getStaffProfileId(profile = {}) {
+  return String(profile.staff_id || profile.staffId || profile.id || "").trim();
+}
+
+function mergeStaffDirectoryProfiles(members = [], profiles = []) {
+  const normalizedProfiles = profiles
+    .map((profile) => {
+      const id = getStaffProfileId(profile);
+      return id ? normalizeStaffMember({ ...profile, id }) : null;
+    })
+    .filter(Boolean);
+  if (!normalizedProfiles.length) return normalizeStaffDirectory(members);
+
+  const profileById = new Map(normalizedProfiles.map((profile) => [profile.id, profile]));
+  const seenIds = new Set();
+  const merged = normalizeStaffDirectory(members).map((member) => {
+    const profile = profileById.get(member.id);
+    seenIds.add(member.id);
+    return profile ? normalizeStaffMember({ ...member, ...profile }) : member;
+  });
+  normalizedProfiles.forEach((profile) => {
+    if (!seenIds.has(profile.id)) merged.push(profile);
+  });
+  return merged;
+}
+
 function canAssignStaff(member) {
   return member?.status === "active" && member?.orderPermission !== "paused";
 }
@@ -741,8 +835,8 @@ function resolveAuthAccountByEmail(email) {
 
 function cloudHeaders(extra = {}) {
   return {
-    apikey: SUPABASE_KEY,
-    Authorization: `Bearer ${SUPABASE_KEY}`,
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
     "Content-Type": "application/json",
     ...extra,
   };
@@ -1071,14 +1165,23 @@ function normalizeStringList(value) {
 }
 
 function normalizeGardenConsultationPhotos(item = {}) {
-  return [
+  const candidates = [
+    ...(Array.isArray(item.image_urls) ? item.image_urls : []),
     ...(Array.isArray(item.imageUrls) ? item.imageUrls : []),
     ...(Array.isArray(item.imageURLs) ? item.imageURLs : []),
     ...(Array.isArray(item.tempImageUrls) ? item.tempImageUrls : []),
     ...(Array.isArray(item.tempImageURLs) ? item.tempImageURLs : []),
     ...(Array.isArray(item.photos) ? item.photos : []),
-    ...(Array.isArray(item.imageFileIDs) ? item.imageFileIDs : []),
   ].filter(Boolean);
+
+  const seen = new Set();
+  return candidates.filter((photo) => {
+    const value = String(photo || "").trim();
+    if (!value || isCloudFileId(value)) return false;
+    if (seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
 }
 
 function normalizeCloudDateText(value) {
@@ -1106,36 +1209,47 @@ function extractGardenConsultationList(result) {
   return [];
 }
 
+function extractCloudList(result) {
+  if (Array.isArray(result)) return result;
+  if (Array.isArray(result?.data)) return result.data;
+  if (Array.isArray(result?.list)) return result.list;
+  if (Array.isArray(result?.records)) return result.records;
+  if (Array.isArray(result?.items)) return result.items;
+  if (Array.isArray(result?.result)) return result.result;
+  return [];
+}
+
 function normalizeProjectInquiries(data, options = {}) {
   const { useDefaults = true } = options;
   const list = Array.isArray(data) && data.length ? data : (useDefaults ? defaultProjectInquiries : []);
   return list.map((item, index) => ({
     id: item?.id || item?._id || `inq-${Date.now()}-${index}`,
     cloudId: item?._id || item?.cloudId || item?.id || "",
-    source: item?.source || (item?._id ? "cloud1_garden_consultation" : "mini_program"),
+    source: item?.source || (item?._id || item?.cloudId || item?.contact_name ? "cloud1_garden_consultation" : "mini_program"),
     type: item?.type || "garden_project",
-    contactName: item?.contactName || item?.name || "待确认客户",
+    contactName: item?.contactName || item?.contact_name || item?.name || "待确认客户",
     phone: item?.phone || "",
-    address: item?.address || item?.projectAddress || "",
-    projectType: normalizeStringList(item?.projectTypes).join("、") || item?.projectType || "园林改造咨询",
-    projectTypes: normalizeStringList(item?.projectTypes || item?.projectType),
-    contactTime: item?.contactTime || item?.availableTime || item?.preferredContactTime || "工作日 10:00-18:00 / 微信联系优先",
-    areaSize: item?.areaSize || item?.areaRange || "待确认",
-    areaRange: item?.areaRange || item?.areaSize || "",
-    budgetRange: item?.budgetRange || "待确认",
-    stylePreference: item?.stylePreference || "待确认",
-    serviceNeeds: normalizeStringList(item?.serviceNeeds || item?.needs || "先咨询沟通"),
+    address: item?.address || item?.projectAddress || item?.project_address || "",
+    projectType: normalizeStringList(item?.projectTypes || item?.project_types).join("、") || item?.projectType || "园林改造咨询",
+    projectTypes: normalizeStringList(item?.projectTypes || item?.project_types || item?.projectType),
+    contactTime: item?.contactTime || item?.contact_time || item?.availableTime || item?.preferredContactTime || "工作日 10:00-18:00 / 微信联系优先",
+    areaSize: item?.areaSize || item?.areaRange || item?.area_range || "待确认",
+    areaRange: item?.areaRange || item?.area_range || item?.areaSize || "",
+    budgetRange: item?.budgetRange || item?.budget_range || "待确认",
+    stylePreference: item?.stylePreference || item?.style_preference || "待确认",
+    serviceNeeds: normalizeStringList(item?.serviceNeeds || item?.service_needs || item?.needs || "先咨询沟通"),
     expectedTime: item?.expectedTime || "待确认",
     photos: normalizeGardenConsultationPhotos(item),
     imageFileIDs: Array.isArray(item?.imageFileIDs) ? item.imageFileIDs : [],
     note: item?.note || item?.description || "",
     description: item?.description || item?.note || "",
+    detailLoaded: Boolean(item?.detailLoaded || item?.description || (Array.isArray(item?.image_urls) && item.image_urls.length)),
     cloudStatus: getGardenConsultationStatusValue(item?.cloudStatus || item?.status),
     status: normalizeGardenConsultationStatus(item?.status),
     followUpNote: item?.followUpNote || "",
-    createdAt: normalizeCloudDateText(item?.createdAt) || nowText(),
+    createdAt: normalizeCloudDateText(item?.createdAt || item?.created_at) || nowText(),
     convertedOrderId: item?.convertedOrderId || "",
-    updatedAt: normalizeCloudDateText(item?.updatedAt),
+    updatedAt: normalizeCloudDateText(item?.updatedAt || item?.updated_at),
   }));
 }
 
@@ -1675,6 +1789,10 @@ function isImageUrl(value) {
   return /^(https?:\/\/|data:image\/|blob:)/i.test(String(value || "").trim());
 }
 
+function isCloudFileId(value) {
+  return /^cloud:\/\//i.test(String(value || "").trim());
+}
+
 function isLocalOnlyImageData(value) {
   return /^(data:image\/|blob:)/i.test(String(value || "").trim());
 }
@@ -1923,86 +2041,86 @@ function getStaffAvatarCloudErrorMessage(error) {
 
 async function loadStaffAvatarProfileFromCloud(staffId) {
   try {
-    const response = await fetch(
-      `${STAFF_PROFILE_API}?staff_id=eq.${encodeURIComponent(staffId)}&select=avatar_url,updated_at&limit=1`,
-      { headers: cloudHeaders() }
-    );
-    if (!response.ok) return "";
+    const cachedProfile = staffAvatarProfilesCache.profiles.find((profile) => getStaffProfileId(profile) === staffId);
+    if (cachedProfile && Date.now() - staffAvatarProfilesCache.fetchedAt < CLOUD_READ_CACHE_MS) {
+      return cachedProfile.avatar_url || cachedProfile.avatarUrl || cachedProfile.avatar || "";
+    }
 
-    const data = await response.json();
-    return Array.isArray(data) ? data[0]?.avatar_url || "" : "";
+    const result = await cloudListStaffProfiles({ staffId, limit: 1 });
+    const profiles = extractCloudList(result);
+    const profile = profiles.find((item) => getStaffProfileId(item) === staffId) || profiles[0];
+
+    return profile?.avatar_url || profile?.avatarUrl || profile?.avatar || "";
   } catch (error) {
-    console.warn("读取云端员工头像资料失败：", error);
+    logCloud1FallbackDisabled("staff_profiles 当前头像", error);
     return "";
   }
 }
 
 async function loadStaffAvatarProfilesFromCloud() {
   try {
-    const response = await fetch(
-      `${STAFF_PROFILE_API}?select=staff_id,avatar_url,updated_at`,
-      { headers: cloudHeaders() }
-    );
-    if (!response.ok) return [];
+    if (Date.now() - staffAvatarProfilesCache.fetchedAt < CLOUD_READ_CACHE_MS) {
+      return staffAvatarProfilesCache.profiles;
+    }
 
-    const data = await response.json();
-    return Array.isArray(data)
-      ? data.filter((item) => item?.staff_id && item?.avatar_url)
-      : [];
+    const result = await cloudListStaffProfiles({ limit: STAFF_PROFILE_PAGE_SIZE });
+    const profiles = extractCloudList(result).filter((item) => getStaffProfileId(item));
+    staffAvatarProfilesCache = {
+      fetchedAt: Date.now(),
+      profiles,
+    };
+    return profiles;
   } catch (error) {
-    console.warn("读取云端员工头像目录失败：", error);
+    logCloud1FallbackDisabled("staff_profiles 员工目录", error);
     return [];
   }
 }
 
 async function saveStaffAvatarProfileToCloud(staff, avatarUrl) {
   const payload = {
+    id: staff?.id || DEFAULT_STAFF_ID,
     staff_id: staff?.id || DEFAULT_STAFF_ID,
     name: staff?.name || "",
     email: staff?.email || "",
+    phone: staff?.phone || "",
+    staffNo: staff?.staffNo || "",
+    role: staff?.role || "staff",
+    employeeType: getStaffEmployeeType(staff),
+    status: staff?.status || "active",
+    orderPermission: staff?.orderPermission || "public",
+    organizationId: staff?.organizationId || organizations[0]?.id || "org-001",
+    area: staff?.area || "杭州 / 滨江",
+    avatar: avatarUrl,
+    avatarUrl,
     avatar_url: avatarUrl,
+    updatedAt: nowText(),
     updated_at: new Date().toISOString(),
   };
 
-  console.info("[staff-avatar] staff_profiles upsert start", {
-    staff_id: payload.staff_id,
-    avatar_url: payload.avatar_url,
-  });
-
-  const response = await fetch(`${STAFF_PROFILE_API}?on_conflict=staff_id`, {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: "resolution=merge-duplicates,return=representation",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
-    let errorDetail = errorText;
-    try {
-      errorDetail = errorText ? JSON.parse(errorText) : "";
-    } catch {
-      errorDetail = errorText;
-    }
-    console.error("[staff-avatar] staff_profiles upsert failed detail", response.status, errorText);
-    console.error("[staff-avatar] staff_profiles upsert failed", {
-      status: response.status,
-      error: errorDetail,
-      payload,
+  if (import.meta.env.DEV) {
+    console.info("[cloud1] staff_profiles upsert start", {
+      staff_id: payload.staff_id,
+      avatar_url: payload.avatar_url,
     });
-    throw createCloudError("staff_profiles 写入失败", errorDetail || errorText || response.statusText);
   }
 
-  const data = await response.json().catch(() => null);
-  console.info("[staff-avatar] staff_profiles upsert success", {
-    staff_id: payload.staff_id,
-    avatar_url: payload.avatar_url,
-  });
-  return data;
+  await cloudUpdateStaffProfile(payload);
+
+  staffAvatarProfilesCache = {
+    fetchedAt: Date.now(),
+    profiles: [
+      { staff_id: payload.staff_id, avatar_url: payload.avatar_url, updated_at: payload.updated_at },
+      ...staffAvatarProfilesCache.profiles.filter((profile) => getStaffProfileId(profile) !== payload.staff_id),
+    ].slice(0, STAFF_PROFILE_PAGE_SIZE),
+  };
+
+  if (import.meta.env.DEV) {
+    console.info("[cloud1] staff_profiles upsert success", {
+      staff_id: payload.staff_id,
+      avatar_url: payload.avatar_url,
+    });
+  }
+  return null;
 }
 
 async function createCompressedAvatarBlob(file) {
@@ -2253,123 +2371,63 @@ function getCustomerMergeHint(customer = {}, allCustomers = []) {
   return possible ? `疑似与「${possible.name}」重复` : "";
 }
 
-async function fetchOrdersFromCloud() {
-  const response = await fetch(`${ORDERS_API}?select=id,data,updated_at&order=updated_at.desc`, {
-    method: "GET",
-    headers: cloudHeaders(),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`读取云端失败：${response.status} ${text}`);
+async function fetchOrdersFromCloud({ limit = CLOUD_ORDER_PAGE_SIZE } = {}) {
+  try {
+    const result = await cloudListOrders({ limit });
+    return normalizeOrders(extractCloudList(result));
+  } catch (error) {
+    logCloud1FallbackDisabled("orders 列表", error);
+    throw error;
   }
-
-  const rows = await response.json();
-  return normalizeOrders(rows.map((row) => row.data).filter((item) => item?.type !== "product_library"));
 }
 
-async function fetchProductsFromCloud() {
-  const response = await fetch(`${ORDERS_API}?id=eq.${PRODUCT_CLOUD_ID}&select=id,data,updated_at`, {
-    method: "GET",
-    headers: cloudHeaders(),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`读取云端商品库失败：${response.status} ${text}`);
+async function fetchProductLibraryFromCloud({ force = false } = {}) {
+  if (!force && productLibraryCache.data && Date.now() - productLibraryCache.fetchedAt < CLOUD_READ_CACHE_MS) {
+    return productLibraryCache.data;
   }
 
-  const rows = await response.json();
-  const cloudProducts = rows?.[0]?.data?.products;
-  return Array.isArray(cloudProducts) ? ensureProductSeedData(cloudProducts) : [];
-}
-
-async function fetchProductLibraryFromCloud() {
-  const response = await fetch(`${ORDERS_API}?id=eq.${PRODUCT_CLOUD_ID}&select=id,data,updated_at`, {
-    method: "GET",
-    headers: cloudHeaders(),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`读取商品与服务配置失败：${response.status} ${text}`);
-  }
-
-  const rows = await response.json();
-  const data = rows?.[0]?.data || {};
-  return {
+  const data = (await cloudGetProductLibrary().catch((error) => {
+    logCloud1FallbackDisabled("product_library", error);
+    throw error;
+  })) || {};
+  const library = {
     products: ensureProductSeedData(data.products),
     maintenancePackages: normalizeMaintenancePackages(data.maintenancePackages),
     productCategories: normalizeProductCategories(data.productCategories),
     serviceSettings: normalizeServiceSettings(data.serviceSettings),
   };
+  productLibraryCache = {
+    fetchedAt: Date.now(),
+    data: library,
+  };
+  return library;
 }
 
 async function upsertProductsToCloud(products, maintenancePackages = [], productCategoriesConfig = defaultProductCategories, serviceSettings = defaultServiceSettings) {
-  const response = await fetch(`${ORDERS_API}?on_conflict=id`, {
-    method: "POST",
-    headers: cloudHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
-    body: JSON.stringify({
-      id: PRODUCT_CLOUD_ID,
-      data: {
-        type: "product_library",
-        products: normalizeProducts(products),
-        maintenancePackages: normalizeMaintenancePackages(maintenancePackages),
-        productCategories: normalizeProductCategories(productCategoriesConfig),
-        serviceSettings: normalizeServiceSettings(serviceSettings),
-        miniProgramSyncNote: "养护套餐适合小程序自助下单；租赁植物和售卖植物更适合提交意向、工作人员确认、商户端代下单后再进入客户小程序待付款。",
-        updatedAt: nowText(),
-      },
-      updated_at: new Date().toISOString(),
-    }),
-  });
+  const library = {
+    products: normalizeProducts(products),
+    maintenancePackages: normalizeMaintenancePackages(maintenancePackages),
+    productCategories: normalizeProductCategories(productCategoriesConfig),
+    serviceSettings: normalizeServiceSettings(serviceSettings),
+    miniProgramSyncNote: "养护套餐适合小程序自助下单；租赁植物和售卖植物更适合提交意向、工作人员确认、商户端代下单后再进入客户小程序待付款。",
+    updatedAt: nowText(),
+  };
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`同步商品库失败：${response.status} ${text}`);
-  }
+  await cloudUpdateProductLibrary(library);
+
+  productLibraryCache = {
+    fetchedAt: Date.now(),
+    data: library,
+  };
 }
 
 async function upsertOrderToCloud(order) {
-  const response = await fetch(`${ORDERS_API}?on_conflict=id`, {
-    method: "POST",
-    headers: cloudHeaders({
-      Prefer: "resolution=merge-duplicates,return=minimal",
-    }),
-    body: JSON.stringify({
-      id: order.id,
-      data: order,
-      updated_at: new Date().toISOString(),
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`写入云端失败：${response.status} ${text}`);
-  }
+  await cloudUpsertOrder(order);
 }
 
 async function upsertOrdersToCloud(orders) {
   if (!orders.length) return;
-
-  const response = await fetch(`${ORDERS_API}?on_conflict=id`, {
-    method: "POST",
-    headers: cloudHeaders({
-      Prefer: "resolution=merge-duplicates,return=minimal",
-    }),
-    body: JSON.stringify(
-      orders.map((order) => ({
-        id: order.id,
-        data: order,
-        updated_at: new Date().toISOString(),
-      }))
-    ),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`批量写入云端失败：${response.status} ${text}`);
-  }
+  await cloudBatchUpsertOrders(orders.slice(0, CLOUD_ORDER_PAGE_SIZE));
 }
 
 function money(value) {
@@ -2715,12 +2773,8 @@ function App() {
   const showRoleSwitch = isLocalDevHost() && new URLSearchParams(window.location.search).get("debugRoleSwitch") === "1";
   const merchantListRef = useRef(null);
   const previousMerchantTodoSignatureRef = useRef("");
-  const activeViewRef = useRef({
-    currentPage: "orders",
-    activeRole: getInitialRoleByPath(),
-    merchantViewingOrderId: null,
-    selectedOrderDetailId: null,
-  });
+  const projectInquiriesLoadedRef = useRef(false);
+  const orderAutoRefreshInFlightRef = useRef(false);
 
   const [activeRole, setActiveRole] = useState(() => getInitialRoleByPath());
   const [session, setSession] = useState(null);
@@ -2734,7 +2788,7 @@ function App() {
   const [serviceConfigTab, setServiceConfigTab] = useState("租赁植物");
   const [syncMessage, setSyncMessage] = useState("当前数据通道已连接。点击刷新即可读取最新订单。");
   const [syncState, setSyncState] = useState("待刷新");
-  const [autoSyncState, setAutoSyncState] = useState("自动同步准备中");
+  const [autoSyncState, setAutoSyncState] = useState("手动刷新模式：已关闭自动轮询");
 
   const [orders, setOrders] = useState(() => loadOrdersFromLocalStore());
   const [merchantProducts, setMerchantProducts] = useState(() => loadProductsFromLocalStore());
@@ -3086,11 +3140,11 @@ function App() {
   const customerViewOrder = safeOrders.find((order) => order.plan?.id === customerPlanId) || null;
 
   useEffect(() => {
-    if (window.location.pathname === "/" && !customerPlanId) {
-      window.history.replaceState(null, "", "/admin");
+    if (appShellMode === "legacy" && window.location.pathname === "/" && !window.location.hash && !customerPlanId) {
+      window.history.replaceState(null, "", "/#/admin");
       setActiveRole("merchant");
     }
-  }, [customerPlanId]);
+  }, [appShellMode, customerPlanId]);
 
   useEffect(() => {
     if (appShellMode === "admin" && activeRole !== "merchant") {
@@ -3179,7 +3233,7 @@ function App() {
 
   useEffect(() => {
     if (activeRole !== "merchant" || merchantTab !== "项目线索") return;
-    loadGardenConsultationsFromCloud();
+    loadGardenConsultationsFromCloud1();
   }, [activeRole, merchantTab]);
 
   useEffect(() => {
@@ -3222,6 +3276,15 @@ function App() {
 
   useEffect(() => {
     let mounted = true;
+    const temporarySession = getTemporaryAuthSession();
+
+    if (temporarySession) {
+      setSession(temporarySession);
+      setAuthLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
 
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
@@ -3282,21 +3345,14 @@ function App() {
   useEffect(() => {
     let cancelled = false;
 
-    async function syncStaffDirectoryAvatarsFromCloud() {
-      if (!session) return;
-
+    async function syncStaffDirectoryFromCloud() {
       const profiles = await loadStaffAvatarProfilesFromCloud();
       if (cancelled || profiles.length === 0) return;
 
-      const avatarByStaffId = new Map(profiles.map((profile) => [profile.staff_id, profile.avatar_url]));
-      setStaffDirectory((members) =>
-        members.map((member) => {
-          const avatarUrl = avatarByStaffId.get(member.id);
-          return avatarUrl
-            ? normalizeStaffMember({ ...member, avatar: avatarUrl, avatarUrl, updatedAt: nowText() })
-            : member;
-        })
+      const avatarByStaffId = new Map(
+        profiles.map((profile) => [getStaffProfileId(profile), profile.avatar_url || profile.avatarUrl || profile.avatar || ""])
       );
+      setStaffDirectory((members) => mergeStaffDirectoryProfiles(members, profiles));
 
       const currentAvatarUrl = avatarByStaffId.get(currentStaffId);
       if (currentAvatarUrl) {
@@ -3304,11 +3360,11 @@ function App() {
       }
     }
 
-    syncStaffDirectoryAvatarsFromCloud();
+    syncStaffDirectoryFromCloud();
     return () => {
       cancelled = true;
     };
-  }, [session, currentStaffId]);
+  }, [currentStaffId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -3347,15 +3403,6 @@ function App() {
   }, [currentStaffId, currentStaff?.avatarUrl, currentStaff?.avatar, isUploadingStaffAvatar]);
 
   useEffect(() => {
-    activeViewRef.current = {
-      currentPage,
-      activeRole,
-      merchantViewingOrderId: merchantViewingOrder?.id || null,
-      selectedOrderDetailId: selectedOrderDetail?.id || null,
-    };
-  }, [currentPage, activeRole, merchantViewingOrder?.id, selectedOrderDetail?.id]);
-
-  useEffect(() => {
     if (["plan", "completeUpload", "archiveDetail", "serviceRecord"].includes(currentPage) && !currentOrder) setCurrentPage("orders");
     if (currentPage === "plan" && currentOrder && !currentOrder.plan) {
       const initialPlanType = getInitialPlanTypeForOrder(currentOrder);
@@ -3380,15 +3427,7 @@ function App() {
   }, [activeRole, currentPage, currentOrder, currentOrderId, safeOrders]);
 
   useEffect(() => {
-    silentRefreshFromCloud("启动自动同步");
-
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        silentRefreshFromCloud("自动同步");
-      }
-    }, 5000);
-
-    return () => window.clearInterval(timer);
+    setAutoSyncState("手动刷新模式：已关闭自动轮询");
   }, []);
 
   function addTimeline(order, action) {
@@ -3627,10 +3666,11 @@ function App() {
       return;
     }
 
+    let savedStaff = null;
     setStaffDirectory((members) =>
-      members.map((member) =>
-        member.id === editingStaffId
-          ? normalizeStaffMember({
+      members.map((member) => {
+        if (member.id !== editingStaffId) return member;
+        savedStaff = normalizeStaffMember({
               ...member,
               ...editingStaffForm,
               staffNo,
@@ -3640,14 +3680,22 @@ function App() {
               employeeType: getStaffEmployeeType(editingStaffForm),
               area: editingStaffForm.area.trim() || "杭州 / 滨江",
               updatedAt: nowText(),
-            })
-          : member
-      )
+            });
+        return savedStaff;
+      })
     );
 
     if (editingStaffId === currentStaffId && editingStaffForm.avatar) {
       setStaffAvatar(editingStaffForm.avatarUrl || editingStaffForm.avatar);
     }
+
+    window.setTimeout(() => {
+      if (!savedStaff) return;
+      cloudUpdateStaffProfile(savedStaff).catch((error) => {
+        logCloud1FallbackDisabled("staff_profiles 保存员工资料", error);
+        setStaffFormError(error?.message || "员工资料写入 cloud1 失败，本地数据已保留。");
+      });
+    }, 0);
 
     closeManageStaff();
   }
@@ -3786,6 +3834,10 @@ function App() {
     });
 
     setStaffDirectory((members) => [newStaff, ...members]);
+    cloudUpdateStaffProfile(newStaff).catch((error) => {
+      logCloud1FallbackDisabled("staff_profiles 新增员工", error);
+      setStaffFormError(error?.message || "员工资料写入 cloud1 失败，本地数据已保留。");
+    });
     setLastInviteCode(inviteCode);
     setStaffFormError("");
     setStaffInviteForm(createStaffForm(generateNextStaffNo([...staffDirectory, newStaff])));
@@ -3803,8 +3855,8 @@ function App() {
 
     try {
       const [cloudOrders, cloudLibrary] = await Promise.all([
-        fetchOrdersFromCloud(),
-        fetchProductLibraryFromCloud().catch(() => ({ products: [], maintenancePackages: [], productCategories: [], serviceSettings: defaultServiceSettings })),
+        fetchOrdersFromCloud({ limit: CLOUD_ORDER_PAGE_SIZE }),
+        fetchProductLibraryFromCloud({ force: true }).catch(() => ({ products: [], maintenancePackages: [], productCategories: [], serviceSettings: defaultServiceSettings })),
       ]);
 
       if (cloudLibrary.products.length > 0) {
@@ -3833,78 +3885,62 @@ function App() {
     } catch (error) {
       console.error(error);
       setSyncState("同步失败");
-      setSyncMessage(error.message || "读取云端失败。");
+      setSyncMessage(error.message || "cloud1 读取失败，暂未启用 Supabase fallback。");
     }
   }
 
-  async function silentRefreshFromCloud(reason = "自动同步") {
+  async function refreshOrdersOnlyFromCloud(reason = "auto") {
+    if (orderAutoRefreshInFlightRef.current) return;
+    orderAutoRefreshInFlightRef.current = true;
+
     try {
-      const [cloudOrders, cloudLibrary] = await Promise.all([
-        fetchOrdersFromCloud().catch(() => []),
-        fetchProductLibraryFromCloud().catch(() => ({ products: [], maintenancePackages: [], productCategories: [], serviceSettings: defaultServiceSettings })),
-      ]);
-
-      const viewState = activeViewRef.current;
-      const isReadingDetail =
-        ["plan", "completeUpload", "archiveDetail"].includes(viewState.currentPage) ||
-        Boolean(viewState.merchantViewingOrderId || viewState.selectedOrderDetailId);
-
+      const cloudOrders = await fetchOrdersFromCloud({ limit: CLOUD_ORDER_PAGE_SIZE });
       if (cloudOrders.length > 0) {
-        const normalizedOrders = normalizeOrders(cloudOrders);
-        if (!isReadingDetail) {
-          setOrders((prevOrders) => {
-            const prevText = JSON.stringify(prevOrders);
-            const nextText = JSON.stringify(normalizedOrders);
-            return prevText === nextText ? prevOrders : normalizedOrders;
-          });
-          setMerchantCustomers((prev) => mergeCustomers(prev, normalizedOrders));
-        }
+        replaceAllOrders(cloudOrders);
+        setMerchantCustomers((prev) => mergeCustomers(prev, cloudOrders));
+        setSyncState("已同步");
+        setSyncMessage(`${reason === "focus" ? "窗口切回后" : "自动"}轻量刷新订单：${nowText()}`);
       }
-
-      if (cloudLibrary.products.length > 0) {
-        const normalizedProducts = normalizeProducts(cloudLibrary.products);
-        if (!isReadingDetail) {
-          setMerchantProducts((prevProducts) => {
-            const prevText = JSON.stringify(prevProducts);
-            const nextText = JSON.stringify(normalizedProducts);
-            return prevText === nextText ? prevProducts : normalizedProducts;
-          });
-        }
-      }
-
-      if (cloudLibrary.maintenancePackages.length > 0 && !isReadingDetail) {
-        const normalizedPackages = normalizeMaintenancePackages(cloudLibrary.maintenancePackages);
-        setMerchantMaintenancePackages((prevPackages) => {
-          const prevText = JSON.stringify(prevPackages);
-          const nextText = JSON.stringify(normalizedPackages);
-          return prevText === nextText ? prevPackages : normalizedPackages;
-        });
-      }
-
-      if (cloudLibrary.productCategories.length > 0 && !isReadingDetail) {
-        const normalizedCategories = normalizeProductCategories(cloudLibrary.productCategories);
-        setMerchantProductCategories((prevCategories) => {
-          const prevText = JSON.stringify(prevCategories);
-          const nextText = JSON.stringify(normalizedCategories);
-          return prevText === nextText ? prevCategories : normalizedCategories;
-        });
-      }
-
-      if (cloudLibrary.serviceSettings && !isReadingDetail) {
-        const normalizedSettings = normalizeServiceSettings(cloudLibrary.serviceSettings);
-        setMerchantServiceSettings((prevSettings) => {
-          const prevText = JSON.stringify(prevSettings);
-          const nextText = JSON.stringify(normalizedSettings);
-          return prevText === nextText ? prevSettings : normalizedSettings;
-        });
-      }
-
-      setAutoSyncState(`${reason}${isReadingDetail ? "（详情浏览中未打断）" : ""}：${nowText().slice(11)}`);
     } catch (error) {
-      console.error("自动同步失败：", error);
-      setAutoSyncState("自动同步失败，手动刷新兜底");
+      console.error(error);
+      setSyncState("同步失败");
+      setSyncMessage(error.message || "cloud1 订单轻量刷新失败，暂未启用 Supabase fallback。");
+    } finally {
+      orderAutoRefreshInFlightRef.current = false;
     }
   }
+
+  useEffect(() => {
+    if (!session) return undefined;
+
+    setAutoSyncState("轻量自动刷新：每 60 秒刷新订单，不拉图片");
+    refreshOrdersOnlyFromCloud("auto");
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        refreshOrdersOnlyFromCloud("auto");
+      }
+    }, 60000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshOrdersOnlyFromCloud("focus");
+      }
+    };
+
+    const handleFocus = () => {
+      refreshOrdersOnlyFromCloud("focus");
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [session]);
 
   async function uploadLocalOrdersToCloud() {
     setSyncState("同步中");
@@ -4033,12 +4069,19 @@ function App() {
   }
 
   async function handleSignOut() {
+    clearTemporaryAuthSession();
     await supabase.auth.signOut();
     setSession(null);
     setActiveRole(getInitialRoleByPath());
     setCurrentPage("orders");
     setCurrentOrderId(null);
     resetSheets();
+  }
+
+  function handleTemporarySignIn(temporarySession) {
+    saveTemporaryAuthSession(temporarySession);
+    setSession(temporarySession);
+    setAuthLoading(false);
   }
 
   async function copyText(text, successText = "已复制") {
@@ -4313,19 +4356,24 @@ function App() {
     return inquiry?.cloudId || inquiry?._id || inquiry?.id || "";
   }
 
-  async function loadGardenConsultationsFromCloud() {
+  async function loadGardenConsultationsFromCloud1(options = {}) {
+    const { force = false } = options;
+    if (!force && projectInquiriesLoadedRef.current) return;
+
     setProjectInquiriesCloudStatus("读取中");
     setProjectInquiriesCloudError("");
     try {
-      const result = await listGardenConsultations({ page: 1, pageSize: 20 });
+      const result = await listGardenConsultations();
       const records = extractGardenConsultationList(result);
       setProjectInquiries(normalizeProjectInquiries(records, { useDefaults: false }));
+      projectInquiriesLoadedRef.current = true;
       setProjectInquiriesCloudStatus(`已连接 cloud1 · ${records.length} 条`);
       setSyncMessage(`园林咨询已从 cloud1 同步：${nowText()}`);
     } catch (error) {
       console.error(error);
+      logCloud1FallbackDisabled("garden_consultations", error);
       setProjectInquiriesCloudStatus("读取失败");
-      setProjectInquiriesCloudError(error?.message || "读取 cloud1 园林咨询失败，请检查匿名登录、云函数权限或环境 ID。");
+      setProjectInquiriesCloudError(error?.message || "cloud1 读取失败，暂未启用 Supabase fallback。请检查集合、云函数和数据库权限。");
     }
   }
 
@@ -4364,9 +4412,27 @@ function App() {
     }
   }
 
-  function openProjectInquiryDetail(inquiry) {
+  async function openProjectInquiryDetail(inquiry) {
     setSelectedProjectInquiryId(inquiry.id);
     setProjectInquiryFollowUpDraft(inquiry.followUpNote || "");
+    const recordId = getProjectInquiryRecordId(inquiry);
+    if (inquiry.detailLoaded || !recordId) return;
+
+    try {
+      const detail = await getGardenConsultationDetail(recordId);
+      const normalizedDetail = normalizeProjectInquiries([{ ...detail, detailLoaded: true }], { useDefaults: false })[0];
+      if (!normalizedDetail) return;
+      setProjectInquiries((prev) =>
+        normalizeProjectInquiries(prev, { useDefaults: false }).map((item) =>
+          getProjectInquiryRecordId(item) === recordId
+            ? { ...item, ...normalizedDetail, id: item.id, cloudId: item.cloudId || normalizedDetail.cloudId, followUpNote: item.followUpNote }
+            : item
+        )
+      );
+    } catch (error) {
+      console.error(error);
+      setProjectInquiriesCloudError(error?.message || "读取园林咨询详情失败。");
+    }
   }
 
   function saveProjectInquiryFollowUp() {
@@ -5773,8 +5839,8 @@ ${rentalText}`;
         {!compact && (
           <>
             <div className="empty-card">
-              <p>云同步已开启</p>
-              <span>{syncMessage}｜页面打开后会自动同步订单和商品，也可以手动刷新。</span>
+              <p>云同步手动模式</p>
+              <span>{syncMessage}｜页面打开后优先使用本地缓存，点击刷新再读取云端最新数据。</span>
             </div>
 
             <div className="actions">
@@ -7781,7 +7847,7 @@ ${rentalText}`;
     const selectedMiniProgramAppointment = selectedMiniProgramAppointmentId
       ? displayMiniProgramAppointments.find((item) => item.id === selectedMiniProgramAppointmentId) || null
       : null;
-    const gardenConsultationCloudEnv = getGardenConsultationCloudEnv();
+    const cloudDataConfig = getCloudDataConfig();
     const homeBannerItems = getHomeBannerItems(safeMiniProgramHomeConfig);
     const homeHeroConfig = getHomeHeroConfig(safeMiniProgramHomeConfig);
     const homeHeroImageSrc = getHomeHeroImageSrc(homeHeroConfig);
@@ -8330,7 +8396,7 @@ ${rentalText}`;
               <p className="eyebrow" style={{ color: "#64748b" }}>Dashboard Overview</p>
               <h1 style={{ fontSize: 24, color: "#0f172a" }}>{merchantTab}</h1>
               <span style={{ color: "#64748b", fontSize: 13, display: "block", marginTop: 4 }}>
-                <b style={{ color: "#10b981" }}>●</b> 实时通道运行中 ｜ {autoSyncState}
+                <b style={{ color: "#10b981" }}>●</b> 手动刷新模式 ｜ {autoSyncState}
               </span>
             </div>
             <div style={{ display: "flex", gap: 12 }}>
@@ -8606,7 +8672,7 @@ ${rentalText}`;
                 <div className="project-inquiry-summary cloud">
                   <strong>{pendingProjectInquiryCount}</strong>
                   <span>待处理</span>
-                  <button type="button" className="ghost-button" onClick={loadGardenConsultationsFromCloud} disabled={projectInquiriesCloudStatus === "读取中"}>
+                  <button type="button" className="ghost-button" onClick={() => loadGardenConsultationsFromCloud1({ force: true })} disabled={projectInquiriesCloudStatus === "读取中"}>
                     {projectInquiriesCloudStatus === "读取中" ? "读取中" : "刷新 cloud1"}
                   </button>
                 </div>
@@ -8615,7 +8681,7 @@ ${rentalText}`;
               <div className={`empty-card project-inquiry-cloud-card ${projectInquiriesCloudError ? "error" : ""}`} style={{ marginBottom: 14 }}>
                 <p>{projectInquiriesCloudStatus}</p>
                 <span>
-                  环境：{gardenConsultationCloudEnv.env} · 区域：{gardenConsultationCloudEnv.region}
+                  数据源：{cloudDataConfig.source} · 环境：{cloudDataConfig.env} · 集合：garden_consultations
                   {projectInquiriesCloudError ? ` · ${projectInquiriesCloudError}` : " · 页面进入时会调用 listGardenConsultations。"}
                 </span>
               </div>
@@ -9668,7 +9734,7 @@ ${rentalText}`;
                   <span>{syncState}</span>
                 </div>
                 <div>
-                  <strong>自动同步</strong>
+                  <strong>同步状态</strong>
                   <span>{autoSyncState}</span>
                 </div>
                 <div>
@@ -9864,7 +9930,7 @@ ${rentalText}`;
             </div>
           )}
 
-          {selectedMiniProgramAppointment && (
+          {selectedMiniProgramAppointment && createPortal((
             <div className="sheet-mask project-inquiry-mask" onClick={() => setSelectedMiniProgramAppointmentId(null)}>
               <section className="project-inquiry-detail mini-appointment-detail" onClick={(event) => event.stopPropagation()}>
                 <header className="project-inquiry-detail-head">
@@ -9925,16 +9991,16 @@ ${rentalText}`;
                 </footer>
               </section>
             </div>
-          )}
+          ), document.body)}
 
-          {selectedProjectInquiry && (
+          {selectedProjectInquiry && createPortal((
             <div className="sheet-mask project-inquiry-mask" onClick={() => setSelectedProjectInquiryId(null)}>
               <section className="project-inquiry-detail" onClick={(event) => event.stopPropagation()}>
                 <header className="project-inquiry-detail-head">
                   <div>
                     <p className="eyebrow">Garden Project Inquiry</p>
                     <h2>{selectedProjectInquiry.projectType || "园林改造咨询"}</h2>
-                    <span>{selectedProjectInquiry.createdAt || "暂无提交时间"} · {selectedProjectInquiry.source === "cloud1_garden_consultation" ? "cloud1 园林咨询" : "客户小程序线索"}</span>
+                    <span>{selectedProjectInquiry.createdAt || "暂无提交时间"} · {selectedProjectInquiry.source === "supabase_garden_consultation" ? "旧 Supabase 记录（未主动读取）" : selectedProjectInquiry.source === "cloud1_garden_consultation" ? "cloud1 园林咨询" : "客户小程序线索"}</span>
                   </div>
                   <button className="close-button" onClick={() => setSelectedProjectInquiryId(null)} aria-label="关闭线索详情">×</button>
                 </header>
@@ -9978,7 +10044,7 @@ ${rentalText}`;
                   <section className="project-inquiry-section mini-garden-form-section">
                     <h3><span>D.</span> 现场资料</h3>
                     <div className="project-inquiry-photo-list mini-garden-photo-list">
-                      {Array.from({ length: Math.max(3, safePhotos(selectedProjectInquiry.photos).length) }, (_, index) => safePhotos(selectedProjectInquiry.photos)[index] || "").map((photo, index) => (
+                      {(safePhotos(selectedProjectInquiry.photos).length ? safePhotos(selectedProjectInquiry.photos) : [""]).map((photo, index) => (
                         <button
                           type="button"
                           className={`project-inquiry-photo ${photo ? "" : "muted"}`}
@@ -10019,9 +10085,9 @@ ${rentalText}`;
                 </footer>
               </section>
             </div>
-          )}
+          ), document.body)}
 
-          {projectInquiryPhotoPreview && (
+          {projectInquiryPhotoPreview && createPortal((
             <div className="sheet-mask project-photo-preview-mask" onClick={() => setProjectInquiryPhotoPreview(null)}>
               <section className="project-photo-preview-dialog" onClick={(event) => event.stopPropagation()}>
                 <button className="close-button" onClick={() => setProjectInquiryPhotoPreview(null)} aria-label="关闭照片预览">×</button>
@@ -10033,7 +10099,7 @@ ${rentalText}`;
                 </div>
               </section>
             </div>
-          )}
+          ), document.body)}
 
           <datalist id="staff-area-options">
             {STAFF_AREA_OPTIONS.map((area) => <option key={area} value={area} />)}
@@ -11179,7 +11245,7 @@ ${rentalText}`;
     );
   }
 
-  if (!session) return <AuthPage onSignedOut={handleSignOut} />;
+  if (!session) return <AuthPage onSignedOut={handleSignOut} onTemporarySignIn={handleTemporarySignIn} />;
 
   if (customerPlanId) {
     return renderSafely(renderCustomerPlanView, "staff", `customer-${customerPlanId}`, returnToStaffHome);
